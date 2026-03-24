@@ -2,9 +2,7 @@ FROM node:22 AS builder
 
 WORKDIR /build
 
-# TODO Start: Update this with your backend URL
 ENV BACKEND_URL https://backend-mentorfinder.app.spring26a.secoder.net//:path*
-# TODO End
 
 RUN corepack enable pnpm
 
