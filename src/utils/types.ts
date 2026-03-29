@@ -14,15 +14,15 @@ export interface SearchMentorResult {
     id: number;
     name: string;
     researchDirection: string;
-    email: string | null;
-    profile: string | null;
+    email?: string;
+    profile?: string;
     paperTitles: string[];
 }
 
 export interface SearchPaperResult {
     id: number;
     title: string;
-    abstract: string | null;
-    publishDate: string | null;
+    abstract?: string;
+    publishDate?: string;
     mentorNames: string[];
 }
