@@ -1,4 +1,5 @@
 import { KeyboardEvent, useState } from "react";
+import { useRouter } from "next/router";
 
 import { FAILURE_PREFIX } from "../constants/string";
 import { request } from "../utils/network";
@@ -7,6 +8,7 @@ import { SearchMentorResult, SearchPaperResult } from "../utils/types";
 type SearchMode = "mentor" | "paper";
 
 const SearchScreen = () => {
+    const router = useRouter();
     const [mode, setMode] = useState<SearchMode>("mentor");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -76,6 +78,12 @@ const SearchScreen = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
             <h2>信息检索</h2>
             <p>输入关键词，按导师姓名或论文相关信息进行搜索。</p>
+
+            <div>
+                <button onClick={() => router.push("/")}>
+                    返回首页
+                </button>
+            </div>
 
             <div style={{ display: "flex", gap: 8 }}>
                 <button
