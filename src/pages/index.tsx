@@ -154,6 +154,9 @@ const BoardScreen = () => {
                     </div>
                 )}
                 <div style={{ display: "flex", flexDirection: "row" }}>
+                    <button onClick={() => router.push("/search")}>
+                        Go to search
+                    </button>
                     <button onClick={() => router.push("/list")}>
                         Go to full list
                     </button>
