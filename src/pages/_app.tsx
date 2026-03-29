@@ -11,6 +11,7 @@ const App = ({ Component, pageProps }: AppProps) => {
     const router = useRouter();
     const dispatch = useDispatch();
     const auth = useSelector((state: RootState) => state.auth);
+    const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
 
     return (
         <>
@@ -19,7 +20,7 @@ const App = ({ Component, pageProps }: AppProps) => {
             </Head>
             <div style={{ padding: 12 }}>
                 <Component {...pageProps} />
-                {router.pathname !== "/login" && (auth.token ? (
+                {!isAuthPage && (auth.token ? (
                     <>
                         <p>Logged in as user name: {auth.name}</p>
                         <button onClick={() => dispatch(resetAuth())}>
@@ -27,7 +28,10 @@ const App = ({ Component, pageProps }: AppProps) => {
                         </button>
                     </>
                 ) : (
-                    <button onClick={() => router.push("/login")}>Go to login</button>
+                    <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
+                        <button onClick={() => router.push("/login")}>Go to login</button>
+                        <button onClick={() => router.push("/register")}>Go to register</button>
+                    </div>
                 ))}
             </div>
         </>

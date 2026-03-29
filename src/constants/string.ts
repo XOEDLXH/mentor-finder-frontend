@@ -11,6 +11,9 @@ export const DELETE_SUCCESS = "成功删除该游戏记录";
 
 export const FAILURE_PREFIX = "网络请求失败：";
 
-export const LOGIN_REQUIRED = "你需要登陆才能完成这一操作";
-export const LOGIN_SUCCESS_PREFIX = "登陆或注册成功，用户名：";
-export const LOGIN_FAILED = "登陆或注册失败";
+export const LOGIN_REQUIRED = "你需要登录才能完成这一操作";
+export const LOGIN_SUCCESS_PREFIX = "登录成功，用户名：";
+export const LOGIN_FAILED = "登录失败";
+
+export const REGISTER_SUCCESS_PREFIX = "注册成功，用户名：";
+export const REGISTER_FAILED = "注册失败";
