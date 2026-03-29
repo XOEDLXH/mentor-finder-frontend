@@ -1,20 +1,21 @@
 import { useState } from "react";
-import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
+import { FAILURE_PREFIX, REGISTER_FAILED, REGISTER_SUCCESS_PREFIX } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
-const LoginScreen = () => {
+const RegisterScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
     const router = useRouter();
     const dispatch = useDispatch();
 
-    const login = () => {
+    const register = () => {
         setSubmitting(true);
-        fetch("/api/login", {
+        fetch("/api/register", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -22,20 +23,19 @@ const LoginScreen = () => {
             body: JSON.stringify({
                 username: userName,
                 password,
+                email,
             }),
         })
             .then((res) => res.json())
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
-
                     dispatch(setName(userName));
-                    alert(LOGIN_SUCCESS_PREFIX + userName);
-
+                    alert(REGISTER_SUCCESS_PREFIX + userName);
                     router.push("/");
                 }
                 else {
-                    alert(LOGIN_FAILED);
+                    alert(REGISTER_FAILED);
                 }
             })
             .catch((err) => alert(FAILURE_PREFIX + err))
@@ -44,7 +44,7 @@ const LoginScreen = () => {
 
     return (
         <>
-            <h4> Login </h4>
+            <h4> Register </h4>
             <input
                 type="text"
                 placeholder="User name"
@@ -57,16 +57,25 @@ const LoginScreen = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
             />
+            <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+            />
             <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
-                <button onClick={login} disabled={submitting || userName === "" || password === ""}>
-                    {submitting ? "Submitting..." : "Login"}
+                <button
+                    onClick={register}
+                    disabled={submitting || userName === "" || password === "" || email === ""}
+                >
+                    {submitting ? "Submitting..." : "Register"}
                 </button>
-                <button onClick={() => router.push("/register")} disabled={submitting}>
-                    Go to register
+                <button onClick={() => router.push("/login")} disabled={submitting}>
+                    Go to login
                 </button>
             </div>
         </>
     );
 };
 
-export default LoginScreen;
+export default RegisterScreen;
