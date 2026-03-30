@@ -16,7 +16,7 @@ const App = ({ Component, pageProps }: AppProps) => {
     return (
         <>
             <Head>
-                <title> Conway&#39;s life game</title>
+                <title>MentorFinder</title>
             </Head>
             <div style={{ padding: 12 }}>
                 <Component {...pageProps} />

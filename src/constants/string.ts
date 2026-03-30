@@ -5,13 +5,8 @@
 
 export const BACKEND_URL = "";
 
-export const CREATE_SUCCESS = "成功创建一个游戏记录";
-export const UPDATE_SUCCESS = "成功更新该游戏记录";
-export const DELETE_SUCCESS = "成功删除该游戏记录";
-
 export const FAILURE_PREFIX = "网络请求失败：";
 
-export const LOGIN_REQUIRED = "你需要登录才能完成这一操作";
 export const LOGIN_SUCCESS_PREFIX = "登录成功，用户名：";
 export const LOGIN_FAILED = "登录失败";
 
