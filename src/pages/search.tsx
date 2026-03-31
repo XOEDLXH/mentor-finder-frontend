@@ -128,7 +128,9 @@ const SearchScreen = () => {
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
                             <h3 style={{ margin: "0 0 8px" }}>{mentor.name}</h3>
-                            <p style={{ margin: "4px 0" }}>研究方向：{mentor.researchDirection}</p>
+                            <p style={{ margin: "4px 0" }}>
+                                研究方向：{mentor.researchDirection || mentor.research_direction || "暂无研究方向"}
+                            </p>
                             <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
                             <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
                             <p style={{ margin: "8px 0 4px" }}>相关论文：</p>
@@ -150,7 +152,7 @@ const SearchScreen = () => {
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
                             <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
-                            <p style={{ margin: "4px 0" }}>发表日期：{paper.publishDate || "未知"}</p>
+                            <p style={{ margin: "4px 0" }}>发表日期：{paper.publishDate || paper.publish_date || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
                         </div>
