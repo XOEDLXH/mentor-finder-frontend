@@ -16,7 +16,7 @@ const App = ({ Component, pageProps }: AppProps) => {
     return (
         <>
             <Head>
-                <title>MentorFinder</title>
+                <title>找导师</title>
             </Head>
             <div style={{ padding: 12 }}>
                 <Component {...pageProps} />
@@ -29,8 +29,8 @@ const App = ({ Component, pageProps }: AppProps) => {
                     </>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
-                        <button onClick={() => router.push("/login")}>Go to login</button>
-                        <button onClick={() => router.push("/register")}>Go to register</button>
+                        <button onClick={() => router.push("/login")}>登录</button>
+                        <button onClick={() => router.push("/register")}>注册</button>
                     </div>
                 ))}
             </div>

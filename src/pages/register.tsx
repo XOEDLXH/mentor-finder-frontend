@@ -90,22 +90,22 @@ const RegisterScreen = () => {
 
     return (
         <>
-            <h4> Register </h4>
+            <h4> 注册 </h4>
             <input
                 type="text"
-                placeholder="User name"
+                placeholder="用户名"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
             />
             <input
                 type="password"
-                placeholder="Password"
+                placeholder="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
             />
             <input
                 type="password"
-                placeholder="Confirm password"
+                placeholder="确认密码"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 onBlur={() => setConfirmPasswordBlurred(true)}
@@ -114,7 +114,7 @@ const RegisterScreen = () => {
                 type="text"
                 inputMode="email"
                 autoComplete="email"
-                placeholder="Email"
+                placeholder="邮箱"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onBlur={() => setEmailBlurred(true)}
@@ -141,7 +141,7 @@ const RegisterScreen = () => {
                         isEmailInvalid
                     }
                 >
-                    {submitting ? "Submitting..." : "Register"}
+                    {submitting ? "提交中..." : "注册"}
                 </button>
                 <button onClick={() => router.push("/login")} disabled={submitting}>
                     登录
