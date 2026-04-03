@@ -19,6 +19,7 @@ build:
   stage: test
 
   before_script:
+    - npm install -g pnpm
     - pnpm config set registry https://registry.npmmirror.com
     - pnpm install
 
@@ -31,7 +32,6 @@ unit-test:
     - curl "http://api.spring26a.secoder.net/static/sonar-scanner.tar.gz" -s -o "/tmp/sonar-$SUFFIX.tar.gz"
     - tar -xf "/tmp/sonar-$SUFFIX.tar.gz" -C /opt
     - /opt/sonar-scanner/bin/sonar-scanner
-  allow_failure: true
 
 style-test:
   extends: .test
