@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
     FAILURE_PREFIX,
+    REGISTER_EMAIL_INVALID,
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_SUCCESS_PREFIX,
@@ -15,14 +16,47 @@ const RegisterScreen = () => {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [confirmPasswordBlurred, setConfirmPasswordBlurred] = useState(false);
     const [email, setEmail] = useState("");
+    const [emailBlurred, setEmailBlurred] = useState(false);
+    const [registerErrorMessage, setRegisterErrorMessage] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
     const router = useRouter();
     const dispatch = useDispatch();
 
+    const isEmailValid = (emailToCheck: string) => {
+        const trimmedEmail = emailToCheck.trim();
+        const atIndex = trimmedEmail.indexOf("@");
+
+        if (atIndex <= 0 || atIndex !== trimmedEmail.lastIndexOf("@")) {
+            return false;
+        }
+
+        const localPart = trimmedEmail.slice(0, atIndex);
+        const domainPart = trimmedEmail.slice(atIndex + 1);
+
+        if (localPart === "" || domainPart === "") {
+            return false;
+        }
+
+        if (domainPart.startsWith(".") || domainPart.endsWith(".")) {
+            return false;
+        }
+
+        return domainPart.includes(".");
+    };
+
+    const isEmailInvalid = email !== "" && !isEmailValid(email);
+
     const register = () => {
+        setRegisterErrorMessage("");
+
         if (password !== confirmPassword) {
             alert(REGISTER_PASSWORD_MISMATCH);
+            return;
+        }
+
+        if (isEmailInvalid) {
+            setEmailBlurred(true);
             return;
         }
 
@@ -47,10 +81,10 @@ const RegisterScreen = () => {
                     router.push("/");
                 }
                 else {
-                    alert(REGISTER_FAILED);
+                    setRegisterErrorMessage(REGISTER_FAILED);
                 }
             })
-            .catch((err) => alert(FAILURE_PREFIX + err))
+            .catch((err) => setRegisterErrorMessage(FAILURE_PREFIX + err))
             .finally(() => setSubmitting(false));
     };
 
@@ -77,13 +111,22 @@ const RegisterScreen = () => {
                 onBlur={() => setConfirmPasswordBlurred(true)}
             />
             <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setEmailBlurred(true)}
             />
             {confirmPasswordBlurred && confirmPassword !== "" && password !== confirmPassword && (
                 <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_MISMATCH}</p>
+            )}
+            {emailBlurred && isEmailInvalid && (
+                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_EMAIL_INVALID}</p>
+            )}
+            {registerErrorMessage !== "" && (
+                <p style={{ color: "#c62828", margin: 0 }}>{registerErrorMessage}</p>
             )}
             <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
                 <button
@@ -94,13 +137,14 @@ const RegisterScreen = () => {
                         password === "" ||
                         confirmPassword === "" ||
                         password !== confirmPassword ||
-                        email === ""
+                        email === "" ||
+                        isEmailInvalid
                     }
                 >
                     {submitting ? "Submitting..." : "Register"}
                 </button>
                 <button onClick={() => router.push("/login")} disabled={submitting}>
-                    Go to login
+                    登录
                 </button>
             </div>
         </>

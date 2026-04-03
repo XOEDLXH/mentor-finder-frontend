@@ -62,7 +62,7 @@ const LoginScreen = () => {
                     {submitting ? "Submitting..." : "Login"}
                 </button>
                 <button onClick={() => router.push("/register")} disabled={submitting}>
-                    Go to register
+                    注册
                 </button>
             </div>
         </>

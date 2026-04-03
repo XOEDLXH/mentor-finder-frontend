@@ -22,9 +22,9 @@ const App = ({ Component, pageProps }: AppProps) => {
                 <Component {...pageProps} />
                 {!isAuthPage && (auth.token ? (
                     <>
-                        <p>Logged in as user name: {auth.name}</p>
+                        <p>已登录，用户名：{auth.name}</p>
                         <button onClick={() => dispatch(resetAuth())}>
-                            Logout
+                            登出
                         </button>
                     </>
                 ) : (
