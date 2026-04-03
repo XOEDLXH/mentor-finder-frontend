@@ -268,4 +268,20 @@ export default tseslint.config(
             "@typescript-eslint/array-type": "off",
         },
     },
+    {
+        files: ["src/tests/**/*.js", "src/tests/**/*.jsx", "src/tests/**/*.ts", "src/tests/**/*.tsx"],
+        languageOptions: {
+            globals: {
+                jest: "readonly",
+                describe: "readonly",
+                it: "readonly",
+                test: "readonly",
+                expect: "readonly",
+                beforeEach: "readonly",
+                afterEach: "readonly",
+                beforeAll: "readonly",
+                afterAll: "readonly"
+            }
+        }
+    }
 );
