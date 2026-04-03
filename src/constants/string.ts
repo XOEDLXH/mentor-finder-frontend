@@ -12,3 +12,4 @@ export const LOGIN_FAILED = "登录失败";
 
 export const REGISTER_SUCCESS_PREFIX = "注册成功，用户名：";
 export const REGISTER_FAILED = "注册失败";
+export const REGISTER_PASSWORD_MISMATCH = "两次输入的密码不一致";
