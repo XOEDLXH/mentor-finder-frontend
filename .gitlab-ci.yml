@@ -37,7 +37,6 @@ style-test:
   extends: .test
   script:
     - pnpm lint
-  allow_failure: true
 
 deploy:
   stage: deploy
