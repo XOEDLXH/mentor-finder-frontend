@@ -4,6 +4,7 @@ import {
     REGISTER_EMAIL_INVALID,
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
+    REGISTER_PASSWORD_WEAK,
     REGISTER_SUCCESS_PREFIX,
 } from "../constants/string";
 import { useRouter } from "next/router";
@@ -13,6 +14,7 @@ import { useDispatch } from "react-redux";
 const RegisterScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
+    const [passwordBlurred, setPasswordBlurred] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState("");
     const [confirmPasswordBlurred, setConfirmPasswordBlurred] = useState(false);
     const [email, setEmail] = useState("");
@@ -22,6 +24,36 @@ const RegisterScreen = () => {
 
     const router = useRouter();
     const dispatch = useDispatch();
+
+    const isPasswordStrong = (passwordToCheck: string) => {
+        if (passwordToCheck.length < 8) {
+            return false;
+        }
+
+        let hasLetter = false;
+        let hasDigit = false;
+
+        for (const char of passwordToCheck) {
+            if (char >= "0" && char <= "9") {
+                hasDigit = true;
+            }
+
+            if (char.toLowerCase() !== char.toUpperCase()) {
+                hasLetter = true;
+            }
+
+            if (hasLetter && hasDigit) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    const isPasswordWeak = password !== "" && !isPasswordStrong(password);
+    const shouldShowPasswordMismatchHint =
+        confirmPasswordBlurred && confirmPassword !== "" && password !== confirmPassword;
+    const shouldShowPasswordWeakHint = passwordBlurred && isPasswordWeak && !shouldShowPasswordMismatchHint;
 
     const isEmailValid = (emailToCheck: string) => {
         const trimmedEmail = emailToCheck.trim();
@@ -52,6 +84,11 @@ const RegisterScreen = () => {
 
         if (password !== confirmPassword) {
             alert(REGISTER_PASSWORD_MISMATCH);
+            return;
+        }
+
+        if (isPasswordWeak) {
+            setPasswordBlurred(true);
             return;
         }
 
@@ -102,6 +139,7 @@ const RegisterScreen = () => {
                 placeholder="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => setPasswordBlurred(true)}
             />
             <input
                 type="password"
@@ -119,8 +157,11 @@ const RegisterScreen = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 onBlur={() => setEmailBlurred(true)}
             />
-            {confirmPasswordBlurred && confirmPassword !== "" && password !== confirmPassword && (
+            {shouldShowPasswordMismatchHint && (
                 <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_MISMATCH}</p>
+            )}
+            {shouldShowPasswordWeakHint && (
+                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_WEAK}</p>
             )}
             {emailBlurred && isEmailInvalid && (
                 <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_EMAIL_INVALID}</p>
@@ -135,6 +176,7 @@ const RegisterScreen = () => {
                         submitting ||
                         userName === "" ||
                         password === "" ||
+                        isPasswordWeak ||
                         confirmPassword === "" ||
                         password !== confirmPassword ||
                         email === "" ||
@@ -144,7 +186,7 @@ const RegisterScreen = () => {
                     {submitting ? "提交中..." : "注册"}
                 </button>
                 <button onClick={() => router.push("/login")} disabled={submitting}>
-                    登录
+                    前往登录页面
                 </button>
             </div>
         </>
