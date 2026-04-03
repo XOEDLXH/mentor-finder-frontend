@@ -283,5 +283,16 @@ export default tseslint.config(
                 afterAll: "readonly"
             }
         }
+    },
+    {
+        files: ["src/tests/**/*.js", "src/tests/**/*.jsx"],
+        languageOptions: {
+            parserOptions: {
+                project: false,
+            },
+        },
+        rules: {
+            "@typescript-eslint/no-unnecessary-type-assertion": "off",
+        }
     }
 );
