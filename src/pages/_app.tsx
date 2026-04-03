@@ -16,21 +16,21 @@ const App = ({ Component, pageProps }: AppProps) => {
     return (
         <>
             <Head>
-                <title>MentorFinder</title>
+                <title>找导师</title>
             </Head>
             <div style={{ padding: 12 }}>
                 <Component {...pageProps} />
                 {!isAuthPage && (auth.token ? (
                     <>
-                        <p>Logged in as user name: {auth.name}</p>
+                        <p>已登录，用户名：{auth.name}</p>
                         <button onClick={() => dispatch(resetAuth())}>
-                            Logout
+                            登出
                         </button>
                     </>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
-                        <button onClick={() => router.push("/login")}>Go to login</button>
-                        <button onClick={() => router.push("/register")}>Go to register</button>
+                        <button onClick={() => router.push("/login")}>登录</button>
+                        <button onClick={() => router.push("/register")}>注册</button>
                     </div>
                 ))}
             </div>

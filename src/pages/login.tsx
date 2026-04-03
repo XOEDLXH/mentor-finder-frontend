@@ -44,25 +44,25 @@ const LoginScreen = () => {
 
     return (
         <>
-            <h4> Login </h4>
+            <h4> 登录 </h4>
             <input
                 type="text"
-                placeholder="User name"
+                placeholder="用户名"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
             />
             <input
                 type="password"
-                placeholder="Password"
+                placeholder="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
             />
             <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
                 <button onClick={login} disabled={submitting || userName === "" || password === ""}>
-                    {submitting ? "Submitting..." : "Login"}
+                    {submitting ? "提交中..." : "登录"}
                 </button>
                 <button onClick={() => router.push("/register")} disabled={submitting}>
-                    Go to register
+                    注册
                 </button>
             </div>
         </>
