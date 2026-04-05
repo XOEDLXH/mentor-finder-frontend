@@ -188,6 +188,9 @@ const RegisterScreen = () => {
                 <button onClick={() => router.push("/login")} disabled={submitting}>
                     前往登录页面
                 </button>
+                <button onClick={() => router.push("/")} disabled={submitting}>
+                    返回首页
+                </button>
             </div>
         </>
     );
