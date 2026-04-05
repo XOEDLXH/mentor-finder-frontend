@@ -142,7 +142,7 @@ describe("LoginScreen", () => {
     it("navigates to home page when clicking back-home button", () => {
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "返回主页" }));
+        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
 
         expect(mockPush).toHaveBeenCalledWith("/");
     });
@@ -258,7 +258,7 @@ describe("RegisterScreen", () => {
     it("navigates to home page when clicking back-home button", () => {
         render(<RegisterScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "返回主页" }));
+        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
 
         expect(mockPush).toHaveBeenCalledWith("/");
     });
