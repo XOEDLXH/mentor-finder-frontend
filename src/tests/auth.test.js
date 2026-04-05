@@ -138,6 +138,14 @@ describe("LoginScreen", () => {
 
         expect(mockPush).toHaveBeenCalledWith("/register");
     });
+
+    it("navigates to home page when clicking back-home button", () => {
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
+    });
 });
 
 describe("RegisterScreen", () => {
@@ -245,5 +253,13 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "前往登录页面" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+
+    it("navigates to home page when clicking back-home button", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
     });
 });
