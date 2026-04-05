@@ -26,7 +26,7 @@
     "unmatched": 0,
     "updated": 0
   },
-  "startTime": 1775362783800,
+  "startTime": 1775390785316,
   "success": true,
   "testResults": [
     {
@@ -37,10 +37,10 @@
       "numTodoTests": 0,
       "openHandles": [],
       "perfStats": {
-        "end": 1775362824941,
-        "runtime": 13448,
+        "end": 1775390815121,
+        "runtime": 10747,
         "slow": true,
-        "start": 1775362811493
+        "start": 1775390804374
       },
       "skipped": false,
       "snapshot": {
@@ -58,7 +58,7 @@
           "ancestorTitles": [
             "SearchScreen"
           ],
-          "duration": 188,
+          "duration": 132,
           "failureDetails": [],
           "failureMessages": [],
           "fullName": "SearchScreen renders mentor results using backend response fields",
@@ -73,7 +73,7 @@
           "ancestorTitles": [
             "SearchScreen"
           ],
-          "duration": 21,
+          "duration": 19,
           "failureDetails": [],
           "failureMessages": [],
           "fullName": "SearchScreen renders paper results using backend response fields",
