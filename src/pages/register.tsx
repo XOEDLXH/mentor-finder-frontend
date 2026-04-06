@@ -11,6 +11,8 @@ import { useRouter } from "next/router";
 import { setName, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 const RegisterScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
@@ -56,25 +58,7 @@ const RegisterScreen = () => {
     const shouldShowPasswordWeakHint = passwordBlurred && isPasswordWeak && !shouldShowPasswordMismatchHint;
 
     const isEmailValid = (emailToCheck: string) => {
-        const trimmedEmail = emailToCheck.trim();
-        const atIndex = trimmedEmail.indexOf("@");
-
-        if (atIndex <= 0 || atIndex !== trimmedEmail.lastIndexOf("@")) {
-            return false;
-        }
-
-        const localPart = trimmedEmail.slice(0, atIndex);
-        const domainPart = trimmedEmail.slice(atIndex + 1);
-
-        if (localPart === "" || domainPart === "") {
-            return false;
-        }
-
-        if (domainPart.startsWith(".") || domainPart.endsWith(".")) {
-            return false;
-        }
-
-        return domainPart.includes(".");
+        return EMAIL_REGEX.test(emailToCheck.trim());
     };
 
     const isEmailInvalid = email !== "" && !isEmailValid(email);
@@ -106,7 +90,7 @@ const RegisterScreen = () => {
             body: JSON.stringify({
                 username: userName,
                 password,
-                email,
+                email: email.trim(),
             }),
         })
             .then((res) => res.json())
