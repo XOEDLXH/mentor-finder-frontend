@@ -17,7 +17,7 @@ jest.mock("../utils/network", () => ({
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
 
-    const renderWithStore = (name = "student") => {
+    const renderWithStore = (name = "student", role = "student") => {
         const store = configureStore({
             reducer: {
                 auth: authReducer,
@@ -26,6 +26,7 @@ describe("SearchScreen", () => {
                 auth: {
                     name,
                     token: "mock-token",
+                    role,
                 },
             },
         });
@@ -44,6 +45,12 @@ describe("SearchScreen", () => {
         useRouter.mockReturnValue({
             push: mockPush,
         });
+    });
+
+    it("shows admin operation panel only for admin role", () => {
+        renderWithStore("alice", "admin");
+
+        expect(screen.getByRole("heading", { name: "管理员操作" })).toBeInTheDocument();
     });
 
     it("renders mentor results using backend response fields", async () => {

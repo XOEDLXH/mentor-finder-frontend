@@ -3,11 +3,13 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 export interface AuthState {
     token: string;
     name: string;
+    role: string;
 }
 
 const initialState: AuthState = {
     token: "",
     name: "",
+    role: "",
 };
 
 const AUTH_STORAGE_KEY = "mentorfinder_auth";
@@ -17,7 +19,7 @@ const saveAuthToStorage = (state: AuthState) => {
         return;
     }
 
-    if (state.token === "" && state.name === "") {
+    if (state.token === "" && state.name === "" && state.role === "") {
         window.localStorage.removeItem(AUTH_STORAGE_KEY);
         return;
     }
@@ -40,6 +42,7 @@ export const loadAuthFromStorage = (): AuthState => {
         return {
             token: typeof parsed.token === "string" ? parsed.token : "",
             name: typeof parsed.name === "string" ? parsed.name : "",
+            role: typeof parsed.role === "string" ? parsed.role : "",
         };
     }
     catch {
@@ -58,22 +61,28 @@ export const authSlice = createSlice({
         hydrateAuth: (state, action: PayloadAction<AuthState>) => {
             state.token = action.payload.token;
             state.name = action.payload.name;
+            state.role = action.payload.role;
         },
         setToken: (state, action: PayloadAction<string>) => {
             state.token = action.payload;
-            saveAuthToStorage({ token: state.token, name: state.name });
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role });
         },
         setName: (state, action: PayloadAction<string>) => {
             state.name = action.payload;
-            saveAuthToStorage({ token: state.token, name: state.name });
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role });
+        },
+        setRole: (state, action: PayloadAction<string>) => {
+            state.role = action.payload;
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role });
         },
         resetAuth: (state) => {
             state.token = "";
             state.name = "";
-            saveAuthToStorage({ token: state.token, name: state.name });
+            state.role = "";
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role });
         },
     },
 });
 
-export const { hydrateAuth, setToken, setName, resetAuth } = authSlice.actions;
+export const { hydrateAuth, setToken, setName, setRole, resetAuth } = authSlice.actions;
 export default authSlice.reducer;

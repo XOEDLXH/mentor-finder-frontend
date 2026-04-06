@@ -8,7 +8,7 @@ import {
     REGISTER_SUCCESS_PREFIX,
 } from "../constants/string";
 import { useRouter } from "next/router";
-import { setName, setToken } from "../redux/auth";
+import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
@@ -97,6 +97,7 @@ const RegisterScreen = () => {
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
+                    dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
                     dispatch(setName(userName));
                     alert(REGISTER_SUCCESS_PREFIX + userName);
                     router.push("/");
