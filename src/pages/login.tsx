@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
 import { useRouter } from "next/router";
-import { setName, setToken } from "../redux/auth";
+import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
 const LoginScreen = () => {
@@ -28,6 +28,7 @@ const LoginScreen = () => {
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
+                    dispatch(setRole(typeof res.role === "string" ? res.role : ""));
 
                     dispatch(setName(userName));
                     alert(LOGIN_SUCCESS_PREFIX + userName);

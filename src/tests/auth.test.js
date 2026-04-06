@@ -11,7 +11,7 @@ import {
 } from "../constants/string";
 import LoginScreen from "../pages/login";
 import RegisterScreen from "../pages/register";
-import authReducer, { resetAuth, setName, setToken } from "../redux/auth";
+import authReducer, { resetAuth, setName, setRole, setToken } from "../redux/auth";
 
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
@@ -28,6 +28,7 @@ describe("auth reducer", () => {
         expect(state).toEqual({
             token: "",
             name: "",
+            role: "",
         });
     });
 
@@ -36,10 +37,12 @@ describe("auth reducer", () => {
 
         state = authReducer(state, setToken("jwt-token"));
         state = authReducer(state, setName("alice"));
+        state = authReducer(state, setRole("student"));
 
         expect(state).toEqual({
             token: "jwt-token",
             name: "alice",
+            role: "student",
         });
     });
 
@@ -47,6 +50,7 @@ describe("auth reducer", () => {
         const stateWithAuth = {
             token: "jwt-token",
             name: "alice",
+            role: "admin",
         };
 
         const state = authReducer(stateWithAuth, resetAuth());
@@ -54,6 +58,7 @@ describe("auth reducer", () => {
         expect(state).toEqual({
             token: "",
             name: "",
+            role: "",
         });
     });
 });
@@ -81,7 +86,7 @@ describe("LoginScreen", () => {
 
     it("dispatches auth info and navigates home when login succeeds", async () => {
         globalThis.fetch.mockResolvedValue({
-            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token" }),
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "admin" }),
         });
 
         render(<LoginScreen />);
@@ -107,6 +112,7 @@ describe("LoginScreen", () => {
 
         await waitFor(() => {
             expect(mockDispatch).toHaveBeenCalledWith(setToken("jwt-token"));
+            expect(mockDispatch).toHaveBeenCalledWith(setRole("admin"));
             expect(mockDispatch).toHaveBeenCalledWith(setName("alice"));
             expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_SUCCESS_PREFIX + "alice");
             expect(mockPush).toHaveBeenCalledWith("/");
@@ -211,7 +217,7 @@ describe("RegisterScreen", () => {
 
     it("dispatches auth info and navigates home when register succeeds", async () => {
         globalThis.fetch.mockResolvedValue({
-            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token" }),
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
         });
 
         render(<RegisterScreen />);
@@ -241,6 +247,7 @@ describe("RegisterScreen", () => {
 
         await waitFor(() => {
             expect(mockDispatch).toHaveBeenCalledWith(setToken("register-token"));
+            expect(mockDispatch).toHaveBeenCalledWith(setRole("student"));
             expect(mockDispatch).toHaveBeenCalledWith(setName("alice"));
             expect(globalThis.alert).toHaveBeenCalledWith(REGISTER_SUCCESS_PREFIX + "alice");
             expect(mockPush).toHaveBeenCalledWith("/");

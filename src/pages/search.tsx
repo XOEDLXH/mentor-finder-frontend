@@ -11,8 +11,8 @@ type SearchMode = "mentor" | "paper";
 
 const SearchScreen = () => {
     const router = useRouter();
-    const authName = useSelector((state: RootState) => state.auth.name);
-    const isAdmin = authName === "admin";
+    const authRole = useSelector((state: RootState) => state.auth.role);
+    const isAdmin = authRole === "admin";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
     const [keyword, setKeyword] = useState("");
