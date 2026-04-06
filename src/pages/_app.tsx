@@ -2,7 +2,8 @@ import Head from "next/head";
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import store, { RootState } from "../redux/store";
-import { resetAuth } from "../redux/auth";
+import { hydrateAuth, loadAuthFromStorage, resetAuth } from "../redux/auth";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { Provider, useSelector, useDispatch } from "react-redux";
 
@@ -12,6 +13,10 @@ const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const auth = useSelector((state: RootState) => state.auth);
     const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
+
+    useEffect(() => {
+        dispatch(hydrateAuth(loadAuthFromStorage()));
+    }, [dispatch]);
 
     return (
         <>
