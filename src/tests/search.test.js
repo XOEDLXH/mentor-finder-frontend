@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
 import { useRouter } from "next/router";
 import { request } from "../utils/network";
+import authReducer from "../redux/auth";
 import SearchScreen from "../pages/search";
 
 jest.mock("next/router", () => ({
@@ -13,6 +16,26 @@ jest.mock("../utils/network", () => ({
 
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
+
+    const renderWithStore = (name = "student") => {
+        const store = configureStore({
+            reducer: {
+                auth: authReducer,
+            },
+            preloadedState: {
+                auth: {
+                    name,
+                    token: "mock-token",
+                },
+            },
+        });
+
+        render(
+            <Provider store={store}>
+                <SearchScreen />
+            </Provider>,
+        );
+    };
 
     beforeEach(() => {
         mockPush.mockReset();
@@ -36,7 +59,7 @@ describe("SearchScreen", () => {
             }],
         });
 
-        render(<SearchScreen />);
+        renderWithStore();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
             target: { value: "张三" },
@@ -72,7 +95,7 @@ describe("SearchScreen", () => {
             }],
         });
 
-        render(<SearchScreen />);
+        renderWithStore();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、研究方向或导师姓名"), {
@@ -92,6 +115,6 @@ describe("SearchScreen", () => {
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
         expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
-        expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
+        expect(screen.getByText("作者：李四,张三")).toBeInTheDocument();
     });
 });
