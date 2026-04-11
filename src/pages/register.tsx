@@ -12,7 +12,7 @@ import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
-const USERNAME_REGEX = /^[A-Za-z0-9_-]+$/;
+const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
 const RegisterScreen = () => {
