@@ -8,6 +8,7 @@ import {
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
     REGISTER_SUCCESS_PREFIX,
+    REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import LoginScreen from "../pages/login";
 import RegisterScreen from "../pages/register";
@@ -215,6 +216,17 @@ describe("RegisterScreen", () => {
         expect(screen.getByText(REGISTER_EMAIL_INVALID)).toBeInTheDocument();
     });
 
+    it("shows invalid-username hint after username input is blurred", () => {
+        render(<RegisterScreen />);
+
+        const usernameInput = screen.getByPlaceholderText("用户名");
+
+        fireEvent.change(usernameInput, { target: { value: "bad user!" } });
+        fireEvent.blur(usernameInput);
+
+        expect(screen.getByText(REGISTER_USERNAME_INVALID)).toBeInTheDocument();
+    });
+
     it("dispatches auth info and navigates home when register succeeds", async () => {
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
@@ -222,7 +234,7 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: " alice " } });
         fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });

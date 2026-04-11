@@ -6,15 +6,18 @@ import {
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
     REGISTER_SUCCESS_PREFIX,
+    REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
+const USERNAME_REGEX = /^[A-Za-z0-9_-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
 const RegisterScreen = () => {
     const [userName, setUserName] = useState("");
+    const [userNameBlurred, setUserNameBlurred] = useState(false);
     const [password, setPassword] = useState("");
     const [passwordBlurred, setPasswordBlurred] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -52,6 +55,9 @@ const RegisterScreen = () => {
         return false;
     };
 
+    const normalizedUserName = userName.trim();
+    const isUserNameInvalid = userName !== "" && !USERNAME_REGEX.test(normalizedUserName);
+
     const isPasswordWeak = password !== "" && !isPasswordStrong(password);
     const shouldShowPasswordMismatchHint =
         confirmPasswordBlurred && confirmPassword !== "" && password !== confirmPassword;
@@ -68,6 +74,11 @@ const RegisterScreen = () => {
 
         if (password !== confirmPassword) {
             alert(REGISTER_PASSWORD_MISMATCH);
+            return;
+        }
+
+        if (normalizedUserName === "" || !USERNAME_REGEX.test(normalizedUserName)) {
+            setUserNameBlurred(true);
             return;
         }
 
@@ -88,7 +99,7 @@ const RegisterScreen = () => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                username: userName,
+                username: normalizedUserName,
                 password,
                 email: email.trim(),
             }),
@@ -98,8 +109,8 @@ const RegisterScreen = () => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
-                    dispatch(setName(userName));
-                    alert(REGISTER_SUCCESS_PREFIX + userName);
+                    dispatch(setName(normalizedUserName));
+                    alert(REGISTER_SUCCESS_PREFIX + normalizedUserName);
                     router.push("/");
                 }
                 else {
@@ -118,6 +129,7 @@ const RegisterScreen = () => {
                 placeholder="用户名"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
+                onBlur={() => setUserNameBlurred(true)}
             />
             <input
                 type="password"
@@ -145,6 +157,9 @@ const RegisterScreen = () => {
             {shouldShowPasswordMismatchHint && (
                 <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_MISMATCH}</p>
             )}
+            {userNameBlurred && isUserNameInvalid && (
+                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_USERNAME_INVALID}</p>
+            )}
             {shouldShowPasswordWeakHint && (
                 <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_WEAK}</p>
             )}
@@ -159,7 +174,8 @@ const RegisterScreen = () => {
                     onClick={register}
                     disabled={
                         submitting ||
-                        userName === "" ||
+                        normalizedUserName === "" ||
+                        isUserNameInvalid ||
                         password === "" ||
                         isPasswordWeak ||
                         confirmPassword === "" ||

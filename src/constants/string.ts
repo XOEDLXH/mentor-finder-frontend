@@ -12,6 +12,7 @@ export const LOGIN_FAILED = "登录失败";
 
 export const REGISTER_SUCCESS_PREFIX = "注册成功，用户名：";
 export const REGISTER_FAILED = "注册失败";
+export const REGISTER_USERNAME_INVALID = "用户名只能包含英文、数字、下划线和减号";
 export const REGISTER_PASSWORD_MISMATCH = "两次输入的密码不一致";
 export const REGISTER_PASSWORD_WEAK = "密码至少8位且需同时包含字母和数字";
 export const REGISTER_EMAIL_INVALID = "邮箱格式错误";
