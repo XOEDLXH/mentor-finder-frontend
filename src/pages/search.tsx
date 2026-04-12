@@ -503,7 +503,6 @@ const SearchScreen = () => {
                         >
                             <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
-                            <p style={{ margin: "4px 0" }}>作者：{paper.author_names || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
                             {isAdmin && (
