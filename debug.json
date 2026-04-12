@@ -2,13 +2,13 @@
   "numFailedTestSuites": 0,
   "numFailedTests": 0,
   "numPassedTestSuites": 1,
-  "numPassedTests": 2,
+  "numPassedTests": 3,
   "numPendingTestSuites": 0,
   "numPendingTests": 0,
   "numRuntimeErrorTestSuites": 0,
   "numTodoTests": 0,
   "numTotalTestSuites": 1,
-  "numTotalTests": 2,
+  "numTotalTests": 3,
   "openHandles": [],
   "snapshot": {
     "added": 0,
@@ -26,21 +26,21 @@
     "unmatched": 0,
     "updated": 0
   },
-  "startTime": 1775390785316,
+  "startTime": 1775963528695,
   "success": true,
   "testResults": [
     {
       "leaks": false,
       "numFailingTests": 0,
-      "numPassingTests": 2,
+      "numPassingTests": 3,
       "numPendingTests": 0,
       "numTodoTests": 0,
       "openHandles": [],
       "perfStats": {
-        "end": 1775390815121,
-        "runtime": 10747,
+        "end": 1775963558990,
+        "runtime": 10383,
         "slow": true,
-        "start": 1775390804374
+        "start": 1775963548607
       },
       "skipped": false,
       "snapshot": {
@@ -58,7 +58,22 @@
           "ancestorTitles": [
             "SearchScreen"
           ],
-          "duration": 132,
+          "duration": 42,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "SearchScreen shows admin operation panel only for admin role",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryReasons": [],
+          "status": "passed",
+          "title": "shows admin operation panel only for admin role"
+        },
+        {
+          "ancestorTitles": [
+            "SearchScreen"
+          ],
+          "duration": 28,
           "failureDetails": [],
           "failureMessages": [],
           "fullName": "SearchScreen renders mentor results using backend response fields",
@@ -73,7 +88,7 @@
           "ancestorTitles": [
             "SearchScreen"
           ],
-          "duration": 19,
+          "duration": 32,
           "failureDetails": [],
           "failureMessages": [],
           "fullName": "SearchScreen renders paper results using backend response fields",

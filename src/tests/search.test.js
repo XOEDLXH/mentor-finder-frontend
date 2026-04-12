@@ -122,6 +122,6 @@ describe("SearchScreen", () => {
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
         expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
-        expect(screen.getByText("作者：李四,张三")).toBeInTheDocument();
+        expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
     });
 });
