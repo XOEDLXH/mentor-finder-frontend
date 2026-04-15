@@ -13,6 +13,9 @@ const HomeScreen = () => {
             {userName !== "" && <p>欢迎回来，{userName}</p>}
             <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => router.push("/search")}>进入检索</button>
+                {userName !== "" && (
+                    <button onClick={() => router.push("/profile")}>个人主页</button>
+                )}
             </div>
         </div>
     );
