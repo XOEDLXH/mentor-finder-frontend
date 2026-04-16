@@ -19,3 +19,16 @@ export interface SearchPaperResult {
     mentorNames: string[];
     publishDate?: string;
 }
+
+export interface TimelinePaper {
+    id: number;
+    title: string;
+    abstract?: string;
+    publish_date?: string;
+    author_names: string;
+}
+
+export interface TimelineGroup {
+    direction: string;
+    papers: TimelinePaper[];
+}
