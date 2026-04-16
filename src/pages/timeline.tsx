@@ -48,6 +48,8 @@ const TimelinePage = () => {
         [activeDirection, timeline],
     );
 
+    const panelHeight = "calc(100vh - 220px)";
+
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -75,7 +77,16 @@ const TimelinePage = () => {
 
             {!loading && errorMessage === "" && timeline.length > 0 && (
                 <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
-                    <aside style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12 }}>
+                    <aside
+                        style={{
+                            border: "1px solid #ccc",
+                            borderRadius: 8,
+                            padding: 12,
+                            maxHeight: panelHeight,
+                            overflowY: "auto",
+                            overscrollBehavior: "contain",
+                        }}
+                    >
                         <h3 style={{ marginTop: 0 }}>研究方向</h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {timeline.map((group) => (
@@ -98,7 +109,16 @@ const TimelinePage = () => {
                         </div>
                     </aside>
 
-                    <section style={{ borderLeft: "2px solid #d0d7de", paddingLeft: 20 }}>
+                    <section
+                        style={{
+                            borderLeft: "2px solid #d0d7de",
+                            paddingLeft: 20,
+                            maxHeight: panelHeight,
+                            overflowY: "auto",
+                            overscrollBehavior: "contain",
+                            paddingRight: 8,
+                        }}
+                    >
                         <h3 style={{ marginTop: 0 }}>{activeGroup?.direction || "未选择研究方向"}</h3>
 
                         {activeGroup && activeGroup.papers.length > 0 ? (
