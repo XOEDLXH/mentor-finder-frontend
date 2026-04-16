@@ -18,7 +18,7 @@ const TimelinePage = () => {
             setErrorMessage("");
 
             try {
-                const res = await request("/api/timeline/", "GET", false);
+                const res = await request("/api/timeline", "GET", false);
                 const nextTimeline = (res.timeline || []) as TimelineGroup[];
 
                 setTimeline(nextTimeline);
