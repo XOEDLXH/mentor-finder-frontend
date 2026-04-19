@@ -17,6 +17,23 @@ jest.mock("../utils/network", () => ({
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
 
+    const mockPrivateMentor = {
+        id: 101,
+        Chinese_name: "王五",
+        English_name: "Wang Wu",
+        research_direction: "强化学习",
+        email: "wangwu@example.com",
+        profile: "私有导师测试数据",
+        is_private: true,
+        paper_ids: [{
+            id: 1001,
+            title: "RL Paper",
+            abstract: "",
+            publish_date: "2026-01-01",
+            author_names: "王五",
+        }],
+    };
+
     const renderWithStore = (name = "student", role = "student") => {
         const store = configureStore({
             reducer: {
@@ -38,35 +55,73 @@ describe("SearchScreen", () => {
         );
     };
 
+    const waitForMineRequest = async () => {
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/dataset/mentors/mine",
+                "GET",
+                true,
+            );
+        });
+    };
+
     beforeEach(() => {
         mockPush.mockReset();
         request.mockReset();
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return { papers: [] };
+            }
+
+            return {};
+        });
 
         useRouter.mockReturnValue({
             push: mockPush,
         });
     });
 
-    it("shows admin operation panel only for admin role", () => {
+    it("shows admin operation panel only for admin role", async () => {
         renderWithStore("alice", "admin");
+        await waitForMineRequest();
 
         expect(screen.getByRole("heading", { name: "管理员操作" })).toBeInTheDocument();
     });
 
     it("renders mentor results using backend response fields", async () => {
-        request.mockResolvedValue({
-            mentors: [{
-                id: 1,
-                Chinese_name: "张三",
-                English_name: "Zhang San",
-                research_direction: "机器学习",
-                email: "zhangsan@example.com",
-                profile: "主要研究机器学习与数据挖掘。",
-                paperTitles: ["机器学习方法研究", "大语言模型在问答系统中的应用"],
-            }],
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习与数据挖掘。",
+                        paperTitles: ["机器学习方法研究", "大语言模型在问答系统中的应用"],
+                    }],
+                };
+            }
+
+            return {};
         });
 
         renderWithStore();
+        await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
             target: { value: "张三" },
@@ -91,18 +146,29 @@ describe("SearchScreen", () => {
     });
 
     it("renders paper results using backend response fields", async () => {
-        request.mockResolvedValue({
-            papers: [{
-                id: 2,
-                title: "大语言模型在问答系统中的应用",
-                abstract: "本文介绍大语言模型在智能问答中的实践。",
-                publish_date: "2024-06-15",
-                author_names: "李四,张三",
-                mentorNames: ["李四", "张三"],
-            }],
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "2024-06-15",
+                        author_names: "李四,张三",
+                        mentorNames: ["李四", "张三"],
+                    }],
+                };
+            }
+
+            return {};
         });
 
         renderWithStore();
+        await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、研究方向或导师姓名"), {
@@ -123,5 +189,67 @@ describe("SearchScreen", () => {
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
         expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
         expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
+    });
+
+    it("renders private mentor list from mine api", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [mockPrivateMentor] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        expect(await screen.findByText("王五")).toBeInTheDocument();
+        expect(screen.getByText("私有")).toBeInTheDocument();
+        expect(screen.getByText("RL Paper")).toBeInTheDocument();
+    });
+
+    it("sends add private mentor request", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/dataset/mentors/custom" && method === "POST") {
+                return {
+                    mentor: {
+                        ...mockPrivateMentor,
+                    },
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("导师中文名（可选）"), {
+            target: { value: "王五" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "添加私有导师" })).toBeEnabled();
+        });
+        fireEvent.click(screen.getByRole("button", { name: "添加私有导师" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/dataset/mentors/custom",
+                "POST",
+                true,
+                {
+                    Chinese_name: "王五",
+                    English_name: "",
+                },
+            );
+        });
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("导师中文名（可选）")).toHaveValue("");
+        });
     });
 });
