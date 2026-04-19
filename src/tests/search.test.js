@@ -366,4 +366,99 @@ describe("SearchScreen", () => {
         expect(screen.getByDisplayValue("王五")).toBeInTheDocument();
         expect(screen.getAllByText("我的私有导师").length).toBeGreaterThan(0);
     });
+
+    it("filters and sorts private mentors by category and rule", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [mockPrivateMentor, mockPrivateMentor2] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByLabelText("私有导师分类"), {
+            target: { value: "withPapers" },
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("王五")).toBeInTheDocument();
+            expect(screen.queryByText("赵六")).not.toBeInTheDocument();
+        });
+
+        fireEvent.change(screen.getByLabelText("私有导师分类"), {
+            target: { value: "all" },
+        });
+
+        fireEvent.change(screen.getByLabelText("私有导师排序"), {
+            target: { value: "paperCountDesc" },
+        });
+
+        await waitFor(() => {
+            const mentorHeadings = screen.getAllByRole("heading", { level: 4 });
+            expect(mentorHeadings[0]).toHaveTextContent("王五");
+        });
+    });
+
+    it("filters mentor search results by mine and public categories", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [mockPrivateMentor] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [
+                        {
+                            id: 101,
+                            Chinese_name: "王五",
+                            English_name: "Wang Wu",
+                            research_direction: "强化学习",
+                            email: "wangwu@example.com",
+                            profile: "私有导师测试数据",
+                            paperTitles: ["RL Paper"],
+                        },
+                        {
+                            id: 301,
+                            Chinese_name: "李雷",
+                            English_name: "Li Lei",
+                            research_direction: "知识图谱",
+                            email: "lilei@example.com",
+                            profile: "公共导师测试数据",
+                            paperTitles: ["KG Paper"],
+                        },
+                    ],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+            target: { value: "导师" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "仅我的私有导师（1）" }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("heading", { name: "李雷", level: 3 })).not.toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: /王五/, level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "仅公共导师（1）" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
+        });
+    });
 });
