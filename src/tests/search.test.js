@@ -34,6 +34,17 @@ describe("SearchScreen", () => {
         }],
     };
 
+    const mockPrivateMentor2 = {
+        id: 102,
+        Chinese_name: "赵六",
+        English_name: "Zhao Liu",
+        research_direction: "数据库系统",
+        email: "zhaoliu@example.com",
+        profile: "私有导师测试数据2",
+        is_private: true,
+        paper_ids: [],
+    };
+
     const renderWithStore = (name = "student", role = "student") => {
         const store = configureStore({
             reducer: {
@@ -251,5 +262,108 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(screen.getByPlaceholderText("导师中文名（可选）")).toHaveValue("");
         });
+    });
+
+    it("filters private mentor list by keyword", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [mockPrivateMentor, mockPrivateMentor2] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        expect(screen.getByText("王五")).toBeInTheDocument();
+        expect(screen.getByText("赵六")).toBeInTheDocument();
+
+        fireEvent.change(screen.getByPlaceholderText("筛选我的私有导师（姓名/方向）"), {
+            target: { value: "强化" },
+        });
+
+        expect(screen.getByText("王五")).toBeInTheDocument();
+        expect(screen.queryByText("赵六")).not.toBeInTheDocument();
+    });
+
+    it("deletes private mentor from private panel", async () => {
+        const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+        let deleted = false;
+
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: deleted ? [] : [mockPrivateMentor] };
+            }
+
+            if (url === "/api/dataset/mentors/101" && method === "DELETE") {
+                deleted = true;
+                return {};
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        expect(screen.getByText("王五")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "删除私有导师" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/dataset/mentors/101",
+                "DELETE",
+                true,
+            );
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByText("王五")).not.toBeInTheDocument();
+            expect(screen.getByText("私有导师删除成功")).toBeInTheDocument();
+        });
+
+        confirmSpy.mockRestore();
+    });
+
+    it("searches private mentor by quick action", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [mockPrivateMentor] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E7%8E%8B%E4%BA%94") {
+                return {
+                    mentors: [{
+                        id: 101,
+                        Chinese_name: "王五",
+                        English_name: "Wang Wu",
+                        research_direction: "强化学习",
+                        email: "wangwu@example.com",
+                        profile: "私有导师测试数据",
+                        paperTitles: ["RL Paper"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜索该导师" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E7%8E%8B%E4%BA%94",
+                "GET",
+                true,
+            );
+        });
+
+        expect(screen.getByDisplayValue("王五")).toBeInTheDocument();
+        expect(screen.getAllByText("我的私有导师").length).toBeGreaterThan(0);
     });
 });

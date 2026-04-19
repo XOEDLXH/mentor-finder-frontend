@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
@@ -28,6 +28,8 @@ const SearchScreen = () => {
     const [privateMentorSaving, setPrivateMentorSaving] = useState(false);
     const [privateMentorLoading, setPrivateMentorLoading] = useState(false);
     const [privateMentorMessage, setPrivateMentorMessage] = useState("");
+    const [privateMentorFilter, setPrivateMentorFilter] = useState("");
+    const [privateMentorDeletingId, setPrivateMentorDeletingId] = useState<number | undefined>(undefined);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
 
     const [customMentorDraft, setCustomMentorDraft] = useState({
@@ -145,6 +147,25 @@ const SearchScreen = () => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
 
+    const privateMentorIdSet = useMemo(() => {
+        return new Set(privateMentors.map((mentor) => mentor.id));
+    }, [privateMentors]);
+
+    const displayedPrivateMentors = useMemo(() => {
+        const keyword = privateMentorFilter.trim().toLowerCase();
+        if (keyword === "") {
+            return privateMentors;
+        }
+
+        return privateMentors.filter((mentor) => {
+            return (
+                mentor.Chinese_name.toLowerCase().includes(keyword) ||
+                String(mentor.English_name || "").toLowerCase().includes(keyword) ||
+                String(mentor.research_direction || "").toLowerCase().includes(keyword)
+            );
+        });
+    }, [privateMentorFilter, privateMentors]);
+
     const addPrivateMentor = async () => {
         const chineseName = customMentorDraft.Chinese_name.trim();
         const englishName = customMentorDraft.English_name.trim();
@@ -164,8 +185,8 @@ const SearchScreen = () => {
             });
 
             setCustomMentorDraft({ Chinese_name: "", English_name: "" });
-            setPrivateMentorMessage("私有导师添加成功");
             await fetchMyPrivateMentors();
+            setPrivateMentorMessage("私有导师添加成功");
 
             if (mode === "mentor" && keyword.trim() !== "") {
                 await search();
@@ -179,8 +200,44 @@ const SearchScreen = () => {
         }
     };
 
-    const search = async () => {
-        const trimmedKeyword = keyword.trim();
+    const removePrivateMentor = async (mentorId: number) => {
+        if (!globalThis.confirm("确认删除这个私有导师？")) {
+            return;
+        }
+
+        setPrivateMentorDeletingId(mentorId);
+        setPrivateMentorMessage("");
+
+        try {
+            await request(`/api/dataset/mentors/${mentorId}`, "DELETE", true);
+            await fetchMyPrivateMentors();
+            setPrivateMentorMessage("私有导师删除成功");
+
+            if (mode === "mentor" && keyword.trim() !== "") {
+                await search();
+            }
+        }
+        catch (err) {
+            setPrivateMentorMessage(formatPrivateMentorError(err));
+        }
+        finally {
+            setPrivateMentorDeletingId(undefined);
+        }
+    };
+
+    const searchPrivateMentor = async (mentorName: string) => {
+        const normalized = mentorName.trim();
+        if (normalized === "") {
+            return;
+        }
+
+        setMode("mentor");
+        setKeyword(normalized);
+        await search(normalized);
+    };
+
+    const search = async (overrideKeyword?: string) => {
+        const trimmedKeyword = (overrideKeyword ?? keyword).trim();
         if (trimmedKeyword === "") {
             return;
         }
@@ -552,6 +609,13 @@ const SearchScreen = () => {
                 <p style={{ margin: 0 }}>
                     输入中文名或英文名后，系统将自动调用爬虫抓取导师信息并保存到你的私有库。
                 </p>
+                <input
+                    type="text"
+                    placeholder="筛选我的私有导师（姓名/方向）"
+                    value={privateMentorFilter}
+                    onChange={(e) => setPrivateMentorFilter(e.target.value)}
+                    disabled={!isLoggedIn || privateMentorLoading || privateMentorSaving}
+                />
                 <div style={{ display: "flex", gap: 8 }}>
                     <input
                         type="text"
@@ -594,15 +658,27 @@ const SearchScreen = () => {
                     <p style={{ margin: 0 }}>{privateMentorMessage}</p>
                 )}
 
+                {isLoggedIn && (
+                    <p style={{ margin: 0 }}>
+                        共 {privateMentors.length} 位私有导师，当前显示 {displayedPrivateMentors.length} 位。
+                    </p>
+                )}
+
                 {isLoggedIn && privateMentors.length === 0 && !privateMentorLoading && (
                     <div style={{ padding: 12, border: "1px dashed #ccc" }}>
                         你还没有私有导师，添加后将只对你可见。
                     </div>
                 )}
 
+                {isLoggedIn && privateMentors.length > 0 && displayedPrivateMentors.length === 0 && (
+                    <div style={{ padding: 12, border: "1px dashed #ccc" }}>
+                        当前筛选条件下没有匹配的私有导师。
+                    </div>
+                )}
+
                 {isLoggedIn && privateMentors.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {privateMentors.map((mentor) => (
+                        {displayedPrivateMentors.map((mentor) => (
                             <div key={mentor.id} style={{ padding: 10, border: "1px solid #ddd", borderRadius: 6 }}>
                                 <h4 style={{ margin: "0 0 6px" }}>
                                     {mentor.Chinese_name}
@@ -614,6 +690,20 @@ const SearchScreen = () => {
                                 <p style={{ margin: "4px 0" }}>研究方向：{mentor.research_direction || "暂无研究方向"}</p>
                                 <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
                                 <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
+                                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                    <button
+                                        onClick={() => void searchPrivateMentor(mentor.Chinese_name || mentor.English_name || "")}
+                                        disabled={loading || privateMentorSaving || privateMentorLoading || privateMentorDeletingId !== undefined}
+                                    >
+                                        搜索该导师
+                                    </button>
+                                    <button
+                                        onClick={() => void removePrivateMentor(mentor.id)}
+                                        disabled={privateMentorSaving || privateMentorLoading || privateMentorDeletingId !== undefined}
+                                    >
+                                        {privateMentorDeletingId === mentor.id ? "删除中..." : "删除私有导师"}
+                                    </button>
+                                </div>
 
                                 <p style={{ margin: "6px 0 4px" }}>相关论文：</p>
                                 {(mentor.paper_ids || []).length === 0 ? (
@@ -644,7 +734,12 @@ const SearchScreen = () => {
                             key={mentor.id}
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            <h3 style={{ margin: "0 0 8px" }}>{mentor.Chinese_name}</h3>
+                            <h3 style={{ margin: "0 0 8px" }}>
+                                {mentor.Chinese_name}
+                                {privateMentorIdSet.has(mentor.id) && (
+                                    <span style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
+                                )}
+                            </h3>
                             {mentor.English_name && (
                                 <p style={{ margin: "4px 0" }}>英文名：{mentor.English_name}</p>
                             )}
