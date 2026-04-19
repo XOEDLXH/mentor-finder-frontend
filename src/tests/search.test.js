@@ -132,7 +132,7 @@ describe("SearchScreen", () => {
             expect(request).toHaveBeenCalledWith(
                 "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89",
                 "GET",
-                false,
+                true,
             );
         });
 
@@ -180,7 +180,7 @@ describe("SearchScreen", () => {
             expect(request).toHaveBeenCalledWith(
                 "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B",
                 "GET",
-                false,
+                true,
             );
         });
 

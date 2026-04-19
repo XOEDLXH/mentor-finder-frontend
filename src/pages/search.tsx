@@ -194,7 +194,7 @@ const SearchScreen = () => {
                 const res = await request(
                     `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}`,
                     "GET",
-                    false,
+                    isLoggedIn,
                 );
                 setMentors(res.mentors as SearchMentorResult[]);
                 setPapers([]);
@@ -203,7 +203,7 @@ const SearchScreen = () => {
                 const res = await request(
                     `/api/search/papers?keyword=${encodeURIComponent(trimmedKeyword)}`,
                     "GET",
-                    false,
+                    isLoggedIn,
                 );
                 setPapers(res.papers as SearchPaperResult[]);
                 setMentors([]);
