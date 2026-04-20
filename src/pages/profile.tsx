@@ -124,6 +124,7 @@ const ProfileScreen = () => {
             <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => router.push("/")}>返回首页</button>
                 <button onClick={() => router.push("/search")}>去检索</button>
+                <button onClick={() => router.push("/private-mentor")}>添加个人导师</button>
             </div>
 
             {loading ? (

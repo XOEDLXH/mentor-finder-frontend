@@ -1,17 +1,20 @@
-import { KeyboardEvent, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import { FAILURE_PREFIX } from "../constants/string";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { RootState } from "../redux/store";
-import { SearchMentorResult, SearchPaperResult } from "../utils/types";
+import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 
 type SearchMode = "mentor" | "paper";
+type MentorResultFilter = "all" | "mine" | "public";
 
 const SearchScreen = () => {
     const router = useRouter();
+    const authToken = useSelector((state: RootState) => state.auth.token);
     const authRole = useSelector((state: RootState) => state.auth.role);
+    const isLoggedIn = authToken.trim() !== "";
     const isAdmin = authRole === "admin";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
@@ -23,6 +26,8 @@ const SearchScreen = () => {
     const [papers, setPapers] = useState<SearchPaperResult[]>([]);
     const [adminSaving, setAdminSaving] = useState(false);
     const [adminMessage, setAdminMessage] = useState("");
+    const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
+    const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
 
     const [mentorEditingId, setMentorEditingId] = useState<number | undefined>(undefined);
     const [mentorDraft, setMentorDraft] = useState({
@@ -47,11 +52,18 @@ const SearchScreen = () => {
         setPapers([]);
     };
 
+    const isNetworkErrorInstance = (err: unknown): err is NetworkError => {
+        return typeof NetworkError === "function" && err instanceof NetworkError;
+    };
+
     const switchMode = (nextMode: SearchMode) => {
         setMode(nextMode);
         setHasSearched(false);
         resetResults();
         setAdminMessage("");
+        if (nextMode === "paper") {
+            setMentorResultFilter("all");
+        }
 
         setMentorEditingId(undefined);
         setMentorDraft({
@@ -72,7 +84,7 @@ const SearchScreen = () => {
     };
 
     const formatAdminError = (err: unknown) => {
-        if (err instanceof NetworkError) {
+        if (isNetworkErrorInstance(err)) {
             if (err.type === NetworkErrorType.UNAUTHORIZED) {
                 return "请先登录管理员账号";
             }
@@ -87,8 +99,48 @@ const SearchScreen = () => {
         return FAILURE_PREFIX + String(err);
     };
 
-    const search = async () => {
-        const trimmedKeyword = keyword.trim();
+    const fetchMyPrivateMentors = useCallback(async () => {
+        if (!isLoggedIn) {
+            setPrivateMentors([]);
+            return;
+        }
+
+        try {
+            const res = await request("/api/dataset/mentors/mine", "GET", true);
+            const mentorList = Array.isArray(res.mentors) ? (res.mentors as PrivateMentorResult[]) : [];
+            setPrivateMentors(mentorList.filter((mentor) => Array.isArray(mentor.paper_ids)));
+        }
+        catch {
+            setPrivateMentors([]);
+        }
+    }, [isLoggedIn]);
+
+    useEffect(() => {
+        void fetchMyPrivateMentors();
+    }, [fetchMyPrivateMentors]);
+
+    const privateMentorIdSet = useMemo(() => {
+        return new Set(privateMentors.map((mentor) => mentor.id));
+    }, [privateMentors]);
+
+    const mentorResultMineCount = useMemo(() => {
+        return mentors.filter((mentor) => privateMentorIdSet.has(mentor.id)).length;
+    }, [mentors, privateMentorIdSet]);
+
+    const visibleMentorResults = useMemo(() => {
+        if (mentorResultFilter === "mine") {
+            return mentors.filter((mentor) => privateMentorIdSet.has(mentor.id));
+        }
+
+        if (mentorResultFilter === "public") {
+            return mentors.filter((mentor) => !privateMentorIdSet.has(mentor.id));
+        }
+
+        return mentors;
+    }, [mentors, mentorResultFilter, privateMentorIdSet]);
+
+    const search = async (overrideKeyword?: string) => {
+        const trimmedKeyword = (overrideKeyword ?? keyword).trim();
         if (trimmedKeyword === "") {
             return;
         }
@@ -102,7 +154,7 @@ const SearchScreen = () => {
                 const res = await request(
                     `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}`,
                     "GET",
-                    false,
+                    isLoggedIn,
                 );
                 setMentors(res.mentors as SearchMentorResult[]);
                 setPapers([]);
@@ -111,7 +163,7 @@ const SearchScreen = () => {
                 const res = await request(
                     `/api/search/papers?keyword=${encodeURIComponent(trimmedKeyword)}`,
                     "GET",
-                    false,
+                    isLoggedIn,
                 );
                 setPapers(res.papers as SearchPaperResult[]);
                 setMentors([]);
@@ -463,12 +515,44 @@ const SearchScreen = () => {
 
             {mode === "mentor" && mentors.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {mentors.map((mentor) => (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button
+                            onClick={() => setMentorResultFilter("all")}
+                            disabled={mentorResultFilter === "all"}
+                        >
+                            全部导师（{mentors.length}）
+                        </button>
+                        <button
+                            onClick={() => setMentorResultFilter("mine")}
+                            disabled={mentorResultFilter === "mine"}
+                        >
+                            仅我的私有导师（{mentorResultMineCount}）
+                        </button>
+                        <button
+                            onClick={() => setMentorResultFilter("public")}
+                            disabled={mentorResultFilter === "public"}
+                        >
+                            仅公共导师（{mentors.length - mentorResultMineCount}）
+                        </button>
+                    </div>
+
+                    {visibleMentorResults.length === 0 && (
+                        <div style={{ padding: 12, border: "1px dashed #ccc" }}>
+                            当前筛选条件下没有导师结果。
+                        </div>
+                    )}
+
+                    {visibleMentorResults.map((mentor) => (
                         <div
                             key={mentor.id}
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            <h3 style={{ margin: "0 0 8px" }}>{mentor.Chinese_name}</h3>
+                            <h3 style={{ margin: "0 0 8px" }}>
+                                {mentor.Chinese_name}
+                                {privateMentorIdSet.has(mentor.id) && (
+                                    <span style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
+                                )}
+                            </h3>
                             {mentor.English_name && (
                                 <p style={{ margin: "4px 0" }}>英文名：{mentor.English_name}</p>
                             )}
