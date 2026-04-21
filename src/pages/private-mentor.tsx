@@ -10,6 +10,8 @@ import { PrivateMentorResult } from "../utils/types";
 type PrivateMentorCategory = "all" | "withPapers" | "withoutPapers" | "withEmail";
 type PrivateMentorSort = "latest" | "nameAsc" | "paperCountDesc";
 
+const PRIVATE_MENTOR_LIMIT = 10;
+
 const PrivateMentorScreen = () => {
     const router = useRouter();
     const token = useSelector((state: RootState) => state.auth.token);
@@ -125,9 +127,16 @@ const PrivateMentorScreen = () => {
         return sorted;
     }, [privateMentorCategory, privateMentorFilter, privateMentorSort, privateMentors]);
 
+    const isPrivateMentorLimitReached = privateMentors.length >= PRIVATE_MENTOR_LIMIT;
+
     const addPrivateMentor = async () => {
         const chineseName = customMentorDraft.Chinese_name.trim();
         const englishName = customMentorDraft.English_name.trim();
+
+        if (isPrivateMentorLimitReached) {
+            setPrivateMentorMessage(`私有导师最多添加 ${PRIVATE_MENTOR_LIMIT} 位，请先删除后再添加`);
+            return;
+        }
 
         if (chineseName === "" && englishName === "") {
             setPrivateMentorMessage("中文名和英文名至少填写一个");
@@ -193,6 +202,14 @@ const PrivateMentorScreen = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760 }}>
             <h2>添加个人导师</h2>
             <p>输入中文名或英文名后，系统将自动调用爬虫抓取导师信息并保存到你的私有库。</p>
+            <p style={{ margin: 0 }}>
+                私有导师上限 {PRIVATE_MENTOR_LIMIT} 位，当前已添加 {privateMentors.length} 位。
+            </p>
+            {isPrivateMentorLimitReached && (
+                <p style={{ margin: 0, color: "#c62828" }}>
+                    已达到上限，请先删除部分私有导师后再添加。
+                </p>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => router.push("/profile")}>返回个人主页</button>
@@ -256,6 +273,7 @@ const PrivateMentorScreen = () => {
                         disabled={
                             privateMentorSaving ||
                             privateMentorLoading ||
+                            isPrivateMentorLimitReached ||
                             (customMentorDraft.Chinese_name.trim() === "" && customMentorDraft.English_name.trim() === "")
                         }
                     >
