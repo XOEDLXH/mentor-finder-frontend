@@ -108,7 +108,6 @@ const ProfileScreen = () => {
                 <h2>个人主页</h2>
                 <p>请先登录后再维护个人信息。</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => router.push("/login")}>去登录</button>
                     <button onClick={() => router.push("/")}>返回首页</button>
                 </div>
             </div>
