@@ -188,7 +188,7 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact",
+                "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact&sort_mode=default",
                 "GET",
                 true,
             );
@@ -275,6 +275,35 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
                 "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+    });
+
+    it("sends paper sort mode and re-searches when sort toggled", async () => {
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、研究方向或导师姓名"), {
+            target: { value: "机器学习" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "发表时间从晚到早" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=exact&sort_mode=late",
                 "GET",
                 true,
             );

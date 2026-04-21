@@ -9,6 +9,7 @@ import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../u
 
 type SearchMode = "mentor" | "paper";
 type SearchMatchMode = "exact" | "fuzzy";
+type SearchPaperSortMode = "default" | "early" | "late";
 type MentorResultFilter = "all" | "mine" | "public";
 
 const SearchScreen = () => {
@@ -20,6 +21,7 @@ const SearchScreen = () => {
 
     const [mode, setMode] = useState<SearchMode>("mentor");
     const [matchMode, setMatchMode] = useState<SearchMatchMode>("exact");
+    const [paperSortMode, setPaperSortMode] = useState<SearchPaperSortMode>("default");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -141,8 +143,9 @@ const SearchScreen = () => {
         return mentors;
     }, [mentors, mentorResultFilter, privateMentorIdSet]);
 
-    const search = async (overrideKeyword?: string) => {
+    const search = async (overrideKeyword?: string, overridePaperSortMode?: SearchPaperSortMode) => {
         const trimmedKeyword = (overrideKeyword ?? keyword).trim();
+        const resolvedPaperSortMode = overridePaperSortMode ?? paperSortMode;
         if (trimmedKeyword === "") {
             return;
         }
@@ -165,7 +168,7 @@ const SearchScreen = () => {
             }
             else {
                 const res = await request(
-                    `/api/search/papers?${query}`,
+                    `/api/search/papers?${query}&sort_mode=${resolvedPaperSortMode}`,
                     "GET",
                     isLoggedIn,
                 );
@@ -179,6 +182,18 @@ const SearchScreen = () => {
         }
         finally {
             setLoading(false);
+        }
+    };
+
+    const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
+        if (paperSortMode === nextSortMode) {
+            return;
+        }
+
+        setPaperSortMode(nextSortMode);
+
+        if (mode === "paper" && hasSearched && keyword.trim() !== "") {
+            void search(undefined, nextSortMode);
         }
     };
 
@@ -394,6 +409,29 @@ const SearchScreen = () => {
                     模糊搜索
                 </button>
             </div>
+
+            {mode === "paper" && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                        onClick={() => changePaperSortMode("default")}
+                        disabled={paperSortMode === "default"}
+                    >
+                        默认排序
+                    </button>
+                    <button
+                        onClick={() => changePaperSortMode("early")}
+                        disabled={paperSortMode === "early"}
+                    >
+                        发表时间从早到晚
+                    </button>
+                    <button
+                        onClick={() => changePaperSortMode("late")}
+                        disabled={paperSortMode === "late"}
+                    >
+                        发表时间从晚到早
+                    </button>
+                </div>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
                 <input
