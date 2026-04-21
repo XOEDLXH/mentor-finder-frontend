@@ -139,7 +139,7 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89",
+                "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=exact",
                 "GET",
                 true,
             );
@@ -168,6 +168,7 @@ describe("SearchScreen", () => {
                         abstract: "本文介绍大语言模型在智能问答中的实践。",
                         publish_date: "2024-06-15",
                         author_names: "李四,张三",
+                        subjects: "cs.CL",
                         mentorNames: ["李四", "张三"],
                     }],
                 };
@@ -187,7 +188,7 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B",
+                "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact&sort_mode=default",
                 "GET",
                 true,
             );
@@ -195,6 +196,7 @@ describe("SearchScreen", () => {
 
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
+        expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
         expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
         expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
@@ -257,6 +259,54 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
+        });
+    });
+
+    it("sends fuzzy mode when toggled", async () => {
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "模糊搜索" }));
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+            target: { value: "张" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+    });
+
+    it("sends paper sort mode and re-searches when sort toggled", async () => {
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、研究方向或导师姓名"), {
+            target: { value: "机器学习" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "发表时间从晚到早" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=exact&sort_mode=late",
+                "GET",
+                true,
+            );
         });
     });
 });

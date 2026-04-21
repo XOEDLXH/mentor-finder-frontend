@@ -8,6 +8,8 @@ import { RootState } from "../redux/store";
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 
 type SearchMode = "mentor" | "paper";
+type SearchMatchMode = "exact" | "fuzzy";
+type SearchPaperSortMode = "default" | "early" | "late";
 type MentorResultFilter = "all" | "mine" | "public";
 
 const SearchScreen = () => {
@@ -18,6 +20,8 @@ const SearchScreen = () => {
     const isAdmin = authRole === "admin";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
+    const [matchMode, setMatchMode] = useState<SearchMatchMode>("exact");
+    const [paperSortMode, setPaperSortMode] = useState<SearchPaperSortMode>("default");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -139,8 +143,9 @@ const SearchScreen = () => {
         return mentors;
     }, [mentors, mentorResultFilter, privateMentorIdSet]);
 
-    const search = async (overrideKeyword?: string) => {
+    const search = async (overrideKeyword?: string, overridePaperSortMode?: SearchPaperSortMode) => {
         const trimmedKeyword = (overrideKeyword ?? keyword).trim();
+        const resolvedPaperSortMode = overridePaperSortMode ?? paperSortMode;
         if (trimmedKeyword === "") {
             return;
         }
@@ -150,9 +155,11 @@ const SearchScreen = () => {
         setErrorMessage("");
 
         try {
+            const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${matchMode}`;
+
             if (mode === "mentor") {
                 const res = await request(
-                    `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}`,
+                    `/api/search/mentors?${query}`,
                     "GET",
                     isLoggedIn,
                 );
@@ -161,7 +168,7 @@ const SearchScreen = () => {
             }
             else {
                 const res = await request(
-                    `/api/search/papers?keyword=${encodeURIComponent(trimmedKeyword)}`,
+                    `/api/search/papers?${query}&sort_mode=${resolvedPaperSortMode}`,
                     "GET",
                     isLoggedIn,
                 );
@@ -175,6 +182,18 @@ const SearchScreen = () => {
         }
         finally {
             setLoading(false);
+        }
+    };
+
+    const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
+        if (paperSortMode === nextSortMode) {
+            return;
+        }
+
+        setPaperSortMode(nextSortMode);
+
+        if (mode === "paper" && hasSearched && keyword.trim() !== "") {
+            void search(undefined, nextSortMode);
         }
     };
 
@@ -375,6 +394,44 @@ const SearchScreen = () => {
                     搜论文
                 </button>
             </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+                <button
+                    onClick={() => setMatchMode("exact")}
+                    disabled={matchMode === "exact"}
+                >
+                    精确搜索
+                </button>
+                <button
+                    onClick={() => setMatchMode("fuzzy")}
+                    disabled={matchMode === "fuzzy"}
+                >
+                    模糊搜索
+                </button>
+            </div>
+
+            {mode === "paper" && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                        onClick={() => changePaperSortMode("default")}
+                        disabled={paperSortMode === "default"}
+                    >
+                        默认排序
+                    </button>
+                    <button
+                        onClick={() => changePaperSortMode("early")}
+                        disabled={paperSortMode === "early"}
+                    >
+                        发表时间从早到晚
+                    </button>
+                    <button
+                        onClick={() => changePaperSortMode("late")}
+                        disabled={paperSortMode === "late"}
+                    >
+                        发表时间从晚到早
+                    </button>
+                </div>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
                 <input
@@ -587,6 +644,7 @@ const SearchScreen = () => {
                         >
                             <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
+                            <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
                             {isAdmin && (
@@ -602,13 +660,13 @@ const SearchScreen = () => {
 
             {hasSearched && !loading && errorMessage === "" && mode === "mentor" && mentors.length === 0 && (
                 <div style={{ padding: 12, border: "1px dashed #ccc" }}>
-                    未找到匹配的导师结果。
+                    未找到匹配的导师结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
             )}
 
             {hasSearched && !loading && errorMessage === "" && mode === "paper" && papers.length === 0 && (
                 <div style={{ padding: 12, border: "1px dashed #ccc" }}>
-                    未找到匹配的论文结果。
+                    未找到匹配的论文结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
             )}
         </div>

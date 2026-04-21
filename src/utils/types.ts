@@ -35,6 +35,7 @@ export interface SearchPaperResult {
     abstract?: string;
     publish_date?: string;
     author_names: string;
+    subjects: string;
     mentorNames: string[];
     publishDate?: string;
 }
