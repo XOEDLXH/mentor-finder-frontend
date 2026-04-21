@@ -8,6 +8,7 @@ import { RootState } from "../redux/store";
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 
 type SearchMode = "mentor" | "paper";
+type SearchMatchMode = "exact" | "fuzzy";
 type MentorResultFilter = "all" | "mine" | "public";
 
 const SearchScreen = () => {
@@ -18,6 +19,7 @@ const SearchScreen = () => {
     const isAdmin = authRole === "admin";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
+    const [matchMode, setMatchMode] = useState<SearchMatchMode>("exact");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
@@ -150,9 +152,11 @@ const SearchScreen = () => {
         setErrorMessage("");
 
         try {
+            const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${matchMode}`;
+
             if (mode === "mentor") {
                 const res = await request(
-                    `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}`,
+                    `/api/search/mentors?${query}`,
                     "GET",
                     isLoggedIn,
                 );
@@ -161,7 +165,7 @@ const SearchScreen = () => {
             }
             else {
                 const res = await request(
-                    `/api/search/papers?keyword=${encodeURIComponent(trimmedKeyword)}`,
+                    `/api/search/papers?${query}`,
                     "GET",
                     isLoggedIn,
                 );
@@ -377,6 +381,21 @@ const SearchScreen = () => {
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>
+                <button
+                    onClick={() => setMatchMode("exact")}
+                    disabled={matchMode === "exact"}
+                >
+                    精确搜索
+                </button>
+                <button
+                    onClick={() => setMatchMode("fuzzy")}
+                    disabled={matchMode === "fuzzy"}
+                >
+                    模糊搜索
+                </button>
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
                 <input
                     type="text"
                     value={keyword}
@@ -587,6 +606,7 @@ const SearchScreen = () => {
                         >
                             <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
+                            <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
                             {isAdmin && (
@@ -602,13 +622,13 @@ const SearchScreen = () => {
 
             {hasSearched && !loading && errorMessage === "" && mode === "mentor" && mentors.length === 0 && (
                 <div style={{ padding: 12, border: "1px dashed #ccc" }}>
-                    未找到匹配的导师结果。
+                    未找到匹配的导师结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
             )}
 
             {hasSearched && !loading && errorMessage === "" && mode === "paper" && papers.length === 0 && (
                 <div style={{ padding: 12, border: "1px dashed #ccc" }}>
-                    未找到匹配的论文结果。
+                    未找到匹配的论文结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
             )}
         </div>
