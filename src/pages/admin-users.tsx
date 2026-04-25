@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
-import { AdminUserResult, SearchMentorResult } from "../utils/types";
+import { AdminUserResult, MentorVerificationRequestResult, SearchMentorResult } from "../utils/types";
 
 type UserRole = "student" | "mentor" | "admin" | "banned";
 type UserRoleFilter = "" | UserRole;
@@ -23,10 +23,16 @@ const AdminUsersPage = () => {
     const [searchKeyword, setSearchKeyword] = useState("");
     const [roleFilter, setRoleFilter] = useState<UserRoleFilter>("");
     const [users, setUsers] = useState<AdminUserResult[]>([]);
+    const [verificationRequests, setVerificationRequests] = useState<MentorVerificationRequestResult[]>([]);
     const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined);
     const [mentorSearchKeyword, setMentorSearchKeyword] = useState("");
     const [mentorSearchLoading, setMentorSearchLoading] = useState(false);
     const [mentorSearchResults, setMentorSearchResults] = useState<SearchMentorResult[]>([]);
+    const [reviewingRequestId, setReviewingRequestId] = useState<number | undefined>(undefined);
+    const [approvalMentorIdByRequestId, setApprovalMentorIdByRequestId] = useState<Record<number, string>>({});
+    const [verificationMentorSearchKeywordByRequestId, setVerificationMentorSearchKeywordByRequestId] = useState<Record<number, string>>({});
+    const [verificationMentorSearchLoadingByRequestId, setVerificationMentorSearchLoadingByRequestId] = useState<Record<number, boolean>>({});
+    const [verificationMentorSearchResultsByRequestId, setVerificationMentorSearchResultsByRequestId] = useState<Record<number, SearchMentorResult[]>>({});
 
     const [draftRoleByUserId, setDraftRoleByUserId] = useState<Record<number, UserRole>>({});
     const [draftMentorIdByUserId, setDraftMentorIdByUserId] = useState<Record<number, string>>({});
@@ -77,11 +83,16 @@ const AdminUsersPage = () => {
             const res = await request(`/api/management/users${query}`, "GET", true);
             const nextUsers = Array.isArray(res.users) ? (res.users as AdminUserResult[]) : [];
             setUsers(nextUsers);
+            setVerificationRequests(
+                Array.isArray(res.verificationRequests)
+                    ? (res.verificationRequests as MentorVerificationRequestResult[]) : [],
+            );
             setCurrentUserId(typeof res.currentUserId === "number" ? res.currentUserId : undefined);
             syncDrafts(nextUsers);
         }
         catch (err) {
             setUsers([]);
+            setVerificationRequests([]);
             setErrorMessage(formatError(err));
         }
         finally {
@@ -99,6 +110,10 @@ const AdminUsersPage = () => {
     const publicMentorSearchResults = useMemo(() => {
         return mentorSearchResults.filter((mentor) => !mentor.is_private);
     }, [mentorSearchResults]);
+
+    const getVerificationMentorSearchResults = (requestId: number) => {
+        return (verificationMentorSearchResultsByRequestId[requestId] || []).filter((mentor) => !mentor.is_private);
+    };
 
     const searchPublicMentors = async () => {
         const trimmedKeyword = mentorSearchKeyword.trim();
@@ -125,6 +140,49 @@ const AdminUsersPage = () => {
         }
         finally {
             setMentorSearchLoading(false);
+        }
+    };
+
+    const searchVerificationMentors = async (requestId: number) => {
+        const trimmedKeyword = (verificationMentorSearchKeywordByRequestId[requestId] || "").trim();
+        if (trimmedKeyword === "") {
+            setVerificationMentorSearchResultsByRequestId((prev) => ({
+                ...prev,
+                [requestId]: [],
+            }));
+            return;
+        }
+
+        setVerificationMentorSearchLoadingByRequestId((prev) => ({
+            ...prev,
+            [requestId]: true,
+        }));
+        setErrorMessage("");
+
+        try {
+            const res = await request(
+                `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
+                "GET",
+                true,
+            );
+            const nextMentors = Array.isArray(res.mentors) ? (res.mentors as SearchMentorResult[]) : [];
+            setVerificationMentorSearchResultsByRequestId((prev) => ({
+                ...prev,
+                [requestId]: nextMentors,
+            }));
+        }
+        catch (err) {
+            setVerificationMentorSearchResultsByRequestId((prev) => ({
+                ...prev,
+                [requestId]: [],
+            }));
+            setErrorMessage(formatError(err));
+        }
+        finally {
+            setVerificationMentorSearchLoadingByRequestId((prev) => ({
+                ...prev,
+                [requestId]: false,
+            }));
         }
     };
 
@@ -156,6 +214,39 @@ const AdminUsersPage = () => {
         }
         finally {
             setSavingUserId(undefined);
+        }
+    };
+
+    const reviewVerificationRequest = async (
+        requestId: number,
+        status: "approved" | "rejected",
+    ) => {
+        const payload: {
+            status: "approved" | "rejected";
+            mentorId?: number;
+        } = { status };
+
+        if (status === "approved") {
+            const mentorId = (approvalMentorIdByRequestId[requestId] || "").trim();
+            if (mentorId === "") {
+                setErrorMessage("审核通过前必须先搜索并选择一位公共导师");
+                return;
+            }
+            payload.mentorId = Number(mentorId);
+        }
+
+        setReviewingRequestId(requestId);
+        setErrorMessage("");
+        setSuccessMessage("");
+
+        try {
+            await request(`/api/management/verification-requests/${requestId}`, "PUT", true, payload);
+            await fetchUsers();
+            setSuccessMessage(status === "approved" ? "认证请求已审核通过" : "认证请求已拒绝");
+        } catch (err) {
+            setErrorMessage(formatError(err));
+        } finally {
+            setReviewingRequestId(undefined);
         }
     };
 
@@ -232,6 +323,100 @@ const AdminUsersPage = () => {
                                     {mentor.English_name ? ` / ${mentor.English_name}` : ""}
                                 </p>
                                 <p style={{ margin: 0 }}>ID: {mentor.id}，方向：{mentor.research_direction || "暂无研究方向"}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
+                <h3 style={{ margin: 0 }}>用户认证请求列表</h3>
+                {verificationRequests.length === 0 ? (
+                    <div style={{ padding: 12, border: "1px dashed #ccc" }}>
+                        当前没有待查看的认证请求。
+                    </div>
+                ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {verificationRequests.map((requestItem) => (
+                            <div key={requestItem.id} style={{ padding: 10, border: "1px solid #ddd", borderRadius: 6 }}>
+                                <p style={{ margin: "0 0 4px" }}>用户：{requestItem.username}</p>
+                                <p style={{ margin: "0 0 4px" }}>邮箱：{requestItem.userEmail}</p>
+                                <p style={{ margin: "0 0 4px" }}>申请姓名：{requestItem.submittedName}</p>
+                                <p style={{ margin: "0 0 4px" }}>状态：{requestItem.status}</p>
+                                <p style={{ margin: 0 }}>提交时间：{requestItem.createdAt || "未知"}</p>
+                                {requestItem.status === "pending" && (
+                                    <>
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                                            <input
+                                                type="text"
+                                                value={verificationMentorSearchKeywordByRequestId[requestItem.id] || ""}
+                                                placeholder="搜索并选择要绑定的公共导师"
+                                                onChange={(e) => setVerificationMentorSearchKeywordByRequestId((prev) => ({
+                                                    ...prev,
+                                                    [requestItem.id]: e.target.value,
+                                                }))}
+                                                disabled={reviewingRequestId === requestItem.id}
+                                                style={{ flex: 1, minWidth: 240 }}
+                                            />
+                                            <button
+                                                onClick={() => void searchVerificationMentors(requestItem.id)}
+                                                disabled={reviewingRequestId === requestItem.id || verificationMentorSearchLoadingByRequestId[requestItem.id]}
+                                            >
+                                                {verificationMentorSearchLoadingByRequestId[requestItem.id] ? "搜索中..." : "搜索导师"}
+                                            </button>
+                                        </div>
+
+                                        {getVerificationMentorSearchResults(requestItem.id).length > 0 && (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                                                {getVerificationMentorSearchResults(requestItem.id).map((mentor) => (
+                                                    <button
+                                                        key={`${requestItem.id}-${mentor.id}`}
+                                                        onClick={() => setApprovalMentorIdByRequestId((prev) => ({
+                                                            ...prev,
+                                                            [requestItem.id]: String(mentor.id),
+                                                        }))}
+                                                        disabled={reviewingRequestId === requestItem.id}
+                                                        style={{
+                                                            textAlign: "left",
+                                                            padding: 10,
+                                                            borderRadius: 6,
+                                                            border: approvalMentorIdByRequestId[requestItem.id] === String(mentor.id)
+                                                                ? "1px solid #0d6efd" : "1px solid #ddd",
+                                                            backgroundColor: approvalMentorIdByRequestId[requestItem.id] === String(mentor.id)
+                                                                ? "#e7f1ff" : "#fff",
+                                                        }}
+                                                    >
+                                                        <div>{mentor.Chinese_name}{mentor.English_name ? ` / ${mentor.English_name}` : ""}</div>
+                                                        <div style={{ fontSize: 12, color: "#666" }}>
+                                                            ID: {mentor.id}，方向：{mentor.research_direction || "暂无研究方向"}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {approvalMentorIdByRequestId[requestItem.id] && (
+                                            <p style={{ margin: "8px 0 0" }}>
+                                                已选择公共导师 ID：{approvalMentorIdByRequestId[requestItem.id]}
+                                            </p>
+                                        )}
+
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                                            <button
+                                                onClick={() => void reviewVerificationRequest(requestItem.id, "approved")}
+                                                disabled={reviewingRequestId === requestItem.id}
+                                            >
+                                                {reviewingRequestId === requestItem.id ? "处理中..." : "审核通过"}
+                                            </button>
+                                            <button
+                                                onClick={() => void reviewVerificationRequest(requestItem.id, "rejected")}
+                                                disabled={reviewingRequestId === requestItem.id}
+                                            >
+                                                {reviewingRequestId === requestItem.id ? "处理中..." : "拒绝申请"}
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
