@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 const HomeScreen = () => {
     const router = useRouter();
     const userName = useSelector((state: RootState) => state.auth.name);
+    const userRole = useSelector((state: RootState) => state.auth.role);
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
@@ -16,6 +17,9 @@ const HomeScreen = () => {
                 <button onClick={() => router.push("/timeline")}>论文时间线</button>
                 {userName !== "" && (
                     <button onClick={() => router.push("/profile")}>个人主页</button>
+                )}
+                {userRole === "admin" && (
+                    <button onClick={() => router.push("/admin-users")}>用户管理</button>
                 )}
             </div>
         </div>

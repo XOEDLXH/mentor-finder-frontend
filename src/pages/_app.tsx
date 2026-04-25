@@ -28,6 +28,11 @@ const App = ({ Component, pageProps }: AppProps) => {
                 {!isAuthPage && (auth.token ? (
                     <>
                         <p>已登录，用户名：{auth.name}</p>
+                        {auth.role === "admin" && (
+                            <button onClick={() => router.push("/admin-users")}>
+                                进入用户管理
+                            </button>
+                        )}
                         <button onClick={() => dispatch(resetAuth())}>
                             登出
                         </button>

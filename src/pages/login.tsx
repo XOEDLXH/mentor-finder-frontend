@@ -36,7 +36,7 @@ const LoginScreen = () => {
                     router.push("/");
                 }
                 else {
-                    alert(LOGIN_FAILED);
+                    alert(typeof res.info === "string" && res.info !== "" ? res.info : LOGIN_FAILED);
                 }
             })
             .catch((err) => alert(FAILURE_PREFIX + err))
