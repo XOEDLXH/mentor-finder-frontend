@@ -57,6 +57,16 @@ describe("AdminUsersPage", () => {
             if (String(url).startsWith("/api/management/users")) {
                 return {
                     currentUserId: 1,
+                    verificationRequests: [{
+                        id: 301,
+                        userId: 2,
+                        username: "student_user",
+                        userEmail: "student@example.com",
+                        submittedName: "张老师",
+                        status: "pending",
+                        createdAt: "2026-04-25 13:30:00",
+                        updatedAt: "2026-04-25 13:30:00",
+                    }],
                     users: [{
                         id: 1,
                         username: "admin_user",
@@ -72,6 +82,22 @@ describe("AdminUsersPage", () => {
                         isBoundToMentor: false,
                         mentorProfile: undefined,
                     }],
+                };
+            }
+
+            if (String(url).startsWith("/api/management/verification-requests/")) {
+                return {
+                    verificationRequest: {
+                        id: 301,
+                        status: "approved",
+                    },
+                    user: {
+                        id: 2,
+                        username: "student_user",
+                        email: "student@example.com",
+                        role: "mentor",
+                        isBoundToMentor: true,
+                    },
                 };
             }
 
@@ -112,7 +138,7 @@ describe("AdminUsersPage", () => {
         fireEvent.change(screen.getByPlaceholderText("搜索公共导师，便于绑定 mentor 角色"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: "搜索导师" }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索公共导师" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -123,6 +149,8 @@ describe("AdminUsersPage", () => {
         });
 
         expect(screen.getByText(/ID: 101/)).toBeInTheDocument();
+        expect(screen.getByText("用户认证请求列表")).toBeInTheDocument();
+        expect(screen.getByText("申请姓名：张老师")).toBeInTheDocument();
     });
 
     it("sends keyword when searching users", async () => {
@@ -163,6 +191,42 @@ describe("AdminUsersPage", () => {
                 "/api/management/users?role=banned",
                 "GET",
                 true,
+            );
+        });
+    });
+
+    it("approves verification request with selected mentor id", async () => {
+        renderWithStore("admin");
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/management/users", "GET", true);
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("搜索并选择要绑定的公共导师"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "为student_user搜索导师" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: /张三 \/ Zhang San/ }));
+        fireEvent.click(screen.getByRole("button", { name: "通过student_user的申请" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/management/verification-requests/301",
+                "PUT",
+                true,
+                {
+                    status: "approved",
+                    mentorId: 101,
+                },
             );
         });
     });

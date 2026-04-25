@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
+import { MentorVerificationRequestResult } from "../utils/types";
 
 // 定义个人资料的数据结构
 interface ProfilePayload {
@@ -32,6 +33,9 @@ const ProfileScreen = () => {
     const [errorMessage, setErrorMessage] = useState(""); // 错误提示
     const [successMessage, setSuccessMessage] = useState(""); // 成功提示
     const [profile, setProfile] = useState<ProfilePayload>(EMPTY_PROFILE); // 资料数据
+    const [mentorVerificationName, setMentorVerificationName] = useState("");
+    const [mentorVerificationSubmitting, setMentorVerificationSubmitting] = useState(false);
+    const [mentorVerificationRequest, setMentorVerificationRequest] = useState<MentorVerificationRequestResult | undefined>(undefined);
 
     // 组件挂载或 token 变化时，拉取用户资料
     useEffect(() => {
@@ -53,6 +57,11 @@ const ProfileScreen = () => {
                     projectExperience: typeof raw.projectExperience === "string" ? raw.projectExperience : "",
                     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
                 });
+                setMentorVerificationRequest(
+                    typeof res.mentorVerificationRequest === "object" && res.mentorVerificationRequest
+                        ? res.mentorVerificationRequest as MentorVerificationRequestResult
+                        : undefined,
+                );
             })
             .catch((err) => {
                 // 处理未授权错误（token 失效）
@@ -98,6 +107,35 @@ const ProfileScreen = () => {
             setErrorMessage(FAILURE_PREFIX + String(err));
         } finally {
             setSaving(false);
+        }
+    };
+
+    const submitMentorVerificationRequest = async () => {
+        const submittedName = mentorVerificationName.trim();
+        if (submittedName === "") {
+            setErrorMessage("导师身份申请姓名不能为空");
+            return;
+        }
+
+        setMentorVerificationSubmitting(true);
+        setSuccessMessage("");
+        setErrorMessage("");
+
+        try {
+            const res = await request("/api/profile/mentor-verification-request", "POST", true, {
+                submittedName,
+            });
+            setMentorVerificationRequest(res.mentorVerificationRequest as MentorVerificationRequestResult);
+            setMentorVerificationName("");
+            setSuccessMessage("导师身份认证申请已提交");
+        } catch (err) {
+            if (err instanceof NetworkError && err.type === NetworkErrorType.UNAUTHORIZED) {
+                setErrorMessage("登录已失效，请重新登录后再试");
+                return;
+            }
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        } finally {
+            setMentorVerificationSubmitting(false);
         }
     };
 
@@ -165,6 +203,34 @@ const ProfileScreen = () => {
                         <button onClick={() => void saveProfile()} disabled={saving}>
                             {saving ? "保存中..." : "保存个人信息"}
                         </button>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
+                        <h3 style={{ margin: 0 }}>导师身份认证申请</h3>
+                        <p style={{ margin: 0 }}>非管理员用户可在此提交导师身份绑定申请，请填写你的姓名。</p>
+                        <input
+                            type="text"
+                            value={mentorVerificationName}
+                            placeholder="填写申请绑定的导师姓名"
+                            onChange={(e) => setMentorVerificationName(e.target.value)}
+                            disabled={mentorVerificationSubmitting}
+                        />
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                                onClick={() => void submitMentorVerificationRequest()}
+                                disabled={mentorVerificationSubmitting || mentorVerificationName.trim() === ""}
+                            >
+                                {mentorVerificationSubmitting ? "提交中..." : "提交导师身份申请"}
+                            </button>
+                        </div>
+
+                        {mentorVerificationRequest && (
+                            <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 6 }}>
+                                <p style={{ margin: "0 0 4px" }}>最近申请姓名：{mentorVerificationRequest.submittedName}</p>
+                                <p style={{ margin: "0 0 4px" }}>当前状态：{mentorVerificationRequest.status}</p>
+                                <p style={{ margin: 0 }}>提交时间：{mentorVerificationRequest.createdAt || "未知"}</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* 显示最后更新时间（如果存在） */}

@@ -71,3 +71,14 @@ export interface AdminUserResult {
     mentorProfile?: BoundMentorProfile;
     isBoundToMentor: boolean;
 }
+
+export interface MentorVerificationRequestResult {
+    id: number;
+    userId: number;
+    username: string;
+    userEmail: string;
+    submittedName: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+}
