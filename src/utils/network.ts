@@ -30,6 +30,37 @@ export class NetworkError extends Error {
     valueOf(): string { return this.message; }
 }
 
+const parseResponseBody = async (response: Response) => {
+    const rawText = await response.text();
+    if (rawText.trim() === "") {
+        return {
+            data: undefined,
+            rawText: "",
+        };
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+        return {
+            data: undefined,
+            rawText,
+        };
+    }
+
+    try {
+        return {
+            data: JSON.parse(rawText) as Record<string, unknown>,
+            rawText,
+        };
+    }
+    catch {
+        return {
+            data: undefined,
+            rawText,
+        };
+    }
+};
+
 export const request = async (
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -56,20 +87,23 @@ export const request = async (
         headers,
     });
 
-    const data = await response.json();
-    const code = Number(data.code);
+    const { data, rawText } = await parseResponseBody(response);
+    const code = Number(data?.code);
+    const info = typeof data?.info === "string"
+        ? data.info
+        : (rawText.trim() === "" ? "Empty response body" : rawText);
 
     // HTTP status 401
     if (response.status === 401 && code === 2) {
         throw new NetworkError(
             NetworkErrorType.UNAUTHORIZED,
-            "[401] " + data.info,
+            "[401] " + info,
         );
     }
     else if (response.status === 401) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[401] " + data.info,
+            "[401] " + info,
         );
     }
 
@@ -77,13 +111,13 @@ export const request = async (
     if (response.status === 403 && code === 3) {
         throw new NetworkError(
             NetworkErrorType.REJECTED,
-            "[403] " + data.info,
+            "[403] " + info,
         );
     }
     else if (response.status === 403) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[403] " + data.info,
+            "[403] " + info,
         );
     }
 
@@ -94,7 +128,7 @@ export const request = async (
     else if (response.status === 200) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[200] " + data.info,
+            "[200] " + info,
         );
     }
 
@@ -104,6 +138,6 @@ export const request = async (
      */
     throw new NetworkError(
         NetworkErrorType.UNKNOWN_ERROR,
-        `[${response.status}] ` + data.info,
+        `[${response.status}] ` + info,
     );
 };

@@ -15,6 +15,22 @@ import { useDispatch } from "react-redux";
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
+const parseJsonSafely = async (response: Response) => {
+    const rawText = await response.text();
+    if (rawText.trim() === "") {
+        return {};
+    }
+
+    try {
+        return JSON.parse(rawText) as Record<string, unknown>;
+    }
+    catch {
+        return {
+            info: rawText,
+        };
+    }
+};
+
 const RegisterScreen = () => {
     const [userName, setUserName] = useState("");
     const [userNameBlurred, setUserNameBlurred] = useState(false);
@@ -104,7 +120,7 @@ const RegisterScreen = () => {
                 email: email.trim(),
             }),
         })
-            .then((res) => res.json())
+            .then((res) => parseJsonSafely(res))
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
