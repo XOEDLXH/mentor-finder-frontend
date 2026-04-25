@@ -8,6 +8,7 @@ import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { AdminUserResult, SearchMentorResult } from "../utils/types";
 
 type UserRole = "student" | "mentor" | "admin" | "banned";
+type UserRoleFilter = "" | UserRole;
 
 const AdminUsersPage = () => {
     const router = useRouter();
@@ -20,6 +21,7 @@ const AdminUsersPage = () => {
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [roleFilter, setRoleFilter] = useState<UserRoleFilter>("");
     const [users, setUsers] = useState<AdminUserResult[]>([]);
     const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined);
     const [mentorSearchKeyword, setMentorSearchKeyword] = useState("");
@@ -53,7 +55,7 @@ const AdminUsersPage = () => {
         setDraftMentorIdByUserId(nextMentorDrafts);
     };
 
-    const fetchUsers = async (keyword?: string) => {
+    const fetchUsers = async (keyword?: string, nextRoleFilter?: UserRoleFilter) => {
         if (!isAdmin) {
             return;
         }
@@ -63,7 +65,15 @@ const AdminUsersPage = () => {
 
         try {
             const trimmedKeyword = (keyword ?? searchKeyword).trim();
-            const query = trimmedKeyword === "" ? "" : `?keyword=${encodeURIComponent(trimmedKeyword)}`;
+            const resolvedRoleFilter = nextRoleFilter ?? roleFilter;
+            const queryParams = new URLSearchParams();
+            if (trimmedKeyword !== "") {
+                queryParams.set("keyword", trimmedKeyword);
+            }
+            if (resolvedRoleFilter !== "") {
+                queryParams.set("role", resolvedRoleFilter);
+            }
+            const query = queryParams.toString() === "" ? "" : `?${queryParams.toString()}`;
             const res = await request(`/api/management/users${query}`, "GET", true);
             const nextUsers = Array.isArray(res.users) ? (res.users as AdminUserResult[]) : [];
             setUsers(nextUsers);
@@ -175,12 +185,23 @@ const AdminUsersPage = () => {
                     <input
                         type="text"
                         value={searchKeyword}
-                        placeholder="按用户名筛选"
+                        placeholder="按用户名、邮箱或真实姓名搜索"
                         onChange={(e) => setSearchKeyword(e.target.value)}
                         style={{ flex: 1 }}
                     />
+                    <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value as UserRoleFilter)}
+                        style={{ width: 180 }}
+                    >
+                        <option value="">全部角色</option>
+                        <option value="student">student</option>
+                        <option value="mentor">mentor</option>
+                        <option value="admin">admin</option>
+                        <option value="banned">banned</option>
+                    </select>
                     <button onClick={() => void fetchUsers()} disabled={loadingUsers}>
-                        {loadingUsers ? "加载中..." : "刷新用户列表"}
+                        {loadingUsers ? "搜索中..." : "搜索用户"}
                     </button>
                 </div>
             </div>

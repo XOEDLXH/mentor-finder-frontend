@@ -123,4 +123,46 @@ describe("AdminUsersPage", () => {
 
         expect(screen.getByText(/ID: 101/)).toBeInTheDocument();
     });
+
+    it("sends keyword when searching users", async () => {
+        renderWithStore("admin");
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/management/users", "GET", true);
+        });
+
+        fireEvent.change(screen.getByPlaceholderText("按用户名、邮箱或真实姓名搜索"), {
+            target: { value: "student@example.com" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索用户" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/management/users?keyword=student%40example.com",
+                "GET",
+                true,
+            );
+        });
+    });
+
+    it("sends role filter when filtering users", async () => {
+        renderWithStore("admin");
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/management/users", "GET", true);
+        });
+
+        fireEvent.change(screen.getByDisplayValue("全部角色"), {
+            target: { value: "banned" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索用户" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/management/users?role=banned",
+                "GET",
+                true,
+            );
+        });
+    });
 });
