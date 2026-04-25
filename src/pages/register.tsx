@@ -16,19 +16,32 @@ const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
 const parseJsonSafely = async (response: Response) => {
-    const rawText = await response.text();
-    if (rawText.trim() === "") {
-        return {};
+    if (typeof response.text === "function") {
+        const rawText = await response.text();
+        if (rawText.trim() === "") {
+            return {};
+        }
+
+        try {
+            return JSON.parse(rawText) as Record<string, unknown>;
+        }
+        catch {
+            return {
+                info: rawText,
+            };
+        }
     }
 
-    try {
-        return JSON.parse(rawText) as Record<string, unknown>;
+    if (typeof response.json === "function") {
+        try {
+            return await response.json() as Record<string, unknown>;
+        }
+        catch {
+            return {};
+        }
     }
-    catch {
-        return {
-            info: rawText,
-        };
-    }
+
+    return {};
 };
 
 const RegisterScreen = () => {

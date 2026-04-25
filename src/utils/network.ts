@@ -61,11 +61,11 @@ const parseResponseBody = async (response: Response) => {
     }
 };
 
-type NetworkSuccessPayload = Record<string, unknown> & {
+type NetworkSuccessPayload = {
     code?: undefined;
 };
 
-export const request = async <T extends Record<string, unknown> = Record<string, unknown>>(
+export const request = async <T extends object = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     needAuth: boolean,

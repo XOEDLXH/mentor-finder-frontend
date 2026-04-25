@@ -156,6 +156,44 @@ describe("LoginScreen", () => {
         expect(mockPush).not.toHaveBeenCalled();
     });
 
+    it("does not crash when login response body is empty", async () => {
+        globalThis.fetch.mockResolvedValue({
+            text: jest.fn().mockResolvedValue(""),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+
+        await waitFor(() => {
+            expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
+        });
+
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
+    it("shows stable message when login response is non-json text", async () => {
+        globalThis.fetch.mockResolvedValue({
+            text: jest.fn().mockResolvedValue("<html>502 Bad Gateway</html>"),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+
+        await waitFor(() => {
+            expect(globalThis.alert).toHaveBeenCalledWith("<html>502 Bad Gateway</html>");
+        });
+
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
     it("navigates to register page when clicking secondary button", () => {
         render(<LoginScreen />);
 
@@ -282,6 +320,48 @@ describe("RegisterScreen", () => {
             expect(globalThis.alert).toHaveBeenCalledWith(REGISTER_SUCCESS_PREFIX + "alice");
             expect(mockPush).toHaveBeenCalledWith("/");
         });
+    });
+
+    it("does not crash when register response body is empty", async () => {
+        globalThis.fetch.mockResolvedValue({
+            text: jest.fn().mockResolvedValue(""),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+
+        await waitFor(() => {
+            expect(screen.getByText("注册失败")).toBeInTheDocument();
+        });
+
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
+    it("shows stable message when register response is non-json text", async () => {
+        globalThis.fetch.mockResolvedValue({
+            text: jest.fn().mockResolvedValue("<html>502 Bad Gateway</html>"),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+
+        await waitFor(() => {
+            expect(screen.getByText("注册失败")).toBeInTheDocument();
+        });
+
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockDispatch).not.toHaveBeenCalled();
     });
 
     it("navigates to login page when clicking secondary button", () => {

@@ -5,19 +5,32 @@ import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
 const parseJsonSafely = async (response: Response) => {
-    const rawText = await response.text();
-    if (rawText.trim() === "") {
-        return {};
+    if (typeof response.text === "function") {
+        const rawText = await response.text();
+        if (rawText.trim() === "") {
+            return {};
+        }
+
+        try {
+            return JSON.parse(rawText) as Record<string, unknown>;
+        }
+        catch {
+            return {
+                info: rawText,
+            };
+        }
     }
 
-    try {
-        return JSON.parse(rawText) as Record<string, unknown>;
+    if (typeof response.json === "function") {
+        try {
+            return await response.json() as Record<string, unknown>;
+        }
+        catch {
+            return {};
+        }
     }
-    catch {
-        return {
-            info: rawText,
-        };
-    }
+
+    return {};
 };
 
 const LoginScreen = () => {

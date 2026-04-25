@@ -10,6 +10,10 @@ import { PrivateMentorResult } from "../utils/types";
 type PrivateMentorCategory = "all" | "withPapers" | "withoutPapers" | "withEmail";
 type PrivateMentorSort = "latest" | "nameAsc" | "paperCountDesc";
 
+interface PrivateMentorsResponse {
+    mentors?: PrivateMentorResult[];
+}
+
 const PRIVATE_MENTOR_LIMIT = 10;
 
 const PrivateMentorScreen = () => {
@@ -61,8 +65,8 @@ const PrivateMentorScreen = () => {
         setPrivateMentorLoading(true);
 
         try {
-            const res = await request("/api/dataset/mentors/mine", "GET", true);
-            const mentorList = Array.isArray(res.mentors) ? (res.mentors as PrivateMentorResult[]) : [];
+            const res = await request<PrivateMentorsResponse>("/api/dataset/mentors/mine", "GET", true);
+            const mentorList = Array.isArray(res.mentors) ? res.mentors : [];
             setPrivateMentors(mentorList.filter((mentor) => Array.isArray(mentor.paper_ids)));
             setPrivateMentorMessage("");
         }
