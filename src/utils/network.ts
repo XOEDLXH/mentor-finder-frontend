@@ -61,12 +61,16 @@ const parseResponseBody = async (response: Response) => {
     }
 };
 
-export const request = async (
+type NetworkSuccessPayload = Record<string, unknown> & {
+    code?: undefined;
+};
+
+export const request = async <T extends Record<string, unknown> = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     needAuth: boolean,
     body?: object,
-) => {
+): Promise<T & NetworkSuccessPayload> => {
     const headers: Record<string, string> = {};
 
     if (body !== undefined) {
@@ -123,7 +127,7 @@ export const request = async (
 
     // HTTP status 200
     if (response.status === 200 && code === 0) {
-        return { ...data, code: undefined };
+        return { ...(data || {}), code: undefined } as T & NetworkSuccessPayload;
     }
     else if (response.status === 200) {
         throw new NetworkError(

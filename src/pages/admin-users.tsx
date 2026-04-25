@@ -9,6 +9,17 @@ import { AdminUserResult, MentorVerificationRequestResult, SearchMentorResult } 
 
 type UserRole = "student" | "mentor" | "admin" | "banned";
 type UserRoleFilter = "" | UserRole;
+type AdminUsersResponse = {
+    users?: AdminUserResult[];
+    verificationRequests?: MentorVerificationRequestResult[];
+    currentUserId?: number;
+};
+type SearchMentorsResponse = {
+    mentors?: SearchMentorResult[];
+};
+type UpdateAdminUserResponse = {
+    user: AdminUserResult;
+};
 
 const AdminUsersPage = () => {
     const router = useRouter();
@@ -80,7 +91,7 @@ const AdminUsersPage = () => {
                 queryParams.set("role", resolvedRoleFilter);
             }
             const query = queryParams.toString() === "" ? "" : `?${queryParams.toString()}`;
-            const res = await request(`/api/management/users${query}`, "GET", true);
+            const res = await request<AdminUsersResponse>(`/api/management/users${query}`, "GET", true);
             const nextUsers = Array.isArray(res.users) ? (res.users as AdminUserResult[]) : [];
             setUsers(nextUsers);
             setVerificationRequests(
@@ -126,7 +137,7 @@ const AdminUsersPage = () => {
         setErrorMessage("");
 
         try {
-            const res = await request(
+            const res = await request<SearchMentorsResponse>(
                 `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
                 "GET",
                 true,
@@ -160,7 +171,7 @@ const AdminUsersPage = () => {
         setErrorMessage("");
 
         try {
-            const res = await request(
+            const res = await request<SearchMentorsResponse>(
                 `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
                 "GET",
                 true,
@@ -202,8 +213,8 @@ const AdminUsersPage = () => {
         setSuccessMessage("");
 
         try {
-            const res = await request(`/api/management/users/${user.id}`, "PUT", true, payload);
-            const updatedUser = res.user as AdminUserResult;
+            const res = await request<UpdateAdminUserResponse>(`/api/management/users/${user.id}`, "PUT", true, payload);
+            const updatedUser = res.user;
             const nextUsers = users.map((currentUser) => currentUser.id === user.id ? updatedUser : currentUser);
             setUsers(nextUsers);
             syncDrafts(nextUsers);
