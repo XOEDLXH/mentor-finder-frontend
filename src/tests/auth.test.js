@@ -138,6 +138,24 @@ describe("LoginScreen", () => {
         expect(mockPush).not.toHaveBeenCalled();
     });
 
+    it("shows backend ban message when login is rejected for banned user", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 3, info: "User is banned" }),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "banned_user" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+
+        await waitFor(() => {
+            expect(globalThis.alert).toHaveBeenCalledWith("User is banned");
+        });
+
+        expect(mockPush).not.toHaveBeenCalled();
+    });
+
     it("navigates to register page when clicking secondary button", () => {
         render(<LoginScreen />);
 

@@ -6,6 +6,7 @@ export interface SearchMentorResult {
     email?: string;
     profile?: string;
     paperTitles: string[];
+    is_private?: boolean;
     name?: string;
     researchDirection?: string;
 }
@@ -51,4 +52,22 @@ export interface TimelinePaper {
 export interface TimelineGroup {
     direction: string;
     papers: TimelinePaper[];
+}
+
+export interface BoundMentorProfile {
+    id: number;
+    Chinese_name: string;
+    English_name?: string;
+    research_direction: string;
+    email?: string;
+}
+
+export interface AdminUserResult {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+    realName?: string;
+    mentorProfile?: BoundMentorProfile;
+    isBoundToMentor: boolean;
 }
