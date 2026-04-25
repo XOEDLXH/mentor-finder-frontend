@@ -9,17 +9,17 @@ import { AdminUserResult, MentorVerificationRequestResult, SearchMentorResult } 
 
 type UserRole = "student" | "mentor" | "admin" | "banned";
 type UserRoleFilter = "" | UserRole;
-type AdminUsersResponse = {
+interface AdminUsersResponse {
     users?: AdminUserResult[];
     verificationRequests?: MentorVerificationRequestResult[];
     currentUserId?: number;
-};
-type SearchMentorsResponse = {
+}
+interface SearchMentorsResponse {
     mentors?: SearchMentorResult[];
-};
-type UpdateAdminUserResponse = {
+}
+interface UpdateAdminUserResponse {
     user: AdminUserResult;
-};
+}
 
 const AdminUsersPage = () => {
     const router = useRouter();
@@ -92,11 +92,11 @@ const AdminUsersPage = () => {
             }
             const query = queryParams.toString() === "" ? "" : `?${queryParams.toString()}`;
             const res = await request<AdminUsersResponse>(`/api/management/users${query}`, "GET", true);
-            const nextUsers = Array.isArray(res.users) ? (res.users as AdminUserResult[]) : [];
+            const nextUsers = Array.isArray(res.users) ? res.users : [];
             setUsers(nextUsers);
             setVerificationRequests(
                 Array.isArray(res.verificationRequests)
-                    ? (res.verificationRequests as MentorVerificationRequestResult[]) : [],
+                    ? res.verificationRequests : [],
             );
             setCurrentUserId(typeof res.currentUserId === "number" ? res.currentUserId : undefined);
             syncDrafts(nextUsers);
@@ -142,7 +142,7 @@ const AdminUsersPage = () => {
                 "GET",
                 true,
             );
-            const nextMentors = Array.isArray(res.mentors) ? (res.mentors as SearchMentorResult[]) : [];
+            const nextMentors = Array.isArray(res.mentors) ? res.mentors : [];
             setMentorSearchResults(nextMentors);
         }
         catch (err) {
@@ -176,7 +176,7 @@ const AdminUsersPage = () => {
                 "GET",
                 true,
             );
-            const nextMentors = Array.isArray(res.mentors) ? (res.mentors as SearchMentorResult[]) : [];
+            const nextMentors = Array.isArray(res.mentors) ? res.mentors : [];
             setVerificationMentorSearchResultsByRequestId((prev) => ({
                 ...prev,
                 [requestId]: nextMentors,
