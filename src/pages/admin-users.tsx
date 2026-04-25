@@ -90,8 +90,10 @@ const AdminUsersPage = () => {
     };
 
     useEffect(() => {
-        void fetchUsers("");
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (!isAdmin) {
+            return;
+        }
+        void fetchUsers("", "");
     }, [isAdmin]);
 
     const publicMentorSearchResults = useMemo(() => {

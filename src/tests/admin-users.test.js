@@ -63,14 +63,14 @@ describe("AdminUsersPage", () => {
                         email: "admin@example.com",
                         role: "admin",
                         isBoundToMentor: false,
-                        mentorProfile: null,
+                        mentorProfile: undefined,
                     }, {
                         id: 2,
                         username: "student_user",
                         email: "student@example.com",
                         role: "student",
                         isBoundToMentor: false,
-                        mentorProfile: null,
+                        mentorProfile: undefined,
                     }],
                 };
             }

@@ -68,6 +68,6 @@ export interface AdminUserResult {
     email: string;
     role: string;
     realName?: string;
-    mentorProfile?: BoundMentorProfile | null;
+    mentorProfile?: BoundMentorProfile;
     isBoundToMentor: boolean;
 }
