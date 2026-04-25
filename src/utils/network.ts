@@ -56,7 +56,19 @@ export const request = async (
         headers,
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const rawBody = await response.text();
+    let data: Record<string, unknown>;
+    try {
+        data = JSON.parse(rawBody);
+    }
+    catch (_error) {
+        throw new NetworkError(
+            NetworkErrorType.CORRUPTED_RESPONSE,
+            `[${response.status}] Non-JSON response from ${url}, content-type=${contentType}, body=${rawBody.slice(0, 120)}`,
+        );
+    }
+
     const code = Number(data.code);
 
     // HTTP status 401
