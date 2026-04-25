@@ -148,10 +148,21 @@ const TimelinePage = () => {
                                         <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
                                             {paper.publish_date || "未知日期"}
                                         </div>
-                                        <h4 style={{ margin: "0 0 8px" }}>{paper.title}</h4>
+                                        <h4 style={{ margin: "0 0 8px" }}>
+                                            {paper.arxiv_url ? (
+                                                <a
+                                                    href={paper.arxiv_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{ color: "#0d6efd", textDecoration: "underline" }}
+                                                >
+                                                    {paper.title}
+                                                </a>
+                                            ) : paper.title}
+                                        </h4>
                                         <p style={{ margin: "0 0 8px" }}>作者：{paper.author_names || "未知"}</p>
                                         <p style={{ margin: 0, lineHeight: 1.6 }}>
-                                            摘要：{paper.abstract || "暂无摘要"}
+                                            摘要：{paper.tldr || paper.abstract || "暂无摘要"}
                                         </p>
                                     </article>
                                 ))}
