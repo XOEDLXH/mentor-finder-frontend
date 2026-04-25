@@ -9,6 +9,17 @@ import { AdminUserResult, MentorVerificationRequestResult, SearchMentorResult } 
 
 type UserRole = "student" | "mentor" | "admin" | "banned";
 type UserRoleFilter = "" | UserRole;
+interface AdminUsersResponse {
+    users?: AdminUserResult[];
+    verificationRequests?: MentorVerificationRequestResult[];
+    currentUserId?: number;
+}
+interface SearchMentorsResponse {
+    mentors?: SearchMentorResult[];
+}
+interface UpdateAdminUserResponse {
+    user: AdminUserResult;
+}
 
 const AdminUsersPage = () => {
     const router = useRouter();
@@ -80,12 +91,12 @@ const AdminUsersPage = () => {
                 queryParams.set("role", resolvedRoleFilter);
             }
             const query = queryParams.toString() === "" ? "" : `?${queryParams.toString()}`;
-            const res = await request(`/api/management/users${query}`, "GET", true);
-            const nextUsers = Array.isArray(res.users) ? (res.users as AdminUserResult[]) : [];
+            const res = await request<AdminUsersResponse>(`/api/management/users${query}`, "GET", true);
+            const nextUsers = Array.isArray(res.users) ? res.users : [];
             setUsers(nextUsers);
             setVerificationRequests(
                 Array.isArray(res.verificationRequests)
-                    ? (res.verificationRequests as MentorVerificationRequestResult[]) : [],
+                    ? res.verificationRequests : [],
             );
             setCurrentUserId(typeof res.currentUserId === "number" ? res.currentUserId : undefined);
             syncDrafts(nextUsers);
@@ -126,12 +137,12 @@ const AdminUsersPage = () => {
         setErrorMessage("");
 
         try {
-            const res = await request(
+            const res = await request<SearchMentorsResponse>(
                 `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
                 "GET",
                 true,
             );
-            const nextMentors = Array.isArray(res.mentors) ? (res.mentors as SearchMentorResult[]) : [];
+            const nextMentors = Array.isArray(res.mentors) ? res.mentors : [];
             setMentorSearchResults(nextMentors);
         }
         catch (err) {
@@ -160,12 +171,12 @@ const AdminUsersPage = () => {
         setErrorMessage("");
 
         try {
-            const res = await request(
+            const res = await request<SearchMentorsResponse>(
                 `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
                 "GET",
                 true,
             );
-            const nextMentors = Array.isArray(res.mentors) ? (res.mentors as SearchMentorResult[]) : [];
+            const nextMentors = Array.isArray(res.mentors) ? res.mentors : [];
             setVerificationMentorSearchResultsByRequestId((prev) => ({
                 ...prev,
                 [requestId]: nextMentors,
@@ -202,8 +213,8 @@ const AdminUsersPage = () => {
         setSuccessMessage("");
 
         try {
-            const res = await request(`/api/management/users/${user.id}`, "PUT", true, payload);
-            const updatedUser = res.user as AdminUserResult;
+            const res = await request<UpdateAdminUserResponse>(`/api/management/users/${user.id}`, "PUT", true, payload);
+            const updatedUser = res.user;
             const nextUsers = users.map((currentUser) => currentUser.id === user.id ? updatedUser : currentUser);
             setUsers(nextUsers);
             syncDrafts(nextUsers);

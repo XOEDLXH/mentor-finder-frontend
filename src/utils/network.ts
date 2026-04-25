@@ -30,12 +30,47 @@ export class NetworkError extends Error {
     valueOf(): string { return this.message; }
 }
 
-export const request = async (
+const parseResponseBody = async (response: Response) => {
+    const rawText = await response.text();
+    if (rawText.trim() === "") {
+        return {
+            data: undefined,
+            rawText: "",
+        };
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+        return {
+            data: undefined,
+            rawText,
+        };
+    }
+
+    try {
+        return {
+            data: JSON.parse(rawText) as Record<string, unknown>,
+            rawText,
+        };
+    }
+    catch {
+        return {
+            data: undefined,
+            rawText,
+        };
+    }
+};
+
+interface NetworkSuccessPayload {
+    code?: undefined;
+}
+
+export const request = async <T extends object = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     needAuth: boolean,
     body?: object,
-) => {
+): Promise<T & NetworkSuccessPayload> => {
     const headers: Record<string, string> = {};
 
     if (body !== undefined) {
@@ -56,20 +91,23 @@ export const request = async (
         headers,
     });
 
-    const data = await response.json();
-    const code = Number(data.code);
+    const { data, rawText } = await parseResponseBody(response);
+    const code = Number(data?.code);
+    const info = typeof data?.info === "string"
+        ? data.info
+        : (rawText.trim() === "" ? "Empty response body" : rawText);
 
     // HTTP status 401
     if (response.status === 401 && code === 2) {
         throw new NetworkError(
             NetworkErrorType.UNAUTHORIZED,
-            "[401] " + data.info,
+            "[401] " + info,
         );
     }
     else if (response.status === 401) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[401] " + data.info,
+            "[401] " + info,
         );
     }
 
@@ -77,24 +115,24 @@ export const request = async (
     if (response.status === 403 && code === 3) {
         throw new NetworkError(
             NetworkErrorType.REJECTED,
-            "[403] " + data.info,
+            "[403] " + info,
         );
     }
     else if (response.status === 403) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[403] " + data.info,
+            "[403] " + info,
         );
     }
 
     // HTTP status 200
     if (response.status === 200 && code === 0) {
-        return { ...data, code: undefined };
+        return { ...(data || {}), code: undefined } as T & NetworkSuccessPayload;
     }
     else if (response.status === 200) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[200] " + data.info,
+            "[200] " + info,
         );
     }
 
@@ -104,6 +142,6 @@ export const request = async (
      */
     throw new NetworkError(
         NetworkErrorType.UNKNOWN_ERROR,
-        `[${response.status}] ` + data.info,
+        `[${response.status}] ` + info,
     );
 };

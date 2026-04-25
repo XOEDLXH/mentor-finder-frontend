@@ -5,6 +5,10 @@ import { FAILURE_PREFIX } from "../constants/string";
 import { request } from "../utils/network";
 import { TimelineGroup } from "../utils/types";
 
+interface TimelineResponse {
+    timeline?: TimelineGroup[];
+}
+
 const TimelinePage = () => {
     const router = useRouter();
     const [timeline, setTimeline] = useState<TimelineGroup[]>([]);
@@ -18,8 +22,8 @@ const TimelinePage = () => {
             setErrorMessage("");
 
             try {
-                const res = await request("/api/timeline", "GET", false);
-                const nextTimeline = (res.timeline || []) as TimelineGroup[];
+                const res = await request<TimelineResponse>("/api/timeline", "GET", false);
+                const nextTimeline = Array.isArray(res.timeline) ? res.timeline : [];
 
                 setTimeline(nextTimeline);
                 setActiveDirection((currentDirection) => {

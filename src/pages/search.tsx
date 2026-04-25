@@ -12,6 +12,18 @@ type SearchMatchMode = "exact" | "fuzzy";
 type SearchPaperSortMode = "default" | "early" | "late";
 type MentorResultFilter = "all" | "mine" | "public";
 
+interface PrivateMentorsResponse {
+    mentors?: PrivateMentorResult[];
+}
+
+interface SearchMentorsResponse {
+    mentors?: SearchMentorResult[];
+}
+
+interface SearchPapersResponse {
+    papers?: SearchPaperResult[];
+}
+
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -110,8 +122,8 @@ const SearchScreen = () => {
         }
 
         try {
-            const res = await request("/api/dataset/mentors/mine", "GET", true);
-            const mentorList = Array.isArray(res.mentors) ? (res.mentors as PrivateMentorResult[]) : [];
+            const res = await request<PrivateMentorsResponse>("/api/dataset/mentors/mine", "GET", true);
+            const mentorList = Array.isArray(res.mentors) ? res.mentors : [];
             setPrivateMentors(mentorList.filter((mentor) => Array.isArray(mentor.paper_ids)));
         }
         catch {
@@ -158,21 +170,21 @@ const SearchScreen = () => {
             const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${matchMode}`;
 
             if (mode === "mentor") {
-                const res = await request(
+                const res = await request<SearchMentorsResponse>(
                     `/api/search/mentors?${query}`,
                     "GET",
                     isLoggedIn,
                 );
-                setMentors(res.mentors as SearchMentorResult[]);
+                setMentors(Array.isArray(res.mentors) ? res.mentors : []);
                 setPapers([]);
             }
             else {
-                const res = await request(
+                const res = await request<SearchPapersResponse>(
                     `/api/search/papers?${query}&sort_mode=${resolvedPaperSortMode}`,
                     "GET",
                     isLoggedIn,
                 );
-                setPapers(res.papers as SearchPaperResult[]);
+                setPapers(Array.isArray(res.papers) ? res.papers : []);
                 setMentors([]);
             }
         }

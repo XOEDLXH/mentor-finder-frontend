@@ -22,6 +22,15 @@ const EMPTY_PROFILE: ProfilePayload = {
     projectExperience: "",
 };
 
+interface ProfileResponse {
+    profile?: Partial<ProfilePayload>;
+    mentorVerificationRequest?: MentorVerificationRequestResult;
+}
+
+interface MentorVerificationSubmitResponse {
+    mentorVerificationRequest?: MentorVerificationRequestResult;
+}
+
 const ProfileScreen = () => {
     const router = useRouter();
     // 从 Redux store 中获取认证 token
@@ -47,9 +56,9 @@ const ProfileScreen = () => {
         setErrorMessage("");
 
         // 发起 GET 请求获取当前用户的个人资料
-        request("/api/profile/me", "GET", true)
+        request<ProfileResponse>("/api/profile/me", "GET", true)
             .then((res) => {
-                const raw = (res.profile ?? {}) as Partial<ProfilePayload>;
+                const raw = res.profile ?? {};
                 // 安全地设置各字段，确保类型为字符串
                 setProfile({
                     researchExperience: typeof raw.researchExperience === "string" ? raw.researchExperience : "",
@@ -59,7 +68,7 @@ const ProfileScreen = () => {
                 });
                 setMentorVerificationRequest(
                     typeof res.mentorVerificationRequest === "object" && res.mentorVerificationRequest
-                        ? res.mentorVerificationRequest as MentorVerificationRequestResult
+                        ? res.mentorVerificationRequest
                         : undefined,
                 );
             })
@@ -83,14 +92,14 @@ const ProfileScreen = () => {
 
         try {
             // 发送 PUT 请求，携带当前 profile 中的三个文本字段
-            const res = await request("/api/profile/me", "PUT", true, {
+            const res = await request<ProfileResponse>("/api/profile/me", "PUT", true, {
                 researchExperience: profile.researchExperience,
                 honors: profile.honors,
                 projectExperience: profile.projectExperience,
             });
 
             // 更新成功后，用返回的最新资料刷新界面
-            const raw = (res.profile ?? {}) as Partial<ProfilePayload>;
+            const raw = res.profile ?? {};
             setProfile({
                 researchExperience: typeof raw.researchExperience === "string" ? raw.researchExperience : "",
                 honors: typeof raw.honors === "string" ? raw.honors : "",
@@ -122,10 +131,10 @@ const ProfileScreen = () => {
         setErrorMessage("");
 
         try {
-            const res = await request("/api/profile/mentor-verification-request", "POST", true, {
+            const res = await request<MentorVerificationSubmitResponse>("/api/profile/mentor-verification-request", "POST", true, {
                 submittedName,
             });
-            setMentorVerificationRequest(res.mentorVerificationRequest as MentorVerificationRequestResult);
+            setMentorVerificationRequest(res.mentorVerificationRequest);
             setMentorVerificationName("");
             setSuccessMessage("导师身份认证申请已提交");
         } catch (err) {
