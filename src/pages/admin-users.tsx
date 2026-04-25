@@ -309,7 +309,11 @@ const AdminUsersPage = () => {
                         onChange={(e) => setMentorSearchKeyword(e.target.value)}
                         style={{ flex: 1 }}
                     />
-                    <button onClick={() => void searchPublicMentors()} disabled={mentorSearchLoading}>
+                    <button
+                        aria-label="搜索公共导师"
+                        onClick={() => void searchPublicMentors()}
+                        disabled={mentorSearchLoading}
+                    >
                         {mentorSearchLoading ? "搜索中..." : "搜索导师"}
                     </button>
                 </div>
@@ -359,6 +363,7 @@ const AdminUsersPage = () => {
                                                 style={{ flex: 1, minWidth: 240 }}
                                             />
                                             <button
+                                                aria-label={`为${requestItem.username}搜索导师`}
                                                 onClick={() => void searchVerificationMentors(requestItem.id)}
                                                 disabled={reviewingRequestId === requestItem.id || verificationMentorSearchLoadingByRequestId[requestItem.id]}
                                             >
@@ -403,12 +408,14 @@ const AdminUsersPage = () => {
 
                                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                                             <button
+                                                aria-label={`通过${requestItem.username}的申请`}
                                                 onClick={() => void reviewVerificationRequest(requestItem.id, "approved")}
                                                 disabled={reviewingRequestId === requestItem.id}
                                             >
                                                 {reviewingRequestId === requestItem.id ? "处理中..." : "审核通过"}
                                             </button>
                                             <button
+                                                aria-label={`拒绝${requestItem.username}的申请`}
                                                 onClick={() => void reviewVerificationRequest(requestItem.id, "rejected")}
                                                 disabled={reviewingRequestId === requestItem.id}
                                             >

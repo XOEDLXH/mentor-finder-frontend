@@ -138,7 +138,7 @@ describe("AdminUsersPage", () => {
         fireEvent.change(screen.getByPlaceholderText("搜索公共导师，便于绑定 mentor 角色"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: "搜索导师" }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索公共导师" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -205,7 +205,7 @@ describe("AdminUsersPage", () => {
         fireEvent.change(screen.getByPlaceholderText("搜索并选择要绑定的公共导师"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getAllByRole("button", { name: "搜索导师" })[1]);
+        fireEvent.click(screen.getByRole("button", { name: "为student_user搜索导师" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -216,7 +216,7 @@ describe("AdminUsersPage", () => {
         });
 
         fireEvent.click(screen.getByRole("button", { name: /张三 \/ Zhang San/ }));
-        fireEvent.click(screen.getByRole("button", { name: "审核通过" }));
+        fireEvent.click(screen.getByRole("button", { name: "通过student_user的申请" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
