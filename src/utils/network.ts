@@ -61,9 +61,9 @@ const parseResponseBody = async (response: Response) => {
     }
 };
 
-type NetworkSuccessPayload = {
+interface NetworkSuccessPayload {
     code?: undefined;
-};
+}
 
 export const request = async <T extends object = Record<string, unknown>>(
     url: string,

@@ -58,7 +58,7 @@ const ProfileScreen = () => {
         // 发起 GET 请求获取当前用户的个人资料
         request<ProfileResponse>("/api/profile/me", "GET", true)
             .then((res) => {
-                const raw = (res.profile ?? {}) as Partial<ProfilePayload>;
+                const raw = res.profile ?? {};
                 // 安全地设置各字段，确保类型为字符串
                 setProfile({
                     researchExperience: typeof raw.researchExperience === "string" ? raw.researchExperience : "",
@@ -99,7 +99,7 @@ const ProfileScreen = () => {
             });
 
             // 更新成功后，用返回的最新资料刷新界面
-            const raw = (res.profile ?? {}) as Partial<ProfilePayload>;
+            const raw = res.profile ?? {};
             setProfile({
                 researchExperience: typeof raw.researchExperience === "string" ? raw.researchExperience : "",
                 honors: typeof raw.honors === "string" ? raw.honors : "",
