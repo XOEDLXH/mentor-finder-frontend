@@ -85,6 +85,7 @@ describe("AdminUsersPage", () => {
                         email: "zhangsan@example.com",
                         profile: "公共导师",
                         paperTitles: [],
+                        is_private: false,
                     }],
                 };
             }

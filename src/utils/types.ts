@@ -6,6 +6,7 @@ export interface SearchMentorResult {
     email?: string;
     profile?: string;
     paperTitles: string[];
+    is_private?: boolean;
     name?: string;
     researchDirection?: string;
 }
