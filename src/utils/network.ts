@@ -30,41 +30,6 @@ export class NetworkError extends Error {
     valueOf(): string { return this.message; }
 }
 
-const parseResponseBody = async (response: Response) => {
-    const rawText = await response.text();
-    if (rawText.trim() === "") {
-        return {
-            data: undefined,
-            rawText: "",
-        };
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-        return {
-            data: undefined,
-            rawText,
-        };
-    }
-
-    try {
-        return {
-            data: JSON.parse(rawText) as Record<string, unknown>,
-            rawText,
-        };
-    }
-    catch {
-        return {
-            data: undefined,
-            rawText,
-        };
-    }
-};
-
-interface NetworkSuccessPayload {
-    code?: undefined;
-}
-
 export const request = async <T extends object = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -105,6 +70,7 @@ export const request = async <T extends object = Record<string, unknown>>(
     }
 
     const code = Number(data.code);
+    const info = String(data.info ?? "Unknown error");
 
     // HTTP status 401
     if (response.status === 401 && code === 2) {
