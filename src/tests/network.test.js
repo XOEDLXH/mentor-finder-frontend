@@ -13,7 +13,7 @@ const getFetchMock = () => globalThis.fetch;
 const createJsonResponse = (status, payload) => ({
     status,
     headers: {
-        get: jest.fn((key) => (key === "content-type" ? "application/json" : null)),
+        get: jest.fn((key) => (key === "content-type" ? "application/json" : undefined)),
     },
     text: jest.fn().mockResolvedValue(JSON.stringify(payload)),
 });
