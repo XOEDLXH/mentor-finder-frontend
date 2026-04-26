@@ -30,47 +30,12 @@ export class NetworkError extends Error {
     valueOf(): string { return this.message; }
 }
 
-const parseResponseBody = async (response: Response) => {
-    const rawText = await response.text();
-    if (rawText.trim() === "") {
-        return {
-            data: undefined,
-            rawText: "",
-        };
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-        return {
-            data: undefined,
-            rawText,
-        };
-    }
-
-    try {
-        return {
-            data: JSON.parse(rawText) as Record<string, unknown>,
-            rawText,
-        };
-    }
-    catch {
-        return {
-            data: undefined,
-            rawText,
-        };
-    }
-};
-
-interface NetworkSuccessPayload {
-    code?: undefined;
-}
-
 export const request = async <T extends object = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     needAuth: boolean,
     body?: object,
-): Promise<T & NetworkSuccessPayload> => {
+): Promise<T> => {
     const headers: Record<string, string> = {};
 
     if (body !== undefined) {
@@ -91,11 +56,28 @@ export const request = async <T extends object = Record<string, unknown>>(
         headers,
     });
 
-    const { data, rawText } = await parseResponseBody(response);
-    const code = Number(data?.code);
-    const info = typeof data?.info === "string"
-        ? data.info
-        : (rawText.trim() === "" ? "Empty response body" : rawText);
+    const contentType = response.headers.get("content-type") || "";
+    const rawBody = await response.text();
+    let data: Record<string, unknown>;
+    try {
+        data = JSON.parse(rawBody);
+    }
+    catch {
+        if (response.status === 200) {
+            throw new NetworkError(
+                NetworkErrorType.CORRUPTED_RESPONSE,
+                `[${response.status}] Non-JSON response from ${url}, content-type=${contentType}, body=${rawBody.slice(0, 120)}`,
+            );
+        }
+
+        throw new NetworkError(
+            NetworkErrorType.UNKNOWN_ERROR,
+            `[${response.status}] ${rawBody === "" ? "Empty response body" : rawBody}`,
+        );
+    }
+
+    const code = Number(data.code);
+    const info = String(data.info ?? "Unknown error");
 
     // HTTP status 401
     if (response.status === 401 && code === 2) {
@@ -127,7 +109,7 @@ export const request = async <T extends object = Record<string, unknown>>(
 
     // HTTP status 200
     if (response.status === 200 && code === 0) {
-        return { ...(data || {}), code: undefined } as T & NetworkSuccessPayload;
+        return { ...data, code: undefined } as T;
     }
     else if (response.status === 200) {
         throw new NetworkError(

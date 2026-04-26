@@ -10,6 +10,13 @@ jest.mock("../redux/store", () => ({
 }));
 
 const getFetchMock = () => globalThis.fetch;
+const createJsonResponse = (status, payload) => ({
+    status,
+    headers: {
+        get: jest.fn((key) => (key === "content-type" ? "application/json" : undefined)),
+    },
+    text: jest.fn().mockResolvedValue(JSON.stringify(payload)),
+});
 
 describe("request", () => {
     beforeEach(() => {
@@ -33,11 +40,7 @@ describe("request", () => {
         });
 
         getFetchMock().mockResolvedValue({
-            status: 200,
-            headers: {
-                get: () => "application/json",
-            },
-            text: jest.fn().mockResolvedValue(JSON.stringify({ code: 0, data: "ok" })),
+            ...createJsonResponse(200, { code: 0, data: "ok" }),
         });
 
         const result = await request("/api/example", "POST", true, { value: 1 });
@@ -58,11 +61,7 @@ describe("request", () => {
 
     it("does not add authorization header when token is empty", async () => {
         getFetchMock().mockResolvedValue({
-            status: 200,
-            headers: {
-                get: () => "application/json",
-            },
-            text: jest.fn().mockResolvedValue(JSON.stringify({ code: 0, data: "ok" })),
+            ...createJsonResponse(200, { code: 0, data: "ok" }),
         });
 
         await request("/api/public", "GET", true);
@@ -75,11 +74,7 @@ describe("request", () => {
 
     it("throws unauthorized network error for 401 + code=2", async () => {
         getFetchMock().mockResolvedValue({
-            status: 401,
-            headers: {
-                get: () => "application/json",
-            },
-            text: jest.fn().mockResolvedValue(JSON.stringify({ code: 2, info: "expired" })),
+            ...createJsonResponse(401, { code: 2, info: "expired" }),
         });
 
         const pending = request("/api/private", "GET", true);
@@ -93,11 +88,7 @@ describe("request", () => {
 
     it("throws corrupted response for 200 + non-zero code", async () => {
         getFetchMock().mockResolvedValue({
-            status: 200,
-            headers: {
-                get: () => "application/json",
-            },
-            text: jest.fn().mockResolvedValue(JSON.stringify({ code: 9, info: "bad payload" })),
+            ...createJsonResponse(200, { code: 9, info: "bad payload" }),
         });
 
         await expect(request("/api/example", "GET", false)).rejects.toMatchObject({

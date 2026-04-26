@@ -45,6 +45,8 @@ export interface TimelinePaper {
     id: number;
     title: string;
     abstract?: string;
+    tldr?: string;
+    arxiv_url?: string;
     publish_date?: string;
     author_names: string;
 }
