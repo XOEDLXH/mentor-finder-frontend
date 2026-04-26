@@ -30,6 +30,41 @@ export class NetworkError extends Error {
     valueOf(): string { return this.message; }
 }
 
+const parseResponseBody = async (response: Response) => {
+    const rawText = await response.text();
+    if (rawText.trim() === "") {
+        return {
+            data: undefined,
+            rawText: "",
+        };
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+        return {
+            data: undefined,
+            rawText,
+        };
+    }
+
+    try {
+        return {
+            data: JSON.parse(rawText) as Record<string, unknown>,
+            rawText,
+        };
+    }
+    catch {
+        return {
+            data: undefined,
+            rawText,
+        };
+    }
+};
+
+interface NetworkSuccessPayload {
+    code?: undefined;
+}
+
 export const request = async <T extends object = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -75,13 +110,13 @@ export const request = async <T extends object = Record<string, unknown>>(
     if (response.status === 401 && code === 2) {
         throw new NetworkError(
             NetworkErrorType.UNAUTHORIZED,
-            "[401] " + data.info,
+            "[401] " + info,
         );
     }
     else if (response.status === 401) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[401] " + data.info,
+            "[401] " + info,
         );
     }
 
@@ -89,13 +124,13 @@ export const request = async <T extends object = Record<string, unknown>>(
     if (response.status === 403 && code === 3) {
         throw new NetworkError(
             NetworkErrorType.REJECTED,
-            "[403] " + data.info,
+            "[403] " + info,
         );
     }
     else if (response.status === 403) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[403] " + data.info,
+            "[403] " + info,
         );
     }
 
@@ -106,7 +141,7 @@ export const request = async <T extends object = Record<string, unknown>>(
     else if (response.status === 200) {
         throw new NetworkError(
             NetworkErrorType.CORRUPTED_RESPONSE,
-            "[200] " + data.info,
+            "[200] " + info,
         );
     }
 
@@ -116,6 +151,6 @@ export const request = async <T extends object = Record<string, unknown>>(
      */
     throw new NetworkError(
         NetworkErrorType.UNKNOWN_ERROR,
-        `[${response.status}] ` + data.info,
+        `[${response.status}] ` + info,
     );
 };

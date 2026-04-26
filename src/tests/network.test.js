@@ -96,4 +96,34 @@ describe("request", () => {
             message: "[200] bad payload",
         });
     });
+
+    it("throws stable error for empty response body instead of crashing on json parse", async () => {
+        getFetchMock().mockResolvedValue({
+            status: 502,
+            headers: {
+                get: () => "text/plain",
+            },
+            text: jest.fn().mockResolvedValue(""),
+        });
+
+        await expect(request("/api/example", "GET", false)).rejects.toMatchObject({
+            type: NetworkErrorType.UNKNOWN_ERROR,
+            message: "[502] Empty response body",
+        });
+    });
+
+    it("throws stable error for non-json response body", async () => {
+        getFetchMock().mockResolvedValue({
+            status: 502,
+            headers: {
+                get: () => "text/html",
+            },
+            text: jest.fn().mockResolvedValue("<html>Bad Gateway</html>"),
+        });
+
+        await expect(request("/api/example", "GET", false)).rejects.toMatchObject({
+            type: NetworkErrorType.UNKNOWN_ERROR,
+            message: "[502] <html>Bad Gateway</html>",
+        });
+    });
 });

@@ -4,6 +4,35 @@ import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
 
+const parseJsonSafely = async (response: Response) => {
+    if (typeof response.text === "function") {
+        const rawText = await response.text();
+        if (rawText.trim() === "") {
+            return {};
+        }
+
+        try {
+            return JSON.parse(rawText) as Record<string, unknown>;
+        }
+        catch {
+            return {
+                info: rawText,
+            };
+        }
+    }
+
+    if (typeof response.json === "function") {
+        try {
+            return await response.json() as Record<string, unknown>;
+        }
+        catch {
+            return {};
+        }
+    }
+
+    return {};
+};
+
 const LoginScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
@@ -24,7 +53,7 @@ const LoginScreen = () => {
                 password,
             }),
         })
-            .then((res) => res.json())
+            .then((res) => parseJsonSafely(res))
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
