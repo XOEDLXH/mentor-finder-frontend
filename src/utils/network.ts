@@ -63,9 +63,16 @@ export const request = async <T extends object = Record<string, unknown>>(
         data = JSON.parse(rawBody);
     }
     catch {
+        if (response.status === 200) {
+            throw new NetworkError(
+                NetworkErrorType.CORRUPTED_RESPONSE,
+                `[${response.status}] Non-JSON response from ${url}, content-type=${contentType}, body=${rawBody.slice(0, 120)}`,
+            );
+        }
+
         throw new NetworkError(
-            NetworkErrorType.CORRUPTED_RESPONSE,
-            `[${response.status}] Non-JSON response from ${url}, content-type=${contentType}, body=${rawBody.slice(0, 120)}`,
+            NetworkErrorType.UNKNOWN_ERROR,
+            `[${response.status}] ${rawBody === "" ? "Empty response body" : rawBody}`,
         );
     }
 
