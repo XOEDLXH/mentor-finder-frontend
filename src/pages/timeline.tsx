@@ -9,6 +9,7 @@ interface TimelineResponse {
     timeline: TimelineGroup[];
 }
 
+//论文时间线页
 const TimelinePage = () => {
     const router = useRouter();
     const [timeline, setTimeline] = useState<TimelineGroup[]>([]);
