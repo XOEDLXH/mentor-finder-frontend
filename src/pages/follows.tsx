@@ -42,7 +42,12 @@ const FollowsPage = () => {
         }
     }, [isLoggedIn]);
 
-    const unfollow = async (mentorId: number) => {
+    const unfollow = async (mentor: SearchMentorResult) => {
+        if (!window.confirm(`确定要取消关注${mentor.Chinese_name}吗？`)) {
+            return;
+        }
+
+        const mentorId = mentor.id;
         setActionMentorId(mentorId);
         setErrorMessage("");
 
@@ -101,7 +106,7 @@ const FollowsPage = () => {
                             查看导师主页
                         </button>
                         <button
-                            onClick={() => void unfollow(mentor.id)}
+                            onClick={() => void unfollow(mentor)}
                             disabled={actionMentorId === mentor.id}
                         >
                             {actionMentorId === mentor.id ? "处理中..." : "取消关注"}
