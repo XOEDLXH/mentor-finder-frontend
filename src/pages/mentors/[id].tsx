@@ -78,6 +78,10 @@ const MentorDetailPage = () => {
             return;
         }
 
+        if (followed && !window.confirm(`确定要取消关注${mentor?.Chinese_name ?? "该导师"}吗？`)) {
+            return;
+        }
+
         setFollowLoading(true);
         setErrorMessage("");
 
