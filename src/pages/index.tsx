@@ -18,6 +18,9 @@ const HomeScreen = () => {
                 {userName !== "" && (
                     <button onClick={() => router.push("/profile")}>个人主页</button>
                 )}
+                {userName !== "" && (
+                    <button onClick={() => router.push("/follows")}>我的关注</button>
+                )}
                 {userRole === "admin" && (
                     <button onClick={() => router.push("/admin-users")}>用户管理</button>
                 )}
