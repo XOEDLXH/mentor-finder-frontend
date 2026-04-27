@@ -132,7 +132,7 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
-        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
@@ -181,7 +181,7 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、研究方向或导师姓名"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
             target: { value: "李四" },
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
@@ -239,7 +239,7 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
-        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "导师" },
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
@@ -267,7 +267,7 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "模糊搜索" }));
-        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
@@ -286,7 +286,7 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、研究方向或导师姓名"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
             target: { value: "机器学习" },
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
@@ -364,7 +364,7 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
-        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
