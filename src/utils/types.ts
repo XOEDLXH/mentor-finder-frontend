@@ -30,6 +30,17 @@ export interface PrivateMentorResult {
     paper_ids: PrivateMentorPaper[];
 }
 
+export interface MentorDetail {
+    id: number;
+    Chinese_name: string;
+    English_name?: string;
+    research_direction: string;
+    email?: string;
+    profile?: string;
+    is_private: boolean;
+    paper_ids: PrivateMentorPaper[];
+}
+
 export interface SearchPaperResult {
     id: number;
     title: string;

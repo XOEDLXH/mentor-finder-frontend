@@ -730,6 +730,9 @@ const SearchScreen = () => {
                             </p>
                             <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
                             <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
+                            <button onClick={() => router.push(`/mentors/${mentor.id}`)}>
+                                查看导师主页
+                            </button>
                             <p style={{ margin: "8px 0 4px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 20 }}>
                                 {mentor.paperTitles.map((title) => (
