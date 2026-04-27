@@ -764,7 +764,13 @@ const SearchScreen = () => {
                             key={paper.id}
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
+                            <h3 style={{ margin: "0 0 8px" }}>
+                                {paper.arxiv_url ? (
+                                    <a href={paper.arxiv_url} target="_blank" rel="noopener noreferrer">
+                                        {paper.title}
+                                    </a>
+                                ) : paper.title}
+                            </h3>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>

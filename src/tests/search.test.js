@@ -182,6 +182,7 @@ describe("SearchScreen", () => {
                         publish_date: "2024-06-15",
                         author_names: "李四,张三",
                         subjects: "cs.CL",
+                        arxiv_url: "https://arxiv.org/abs/2401.00001",
                         mentorNames: ["李四", "张三"],
                     }],
                 };
@@ -215,6 +216,7 @@ describe("SearchScreen", () => {
         });
 
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "大语言模型在问答系统中的应用" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
