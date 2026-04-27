@@ -529,7 +529,7 @@ const SearchScreen = () => {
                 <input
                     type="text"
                     value={keyword}
-                    placeholder={mode === "mentor" ? "输入导师姓名" : "输入论文题目、研究方向或导师姓名"}
+                    placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
                     onChange={(e) => setKeyword(e.target.value)}
                     onKeyDown={handleEnter}
                     style={{ flex: 1 }}
