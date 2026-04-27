@@ -18,10 +18,22 @@ interface PrivateMentorsResponse {
 
 interface SearchMentorsResponse {
     mentors?: SearchMentorResult[];
+    page?: number;
+    page_size?: number;
+    total?: number;
+    total_pages?: number;
+    has_previous?: boolean;
+    has_next?: boolean;
 }
 
 interface SearchPapersResponse {
     papers?: SearchPaperResult[];
+    page?: number;
+    page_size?: number;
+    total?: number;
+    total_pages?: number;
+    has_previous?: boolean;
+    has_next?: boolean;
 }
 
 const SearchScreen = () => {
@@ -40,6 +52,11 @@ const SearchScreen = () => {
     const [errorMessage, setErrorMessage] = useState("");
     const [mentors, setMentors] = useState<SearchMentorResult[]>([]);
     const [papers, setPapers] = useState<SearchPaperResult[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalResults, setTotalResults] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [hasPreviousPage, setHasPreviousPage] = useState(false);
+    const [hasNextPage, setHasNextPage] = useState(false);
     const [adminSaving, setAdminSaving] = useState(false);
     const [adminMessage, setAdminMessage] = useState("");
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
@@ -66,6 +83,45 @@ const SearchScreen = () => {
         setErrorMessage("");
         setMentors([]);
         setPapers([]);
+        setCurrentPage(1);
+        setTotalResults(0);
+        setTotalPages(0);
+        setHasPreviousPage(false);
+        setHasNextPage(false);
+    };
+
+    const applyPagination = (
+        paginationData: {
+            page?: number;
+            total?: number;
+            total_pages?: number;
+            has_previous?: boolean;
+            has_next?: boolean;
+        },
+        fallbackCount: number,
+        requestedPage: number,
+    ) => {
+        const resolvedPage = Number(paginationData.page);
+        const normalizedPage = Number.isFinite(resolvedPage) && resolvedPage > 0
+            ? resolvedPage
+            : requestedPage;
+        setCurrentPage(normalizedPage);
+
+        const resolvedTotal = Number(paginationData.total);
+        const normalizedTotal = Number.isFinite(resolvedTotal) && resolvedTotal >= 0
+            ? resolvedTotal
+            : fallbackCount;
+        setTotalResults(normalizedTotal);
+
+        const resolvedTotalPages = Number(paginationData.total_pages);
+        const fallbackTotalPages = normalizedTotal > 0 ? 1 : 0;
+        const normalizedTotalPages = Number.isFinite(resolvedTotalPages) && resolvedTotalPages >= 0
+            ? resolvedTotalPages
+            : fallbackTotalPages;
+        setTotalPages(normalizedTotalPages);
+
+        setHasPreviousPage(Boolean(paginationData.has_previous));
+        setHasNextPage(Boolean(paginationData.has_next));
     };
 
     const isNetworkErrorInstance = (err: unknown): err is NetworkError => {
@@ -155,9 +211,15 @@ const SearchScreen = () => {
         return mentors;
     }, [mentors, mentorResultFilter, privateMentorIdSet]);
 
-    const search = async (overrideKeyword?: string, overridePaperSortMode?: SearchPaperSortMode) => {
+    const search = async (
+        overrideKeyword?: string,
+        overridePaperSortMode?: SearchPaperSortMode,
+        overridePage?: number,
+    ) => {
         const trimmedKeyword = (overrideKeyword ?? keyword).trim();
         const resolvedPaperSortMode = overridePaperSortMode ?? paperSortMode;
+        const requestedPage = Math.max(1, overridePage ?? 1);
+        const pageQuery = requestedPage > 1 ? `&page=${requestedPage}` : "";
         if (trimmedKeyword === "") {
             return;
         }
@@ -171,21 +233,25 @@ const SearchScreen = () => {
 
             if (mode === "mentor") {
                 const res = await request<SearchMentorsResponse>(
-                    `/api/search/mentors?${query}`,
+                    `/api/search/mentors?${query}${pageQuery}`,
                     "GET",
                     isLoggedIn,
                 );
-                setMentors(Array.isArray(res.mentors) ? res.mentors : []);
+                const mentorItems = Array.isArray(res.mentors) ? res.mentors : [];
+                setMentors(mentorItems);
                 setPapers([]);
+                applyPagination(res, mentorItems.length, requestedPage);
             }
             else {
                 const res = await request<SearchPapersResponse>(
-                    `/api/search/papers?${query}&sort_mode=${resolvedPaperSortMode}`,
+                    `/api/search/papers?${query}&sort_mode=${resolvedPaperSortMode}${pageQuery}`,
                     "GET",
                     isLoggedIn,
                 );
-                setPapers(Array.isArray(res.papers) ? res.papers : []);
+                const paperItems = Array.isArray(res.papers) ? res.papers : [];
+                setPapers(paperItems);
                 setMentors([]);
+                applyPagination(res, paperItems.length, requestedPage);
             }
         }
         catch (err) {
@@ -205,8 +271,22 @@ const SearchScreen = () => {
         setPaperSortMode(nextSortMode);
 
         if (mode === "paper" && hasSearched && keyword.trim() !== "") {
-            void search(undefined, nextSortMode);
+            void search(undefined, nextSortMode, 1);
         }
+    };
+
+    const gotoPreviousPage = () => {
+        if (loading || !hasPreviousPage) {
+            return;
+        }
+        void search(undefined, undefined, currentPage - 1);
+    };
+
+    const gotoNextPage = () => {
+        if (loading || !hasNextPage) {
+            return;
+        }
+        void search(undefined, undefined, currentPage + 1);
     };
 
     const handleEnter = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -579,6 +659,26 @@ const SearchScreen = () => {
             {errorMessage !== "" && (
                 <div style={{ padding: 12, border: "1px solid #f1aeb5", backgroundColor: "#f8d7da" }}>
                     {errorMessage}
+                </div>
+            )}
+
+            {hasSearched && !loading && errorMessage === "" && totalResults > 0 && (
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        padding: 12,
+                        border: "1px solid #ccc",
+                        borderRadius: 6,
+                    }}
+                >
+                    <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={gotoPreviousPage} disabled={loading || !hasPreviousPage}>上一页</button>
+                        <button onClick={gotoNextPage} disabled={loading || !hasNextPage}>下一页</button>
+                    </div>
                 </div>
             )}
 

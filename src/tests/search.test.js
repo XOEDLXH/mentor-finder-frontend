@@ -309,4 +309,84 @@ describe("SearchScreen", () => {
             );
         });
     });
+
+    it("supports mentor result pagination", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact") {
+                return {
+                    page: 1,
+                    total: 2,
+                    total_pages: 2,
+                    has_previous: false,
+                    has_next: true,
+                    mentors: [
+                        {
+                            id: 1,
+                            Chinese_name: "张三",
+                            English_name: "Zhang San",
+                            research_direction: "机器学习",
+                            email: "zhangsan@example.com",
+                            profile: "第一页导师",
+                            paperTitles: ["论文1"],
+                        },
+                    ],
+                };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact&page=2") {
+                return {
+                    page: 2,
+                    total: 2,
+                    total_pages: 2,
+                    has_previous: true,
+                    has_next: false,
+                    mentors: [
+                        {
+                            id: 2,
+                            Chinese_name: "张六",
+                            English_name: "Zhang Liu",
+                            research_direction: "机器学习工程",
+                            email: "zhangliu@example.com",
+                            profile: "第二页导师",
+                            paperTitles: ["论文2"],
+                        },
+                    ],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名"), {
+            target: { value: "张" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByText("共 2 条结果，第 1 / 2 页")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact&page=2",
+                "GET",
+                true,
+            );
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("共 2 条结果，第 2 / 2 页")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
+        });
+    });
 });

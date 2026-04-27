@@ -56,6 +56,29 @@ export interface TimelineGroup {
     papers: TimelinePaper[];
 }
 
+export interface TimelineDirectionSummary {
+    direction: string;
+    paper_count: number;
+}
+
+export interface TimelineDirectionsResponse {
+    directions: TimelineDirectionSummary[];
+    default_direction: string;
+    page_size_default: number;
+    page_size_max: number;
+}
+
+export interface TimelinePapersResponse {
+    direction: string;
+    page: number;
+    page_size: number;
+    total_papers: number;
+    total_pages: number;
+    has_previous: boolean;
+    has_next: boolean;
+    papers: TimelinePaper[];
+}
+
 export interface BoundMentorProfile {
     id: number;
     Chinese_name: string;

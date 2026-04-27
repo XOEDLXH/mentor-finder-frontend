@@ -5,15 +5,32 @@ const BACKEND_BASE_URL = process.env.NODE_ENV !== "production"
     : process.env.BACKEND_URL || "http://backend.MentorFinder.secoder.local"; // 修改默认值为内部域名
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    const searchParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                searchParams.append(key, item);
+            }
+            continue;
+        }
+
+        if (typeof value === "string") {
+            searchParams.append(key, value);
+        }
+    }
+
+    const query = searchParams.toString();
+    const targetUrl = `${BACKEND_BASE_URL}/timeline/${query === "" ? "" : `?${query}`}`;
+
     // 加上这一行调试信息，在 Secoder 日志里就能看到它到底在请求谁
-    console.log(`[Proxy] Requesting backend: ${BACKEND_BASE_URL}/timeline/`);
+    console.log(`[Proxy] Requesting backend: ${targetUrl}`);
     if (req.method !== "GET") {
         res.setHeader("Allow", "GET");
         return res.status(405).json({ code: -3, info: "Method Not Allowed" });
     }
 
     try {
-        const response = await fetch(`${BACKEND_BASE_URL}/timeline/`, {
+        const response = await fetch(targetUrl, {
             method: "GET",
             headers: {
                 Accept: "application/json",
