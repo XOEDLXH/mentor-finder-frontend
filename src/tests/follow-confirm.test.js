@@ -61,14 +61,14 @@ describe("follow confirmation", () => {
 
     it("does not unfollow from follows page when confirmation is canceled", async () => {
         request.mockResolvedValue({ mentors: [mentor] });
-        jest.spyOn(window, "confirm").mockReturnValue(false);
+        jest.spyOn(globalThis, "confirm").mockReturnValue(false);
 
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
 
-        expect(window.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
+        expect(globalThis.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
         expect(request).not.toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
     });
 
@@ -80,7 +80,7 @@ describe("follow confirmation", () => {
 
             return { mentors: [mentor] };
         });
-        jest.spyOn(window, "confirm").mockReturnValue(true);
+        jest.spyOn(globalThis, "confirm").mockReturnValue(true);
 
         renderWithStore(<FollowsPage />);
 
@@ -104,7 +104,7 @@ describe("follow confirmation", () => {
 
             return {};
         });
-        jest.spyOn(window, "confirm").mockReturnValue(false);
+        jest.spyOn(globalThis, "confirm").mockReturnValue(false);
 
         renderWithStore(<MentorDetailPage />);
 
@@ -114,7 +114,7 @@ describe("follow confirmation", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
 
-        expect(window.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
+        expect(globalThis.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
         expect(request).not.toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
     });
 
@@ -134,7 +134,7 @@ describe("follow confirmation", () => {
 
             return {};
         });
-        jest.spyOn(window, "confirm").mockReturnValue(true);
+        jest.spyOn(globalThis, "confirm").mockReturnValue(true);
 
         renderWithStore(<MentorDetailPage />);
 
