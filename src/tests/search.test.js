@@ -168,7 +168,7 @@ describe("SearchScreen", () => {
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
-        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(4);
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
         request.mockImplementation(async (url) => {
@@ -205,10 +205,8 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
         });
 
-        const collapsedProfileText = `导师画像：${longProfile.slice(0, 50)}...`;
-        expect(screen.getByText(collapsedProfileText)).toBeInTheDocument();
-        expect(screen.getByText("论文10")).toBeInTheDocument();
-        expect(screen.queryByText("论文11")).not.toBeInTheDocument();
+        expect(screen.queryByText(`导师画像：${longProfile}`)).not.toBeInTheDocument();
+        expect(screen.queryByText("论文12")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "查看更多" })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
@@ -235,6 +233,7 @@ describe("SearchScreen", () => {
                         publish_date: "2024-06-15",
                         author_names: "李四,张三",
                         subjects: "cs.CL",
+                        arxiv_id: "2401.00001",
                         arxiv_url: "https://arxiv.org/abs/2401.00001",
                         mentorNames: ["李四", "张三"],
                     }],
@@ -269,7 +268,8 @@ describe("SearchScreen", () => {
         });
 
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "大语言模型在问答系统中的应用" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
+        expect(screen.getByText("arXiv：")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "2401.00001" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
