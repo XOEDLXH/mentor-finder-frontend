@@ -12,6 +12,9 @@ type SearchMatchMode = "exact" | "fuzzy";
 type SearchPaperSortMode = "default" | "early" | "late";
 type MentorResultFilter = "all" | "mine" | "public";
 
+const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
+const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量，超过后显示“查看更多”按钮展开完整列表
+
 interface PrivateMentorsResponse {
     mentors?: PrivateMentorResult[];
 }
@@ -61,6 +64,7 @@ const SearchScreen = () => {
     const [adminMessage, setAdminMessage] = useState("");
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
+    const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
 
     const [mentorEditingId, setMentorEditingId] = useState<number | undefined>(undefined);
     const [mentorDraft, setMentorDraft] = useState({
@@ -83,6 +87,7 @@ const SearchScreen = () => {
         setErrorMessage("");
         setMentors([]);
         setPapers([]);
+        setExpandedMentorIds(new Set());
         setCurrentPage(1);
         setTotalResults(0);
         setTotalPages(0);
@@ -300,6 +305,19 @@ const SearchScreen = () => {
         if (event.key === "Enter") {
             void search();
         }
+    };
+
+    const toggleMentorExpand = (mentorId: number) => {
+        setExpandedMentorIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(mentorId)) {
+                next.delete(mentorId);
+            }
+            else {
+                next.add(mentorId);
+            }
+            return next;
+        });
     };
 
     const saveMentor = async () => {
@@ -718,7 +736,18 @@ const SearchScreen = () => {
                         </div>
                     )}
 
-                    {visibleMentorResults.map((mentor) => (
+                    {visibleMentorResults.map((mentor) => {
+                        const isExpanded = expandedMentorIds.has(mentor.id);
+                        const profileText = mentor.profile || "暂无导师画像";
+                        const profilePreview = profileText.length > PROFILE_PREVIEW_LENGTH
+                            ? `${profileText.slice(0, PROFILE_PREVIEW_LENGTH)}...`
+                            : profileText;
+                        const visiblePaperTitles = isExpanded
+                            ? mentor.paperTitles
+                            : mentor.paperTitles.slice(0, PAPER_TITLES_PREVIEW_COUNT);
+                        const hasMoreDetails = profileText.length > PROFILE_PREVIEW_LENGTH || mentor.paperTitles.length > PAPER_TITLES_PREVIEW_COUNT;
+
+                        return (
                         <div
                             key={mentor.id}
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
@@ -736,16 +765,24 @@ const SearchScreen = () => {
                                 研究方向：{mentor.research_direction || "暂无研究方向"}
                             </p>
                             <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
-                            <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
+                            <p style={{ margin: "4px 0" }}>导师画像：{isExpanded ? profileText : profilePreview}</p>
                             <button onClick={() => router.push(`/mentors/${mentor.id}`)}>
                                 查看导师主页
                             </button>
                             <p style={{ margin: "8px 0 4px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 20 }}>
-                                {mentor.paperTitles.map((title) => (
+                                {visiblePaperTitles.map((title) => (
                                     <li key={title}>{title}</li>
                                 ))}
                             </ul>
+                            {hasMoreDetails && (
+                                <button
+                                    onClick={() => toggleMentorExpand(mentor.id)}
+                                    style={{ marginTop: 8 }}
+                                >
+                                    {isExpanded ? "收起" : "查看更多"}
+                                </button>
+                            )}
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditMentor(mentor)} disabled={adminSaving}>修改导师</button>
@@ -753,7 +790,8 @@ const SearchScreen = () => {
                                 </div>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

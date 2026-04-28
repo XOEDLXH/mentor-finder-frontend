@@ -167,6 +167,59 @@ describe("SearchScreen", () => {
         expect(screen.getByText("大语言模型在问答系统中的应用")).toBeInTheDocument();
     });
 
+    it("shows collapsed mentor info by default and expands on demand", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(4);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
+        });
+
+        const collapsedProfileText = `导师画像：${longProfile.slice(0, 50)}...`;
+        expect(screen.getByText(collapsedProfileText)).toBeInTheDocument();
+        expect(screen.getByText("论文10")).toBeInTheDocument();
+        expect(screen.queryByText("论文11")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "查看更多" })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+
+        await waitFor(() => {
+            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText("论文12")).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
+        });
+    });
+
     it("renders paper results using backend response fields", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
