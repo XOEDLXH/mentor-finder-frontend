@@ -153,6 +153,10 @@ const SearchScreen = () => {
             publish_date: "",
             author_names: "",
         });
+
+        if (keyword.trim() === "") {
+            void search("", undefined, 1, nextMode);
+        }
     };
 
     const formatAdminError = (err: unknown) => {
@@ -215,14 +219,13 @@ const SearchScreen = () => {
         overrideKeyword?: string,
         overridePaperSortMode?: SearchPaperSortMode,
         overridePage?: number,
+        overrideMode?: SearchMode,
     ) => {
         const trimmedKeyword = (overrideKeyword ?? keyword).trim();
         const resolvedPaperSortMode = overridePaperSortMode ?? paperSortMode;
         const requestedPage = Math.max(1, overridePage ?? 1);
+        const resolvedMode = overrideMode ?? mode;
         const pageQuery = requestedPage > 1 ? `&page=${requestedPage}` : "";
-        if (trimmedKeyword === "") {
-            return;
-        }
 
         setLoading(true);
         setHasSearched(true);
@@ -231,7 +234,7 @@ const SearchScreen = () => {
         try {
             const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${matchMode}`;
 
-            if (mode === "mentor") {
+            if (resolvedMode === "mentor") {
                 const res = await request<SearchMentorsResponse>(
                     `/api/search/mentors?${query}${pageQuery}`,
                     "GET",
@@ -263,6 +266,10 @@ const SearchScreen = () => {
         }
     };
 
+    useEffect(() => {
+        void search("", undefined, 1, "mentor");
+    }, []);
+
     const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
         if (paperSortMode === nextSortMode) {
             return;
@@ -270,7 +277,7 @@ const SearchScreen = () => {
 
         setPaperSortMode(nextSortMode);
 
-        if (mode === "paper" && hasSearched && keyword.trim() !== "") {
+        if (mode === "paper" && hasSearched) {
             void search(undefined, nextSortMode, 1);
         }
     };
@@ -331,7 +338,7 @@ const SearchScreen = () => {
                 profile: "",
             });
 
-            if (mode === "mentor" && keyword.trim() !== "") {
+            if (mode === "mentor" && hasSearched) {
                 await search();
             }
         }
@@ -355,7 +362,7 @@ const SearchScreen = () => {
             await request(`/api/dataset/mentors/${mentorId}`, "DELETE", true);
             setAdminMessage("导师删除成功");
 
-            if (mode === "mentor" && keyword.trim() !== "") {
+            if (mode === "mentor" && hasSearched) {
                 await search();
             }
         }
@@ -400,7 +407,7 @@ const SearchScreen = () => {
                 author_names: "",
             });
 
-            if (mode === "paper" && keyword.trim() !== "") {
+            if (mode === "paper" && hasSearched) {
                 await search();
             }
         }
@@ -424,7 +431,7 @@ const SearchScreen = () => {
             await request(`/api/dataset/papers/${paperId}`, "DELETE", true);
             setAdminMessage("论文删除成功");
 
-            if (mode === "paper" && keyword.trim() !== "") {
+            if (mode === "paper" && hasSearched) {
                 await search();
             }
         }
@@ -529,7 +536,7 @@ const SearchScreen = () => {
                 <input
                     type="text"
                     value={keyword}
-                    placeholder={mode === "mentor" ? "输入导师姓名" : "输入论文题目、研究方向或导师姓名"}
+                    placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
                     onChange={(e) => setKeyword(e.target.value)}
                     onKeyDown={handleEnter}
                     style={{ flex: 1 }}
@@ -757,7 +764,13 @@ const SearchScreen = () => {
                             key={paper.id}
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
+                            <h3 style={{ margin: "0 0 8px" }}>
+                                {paper.arxiv_url ? (
+                                    <a href={paper.arxiv_url} target="_blank" rel="noopener noreferrer">
+                                        {paper.title}
+                                    </a>
+                                ) : paper.title}
+                            </h3>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>

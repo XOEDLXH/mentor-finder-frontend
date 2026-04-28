@@ -48,6 +48,7 @@ export interface SearchPaperResult {
     publish_date?: string;
     author_names: string;
     subjects: string;
+    arxiv_url?: string;
     mentorNames: string[];
     publishDate?: string;
 }
