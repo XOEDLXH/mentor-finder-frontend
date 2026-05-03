@@ -419,9 +419,10 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("link", { name: "2401.00001" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
-        expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "李四" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "张三" })).toBeInTheDocument();
         expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
-        expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
+        // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
     });
 
     it("filters mentor search results by mine and public categories", async () => {
@@ -481,6 +482,72 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
+        });
+    });
+
+    it("clicking a mentor author in paper result triggers exact mentor search", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 9,
+                        title: "作者可点击测试",
+                        abstract: "",
+                        publish_date: "2025-12-12",
+                        author_names: "李四,赵云",
+                        subjects: "cs.AI",
+                        arxiv_id: "2501.00009",
+                        arxiv_url: "https://arxiv.org/abs/2501.00009",
+                        mentorNames: ["李四"],
+                    }],
+                };
+            }
+
+            if (String(url).startsWith("/api/search/mentors?keyword=%E6%9D%8E%E5%9B%9B")) {
+                return {
+                    mentors: [{
+                        id: 5,
+                        Chinese_name: "李四",
+                        research_direction: "AI",
+                        profile: "",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        // 点击显示的作者李四（数据库中存在的导师）
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "作者可点击测试" })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "李四" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact",
+                "GET",
+                true,
+            );
         });
     });
 

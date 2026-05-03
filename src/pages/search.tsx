@@ -446,6 +446,13 @@ const SearchScreen = () => {
         });
     };
 
+    const searchMentorByName = (mentorName: string) => {
+        setMode("mentor");
+        setMatchMode("exact");
+        setKeyword(mentorName);
+        void search(mentorName, undefined, 1, "mentor", "exact");
+    };
+
     const toggleMentorExpand = (mentorId: number) => {
         setExpandedMentorIds((prev) => {
             const next = new Set(prev);
@@ -971,7 +978,50 @@ const SearchScreen = () => {
                             </p>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
-                            <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
+                            <p style={{ margin: "4px 0" }}>
+                                作者：{
+                                    (() => {
+                                        const names = (paper.author_names || "").split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+                                        if (names.length === 0) {
+                                            return "未知";
+                                        }
+
+                                        return names.map((name, idx) => {
+                                            const isMentor = Array.isArray(paper.mentorNames) && paper.mentorNames.includes(name);
+                                            const separator = idx === names.length - 1 ? "" : "、";
+                                            if (isMentor) {
+                                                return (
+                                                    <span key={name}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => searchMentorByName(name)}
+                                                            style={{
+                                                                border: "none",
+                                                                background: "transparent",
+                                                                padding: 0,
+                                                                color: "#0070f3",
+                                                                textDecoration: "underline",
+                                                                cursor: "pointer",
+                                                                font: "inherit",
+                                                            }}
+                                                        >
+                                                            {name}
+                                                        </button>
+                                                        {separator}
+                                                    </span>
+                                                );
+                                            }
+
+                                            return (
+                                                <span key={name}>
+                                                    {name}
+                                                    {separator}
+                                                </span>
+                                            );
+                                        });
+                                    })()
+                                }
+                            </p>
                             <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
