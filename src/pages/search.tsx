@@ -432,6 +432,20 @@ const SearchScreen = () => {
         }
     };
 
+    const searchPaperByTitle = (paperTitle: string) => {
+        setMode("paper");
+        setMatchMode("exact");
+        setKeyword(paperTitle);
+        setPaperSortMode("default");
+        void search({
+            keyword: paperTitle,
+            sortMode: "default",
+            page: 1,
+            mode: "paper",
+            searchMode: "exact",
+        });
+    };
+
     const toggleMentorExpand = (mentorId: number) => {
         setExpandedMentorIds((prev) => {
             const next = new Set(prev);
@@ -900,7 +914,23 @@ const SearchScreen = () => {
                             <p style={{ margin: "8px 0 4px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 20 }}>
                                 {visiblePaperTitles.map((title) => (
-                                    <li key={title}>{title}</li>
+                                    <li key={title}>
+                                        <button
+                                            type="button"
+                                            onClick={() => searchPaperByTitle(title)}
+                                            style={{
+                                                border: "none",
+                                                background: "transparent",
+                                                padding: 0,
+                                                color: "#0070f3",
+                                                textDecoration: "underline",
+                                                cursor: "pointer",
+                                                font: "inherit",
+                                            }}
+                                        >
+                                            {title}
+                                        </button>
+                                    </li>
                                 ))}
                             </ul>
                             {hasMoreDetails && (

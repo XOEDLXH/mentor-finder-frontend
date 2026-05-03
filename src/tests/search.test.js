@@ -245,8 +245,73 @@ describe("SearchScreen", () => {
         expect(screen.getByText("研究方向：机器学习")).toBeInTheDocument();
         expect(screen.getByText("邮箱：zhangsan@example.com")).toBeInTheDocument();
         expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
-        expect(screen.getByText("机器学习方法研究")).toBeInTheDocument();
-        expect(screen.getByText("大语言模型在问答系统中的应用")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+    });
+
+    it("searches papers exactly when clicking mentor related paper title", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=exact") {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习与数据挖掘。",
+                        paperTitles: ["机器学习方法研究"],
+                    }],
+                };
+            }
+
+            if (url === "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E6%96%B9%E6%B3%95%E7%A0%94%E7%A9%B6&search_mode=exact&sort_mode=default") {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "机器学习方法研究",
+                        abstract: "本文讨论常见机器学习方法及其应用场景。",
+                        publish_date: "2024-05-01",
+                        author_names: "张三",
+                        subjects: "cs.LG, cs.AI",
+                        arxiv_id: "2402.00002",
+                        arxiv_url: "https://arxiv.org/abs/2402.00002",
+                        mentorNames: ["张三"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "机器学习方法研究" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E6%96%B9%E6%B3%95%E7%A0%94%E7%A9%B6&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        expect(screen.getByRole("heading", { name: "机器学习方法研究" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "2402.00002" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
