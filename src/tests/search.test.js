@@ -765,4 +765,17 @@ describe("SearchScreen", () => {
             { shallow: true },
         );
     });
+
+    it("clears keyword when clicking clear button", async () => {
+        renderWithStore();
+        await waitForMineRequest();
+
+        const input = screen.getByPlaceholderText("输入导师姓名或研究方向");
+        fireEvent.change(input, { target: { value: "张三" } });
+        expect(input).toHaveValue("张三");
+
+        fireEvent.click(screen.getByRole("button", { name: "清空" }));
+
+        expect(input).toHaveValue("");
+    });
 });

@@ -432,6 +432,10 @@ const SearchScreen = () => {
         }
     };
 
+    const clearKeyword = () => {
+        setKeyword("");
+    };
+
     const searchPaperByTitle = (paperTitle: string) => {
         setMode("paper");
         setMatchMode("exact");
@@ -450,7 +454,12 @@ const SearchScreen = () => {
         setMode("mentor");
         setMatchMode("exact");
         setKeyword(mentorName);
-        void search(mentorName, undefined, 1, "mentor", "exact");
+        void search({
+            keyword: mentorName,
+            page: 1,
+            mode: "mentor",
+            searchMode: "exact",
+        });
     };
 
     const toggleMentorExpand = (mentorId: number) => {
@@ -705,10 +714,10 @@ const SearchScreen = () => {
                     onKeyDown={handleEnter}
                     style={{ flex: 1 }}
                 />
-                <button
-                    onClick={() => void search({ page: 1, shouldSyncUrl: true })}
-                    disabled={keyword.trim() === "" || loading}
-                >
+                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading}>
+                    清空
+                </button>
+                <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
                     {loading ? "搜索中..." : "搜索"}
                 </button>
             </div>
