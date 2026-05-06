@@ -66,6 +66,7 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "张三更多操作" }));
         fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
 
         expect(globalThis.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
@@ -85,6 +86,7 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "张三更多操作" }));
         fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
 
         await waitFor(() => {
