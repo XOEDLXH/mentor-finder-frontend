@@ -13,7 +13,6 @@ const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const auth = useSelector((state: RootState) => state.auth);
     const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
-    const isFollowsPage = router.pathname === "/follows";
 
     useEffect(() => {
         dispatch(hydrateAuth(loadAuthFromStorage()));
@@ -24,7 +23,7 @@ const App = ({ Component, pageProps }: AppProps) => {
             <Head>
                 <title>找导师</title>
             </Head>
-            <div className={isFollowsPage ? "appShell appShellFollows" : "appShell"}>
+            <div className={isAuthPage ? "appShell" : "appShell appShellWithAuth"}>
                 <Component {...pageProps} />
                 {!isAuthPage && (auth.token ? (
                     <div className="authControls">
@@ -62,12 +61,12 @@ const App = ({ Component, pageProps }: AppProps) => {
                         margin: 0;
                     }
 
-                    .appShellFollows {
+                    .appShellWithAuth {
                         position: relative;
                         padding-top: 92px;
                     }
 
-                    .appShellFollows .authControls {
+                    .appShellWithAuth .authControls {
                         position: absolute;
                         top: 32px;
                         right: 12px;
@@ -75,13 +74,13 @@ const App = ({ Component, pageProps }: AppProps) => {
                         justify-content: flex-end;
                     }
 
-                    .appShellFollows .authControls button:last-child {
+                    .appShellWithAuth .authControls button:last-child {
                         flex-basis: 100%;
                         margin-left: auto;
                     }
 
                     @media (max-width: 720px) {
-                        .appShellFollows {
+                        .appShellWithAuth {
                             padding-top: 116px;
                         }
                     }
