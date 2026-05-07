@@ -107,25 +107,24 @@ const App = ({ Component, pageProps }: AppProps) => {
                         justify-content: center;
                         width: 42px;
                         height: 42px;
-                        border: 1px solid #bbb;
+                        border: 2px solid rgba(255, 255, 255, 0.95);
                         border-radius: 50%;
-                        background: #f7f7f7;
+                        background:
+                            linear-gradient(135deg, transparent 0 18%, #5ba8e6 18% 30%, transparent 30% 100%),
+                            linear-gradient(45deg, #f7fbff 0 25%, transparent 25% 50%, #76b9ec 50% 74%, transparent 74% 100%),
+                            #d9eefc;
+                        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
                         cursor: pointer;
                     }
 
                     .avatarButton:hover,
                     .avatarButton:focus {
-                        background: #eee;
+                        border-color: #5ba8e6;
                         outline: none;
                     }
 
                     .avatarIcon {
-                        width: 22px;
-                        height: 22px;
-                        border-radius: 50%;
-                        background:
-                            radial-gradient(circle at 50% 34%, #777 0 30%, transparent 32%),
-                            radial-gradient(circle at 50% 110%, #777 0 42%, transparent 44%);
+                        display: none;
                     }
 
                     .userMenuPanel {
