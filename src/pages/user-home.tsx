@@ -1,3 +1,3 @@
-const UserHomePage = () => null;
+const UserHomePage = () => <></>;
 
 export default UserHomePage;
