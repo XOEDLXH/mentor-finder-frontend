@@ -80,7 +80,7 @@ const FollowsPage = () => {
 
     return (
         <div className="followsPage">
-            <button className="backButton" onClick={() => router.push("/")}>主页</button>
+            <button className="backButton" onClick={() => router.push("/")}>首页</button>
             <h2 className="pageTitle">我的关注</h2>
 
             <div className="content">
@@ -165,7 +165,6 @@ const FollowsPage = () => {
                     flex-direction: column;
                     gap: 12px;
                     max-width: 1040px;
-                    margin-top: -60px;
                 }
 
                 .backButton {
@@ -300,10 +299,6 @@ const FollowsPage = () => {
                 }
 
                 @media (max-width: 720px) {
-                    .followsPage {
-                        margin-top: -84px;
-                    }
-
                     .content {
                         grid-template-columns: 1fr;
                     }

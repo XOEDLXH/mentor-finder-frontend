@@ -3,7 +3,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import store, { RootState } from "../redux/store";
 import { hydrateAuth, loadAuthFromStorage, resetAuth } from "../redux/auth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Provider, useSelector, useDispatch } from "react-redux";
 
@@ -13,76 +13,121 @@ const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const auth = useSelector((state: RootState) => state.auth);
     const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
+    const shouldShowUserMenu = router.pathname !== "/" && !isAuthPage && auth.token !== "";
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
     useEffect(() => {
         dispatch(hydrateAuth(loadAuthFromStorage()));
     }, [dispatch]);
+
+    useEffect(() => {
+        setIsUserMenuOpen(false);
+    }, [router.pathname]);
 
     return (
         <>
             <Head>
                 <title>找导师</title>
             </Head>
-            <div className={isAuthPage ? "appShell" : "appShell appShellWithAuth"}>
+            <div className={shouldShowUserMenu ? "appShell appShellWithUserMenu" : "appShell"}>
                 <Component {...pageProps} />
-                {!isAuthPage && (auth.token ? (
-                    <div className="authControls">
-                        <p className="authName">用户名：{auth.name}</p>
-                        {auth.role === "admin" && (
-                            <button onClick={() => router.push("/admin-users")}>
-                                进入用户管理
-                            </button>
-                        )}
-                        <button onClick={() => dispatch(resetAuth())}>
-                            登出
+                {shouldShowUserMenu && (
+                    <div className="userMenu">
+                        <button
+                            className="avatarButton"
+                            type="button"
+                            aria-label="打开用户菜单"
+                            aria-expanded={isUserMenuOpen}
+                            onClick={() => setIsUserMenuOpen((open) => !open)}
+                        >
+                            <span className="avatarIcon" aria-hidden="true" />
                         </button>
+
+                        {isUserMenuOpen && (
+                            <div className="userMenuPanel">
+                                <p className="userName">用户名：{auth.name}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => void router.push("/user-home")}
+                                >
+                                    个人中心
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        dispatch(resetAuth());
+                                        setIsUserMenuOpen(false);
+                                    }}
+                                >
+                                    退出登录
+                                </button>
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="authControls">
-                        <button onClick={() => router.push("/login")}>登录</button>
-                        <button onClick={() => router.push("/register")}>注册</button>
-                    </div>
-                ))}
+                )}
 
                 <style jsx>{`
                     .appShell {
                         padding: 12px;
                     }
 
-                    .authControls {
-                        display: flex;
-                        flex-direction: row;
-                        gap: 8px;
-                        align-items: center;
-                        flex-wrap: wrap;
-                    }
-
-                    .authName {
-                        margin: 0;
-                    }
-
-                    .appShellWithAuth {
+                    .appShellWithUserMenu {
                         position: relative;
-                        padding-top: 92px;
+                        padding-top: 72px;
                     }
 
-                    .appShellWithAuth .authControls {
+                    .userMenu {
                         position: absolute;
-                        top: 32px;
+                        top: 24px;
                         right: 12px;
-                        max-width: 260px;
-                        justify-content: flex-end;
+                        z-index: 10;
                     }
 
-                    .appShellWithAuth .authControls button:last-child {
-                        flex-basis: 100%;
-                        margin-left: auto;
+                    .avatarButton {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 42px;
+                        height: 42px;
+                        border: 1px solid #bbb;
+                        border-radius: 50%;
+                        background: #f7f7f7;
+                        cursor: pointer;
                     }
 
-                    @media (max-width: 720px) {
-                        .appShellWithAuth {
-                            padding-top: 116px;
-                        }
+                    .avatarButton:hover,
+                    .avatarButton:focus {
+                        background: #eee;
+                        outline: none;
+                    }
+
+                    .avatarIcon {
+                        width: 22px;
+                        height: 22px;
+                        border-radius: 50%;
+                        background:
+                            radial-gradient(circle at 50% 34%, #777 0 30%, transparent 32%),
+                            radial-gradient(circle at 50% 110%, #777 0 42%, transparent 44%);
+                    }
+
+                    .userMenuPanel {
+                        position: absolute;
+                        top: 50px;
+                        right: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                        min-width: 150px;
+                        padding: 10px;
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        background: #fff;
+                        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+                    }
+
+                    .userName {
+                        margin: 0 0 2px;
+                        white-space: nowrap;
                     }
                 `}</style>
             </div>
