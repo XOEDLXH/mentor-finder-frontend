@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
+import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
 
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
@@ -58,6 +59,7 @@ const RegisterScreen = () => {
 
     const router = useRouter();
     const dispatch = useDispatch();
+    const redirectTarget = resolveRedirectTarget(router.query.redirect);
 
     const isPasswordStrong = (passwordToCheck: string) => {
         if (passwordToCheck.length < 8) {
@@ -140,7 +142,7 @@ const RegisterScreen = () => {
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
                     dispatch(setName(normalizedUserName));
                     alert(REGISTER_SUCCESS_PREFIX + normalizedUserName);
-                    router.push("/");
+                    router.push(redirectTarget);
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
@@ -215,7 +217,7 @@ const RegisterScreen = () => {
                 >
                     {submitting ? "提交中..." : "注册"}
                 </button>
-                <button onClick={() => router.push("/login")} disabled={submitting}>
+                <button onClick={() => router.push(buildRedirectHref("/login", router.query.redirect))} disabled={submitting}>
                     前往登录页面
                 </button>
                 <button onClick={() => router.push("/")} disabled={submitting}>

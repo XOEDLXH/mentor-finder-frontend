@@ -67,14 +67,17 @@ describe("auth reducer", () => {
 describe("LoginScreen", () => {
     const mockPush = jest.fn();
     const mockDispatch = jest.fn();
+    const mockRouter = {
+        push: mockPush,
+        query: {},
+    };
 
     beforeEach(() => {
         mockPush.mockReset();
         mockDispatch.mockReset();
+        mockRouter.query = {};
 
-        useRouter.mockReturnValue({
-            push: mockPush,
-        });
+        useRouter.mockReturnValue(mockRouter);
         useDispatch.mockReturnValue(mockDispatch);
 
         globalThis.fetch = jest.fn();
@@ -116,6 +119,44 @@ describe("LoginScreen", () => {
             expect(mockDispatch).toHaveBeenCalledWith(setRole("admin"));
             expect(mockDispatch).toHaveBeenCalledWith(setName("alice"));
             expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_SUCCESS_PREFIX + "alice");
+            expect(mockPush).toHaveBeenCalledWith("/");
+        });
+    });
+
+    it("redirects to the requested relative path after successful login", async () => {
+        mockRouter.query = {
+            redirect: "/profile",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/profile");
+        });
+    });
+
+    it("falls back to home after successful login when redirect is unsafe", async () => {
+        mockRouter.query = {
+            redirect: "https://evil.example.com",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+
+        await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/");
         });
     });
@@ -202,6 +243,18 @@ describe("LoginScreen", () => {
         expect(mockPush).toHaveBeenCalledWith("/register");
     });
 
+    it("preserves redirect when navigating from login to register", () => {
+        mockRouter.query = {
+            redirect: "/follows",
+        };
+
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "前往注册页面" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/register?redirect=%2Ffollows");
+    });
+
     it("navigates to home page when clicking back-home button", () => {
         render(<LoginScreen />);
 
@@ -214,14 +267,17 @@ describe("LoginScreen", () => {
 describe("RegisterScreen", () => {
     const mockPush = jest.fn();
     const mockDispatch = jest.fn();
+    const mockRouter = {
+        push: mockPush,
+        query: {},
+    };
 
     beforeEach(() => {
         mockPush.mockReset();
         mockDispatch.mockReset();
+        mockRouter.query = {};
 
-        useRouter.mockReturnValue({
-            push: mockPush,
-        });
+        useRouter.mockReturnValue(mockRouter);
         useDispatch.mockReturnValue(mockDispatch);
 
         globalThis.fetch = jest.fn();
@@ -322,6 +378,48 @@ describe("RegisterScreen", () => {
         });
     });
 
+    it("redirects to the requested relative path after successful register", async () => {
+        mockRouter.query = {
+            redirect: "/follows",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/follows");
+        });
+    });
+
+    it("falls back to home after successful register when redirect is unsafe", async () => {
+        mockRouter.query = {
+            redirect: "//evil.example.com",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/");
+        });
+    });
+
     it("does not crash when register response body is empty", async () => {
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue(""),
@@ -370,6 +468,18 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "前往登录页面" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+
+    it("preserves redirect when navigating from register to login", () => {
+        mockRouter.query = {
+            redirect: "/profile",
+        };
+
+        render(<RegisterScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "前往登录页面" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fprofile");
     });
 
     it("navigates to home page when clicking back-home button", () => {

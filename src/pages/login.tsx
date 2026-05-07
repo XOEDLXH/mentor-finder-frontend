@@ -3,6 +3,7 @@ import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
+import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
 
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
@@ -40,6 +41,7 @@ const LoginScreen = () => {
 
     const router = useRouter();
     const dispatch = useDispatch();
+    const redirectTarget = resolveRedirectTarget(router.query.redirect);
 
     const login = () => {
         setSubmitting(true);
@@ -62,7 +64,7 @@ const LoginScreen = () => {
                     dispatch(setName(userName));
                     alert(LOGIN_SUCCESS_PREFIX + userName);
 
-                    router.push("/");
+                    router.push(redirectTarget);
                 }
                 else {
                     alert(typeof res.info === "string" && res.info !== "" ? res.info : LOGIN_FAILED);
@@ -91,7 +93,7 @@ const LoginScreen = () => {
                 <button onClick={login} disabled={submitting || userName === "" || password === ""}>
                     {submitting ? "提交中..." : "登录"}
                 </button>
-                <button onClick={() => router.push("/register")} disabled={submitting}>
+                <button onClick={() => router.push(buildRedirectHref("/register", router.query.redirect))} disabled={submitting}>
                     前往注册页面
                 </button>
                 <button onClick={() => router.push("/")} disabled={submitting}>

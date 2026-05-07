@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { resetAuth } from "../redux/auth";
 import { RootState } from "../redux/store";
+import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
 
 interface NavItem {
     label: string;
@@ -50,18 +51,6 @@ const NAV_ITEMS: NavItem[] = [
     },
 ];
 
-const isSafeRelativePath = (value: string) => {
-    return value.startsWith("/") && !value.startsWith("//");
-};
-
-const buildRedirectHref = (basePath: string, redirectPath: string) => {
-    if (!isSafeRelativePath(redirectPath)) {
-        return basePath;
-    }
-
-    return `${basePath}?redirect=${encodeURIComponent(redirectPath)}`;
-};
-
 const TopNav = () => {
     const router = useRouter();
     const dispatch = useDispatch();
@@ -107,7 +96,7 @@ const TopNav = () => {
     };
 
     const gotoAuthPage = (basePath: "/login" | "/register") => {
-        const nextHref = isSafeRelativePath(currentRedirect)
+        const nextHref = isSafeRelativeRedirect(currentRedirect)
             ? buildRedirectHref(basePath, currentRedirect)
             : basePath;
 
