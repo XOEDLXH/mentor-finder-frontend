@@ -1,9 +1,35 @@
+:root {
+  --surface-page: #f6f8fa;
+  --surface-panel: #ffffff;
+  --surface-subtle: #eef2f7;
+  --border-soft: #d0d7de;
+  --border-strong: #8c959f;
+  --ink-strong: #1f2328;
+  --ink-muted: #59636e;
+  --accent: #2f81f7;
+  --accent-strong: #1f6feb;
+  --danger: #cf222e;
+  --nav-bg: #24292e;
+  --nav-surface: #30363d;
+  --nav-ink: #f0f6fc;
+  --nav-muted: #c9d1d9;
+  --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
 html,
 body {
   padding: 0;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(47, 129, 247, 0.08), transparent 28%),
+    linear-gradient(180deg, #eef2f7 0, #f6f8fa 180px, #f6f8fa 100%);
+  color: var(--ink-strong);
+  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  min-height: 100vh;
 }
 
 a {
@@ -11,6 +37,365 @@ a {
   text-decoration: none;
 }
 
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--surface-panel);
+  color: var(--ink-strong);
+  padding: 10px 12px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button:disabled,
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand) {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--surface-panel);
+  color: var(--ink-strong);
+  padding: 10px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):hover:not(:disabled) {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+*:focus-visible {
+  outline: 3px solid rgba(47, 129, 247, 0.3);
+  outline-offset: 2px;
+}
+
 * {
   box-sizing: border-box;
+}
+
+.appChrome {
+  min-height: 100vh;
+}
+
+.appMain {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 110px 0 48px;
+}
+
+.topNav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1000;
+  background: rgba(36, 41, 46, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.topNavInner {
+  width: min(1280px, calc(100% - 32px));
+  min-height: 72px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.topNavLeft,
+.topNavRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topNavLeft {
+  min-width: 0;
+}
+
+.topNavBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  background: transparent;
+  color: var(--nav-ink);
+  padding: 0;
+}
+
+.topNavBrandBadge {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #58a6ff, #1f6feb);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.topNavBrandText {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.topNavLinks,
+.topNavDesktopAuth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topNavLink,
+.topNavAuthLink,
+.topNavAuthPrimary,
+.topNavAvatarButton,
+.topNavMenuItem,
+.topNavMobileToggle,
+.topNavMobileLink {
+  border: none;
+  background: transparent;
+}
+
+.topNavLink,
+.topNavAuthLink {
+  color: var(--nav-muted);
+}
+
+.topNavLink,
+.topNavAuthLink,
+.topNavAuthPrimary {
+  padding: 9px 12px;
+  border-radius: 10px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.topNavLink:hover,
+.topNavLinkActive,
+.topNavAuthLink:hover {
+  background: rgba(240, 246, 252, 0.12);
+  color: var(--nav-ink);
+}
+
+.topNavAuthPrimary {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--nav-ink);
+}
+
+.topNavAuthPrimary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.topNavSearch {
+  width: 260px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(240, 246, 252, 0.06);
+  color: var(--nav-ink);
+  padding: 10px 14px;
+}
+
+.topNavSearch::placeholder {
+  color: rgba(201, 209, 217, 0.85);
+}
+
+.topNavAvatarArea {
+  position: relative;
+}
+
+.topNavAvatarButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 999px;
+  color: var(--nav-ink);
+  background: rgba(240, 246, 252, 0.08);
+}
+
+.topNavAvatarCircle {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8b949e, #57606a);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.topNavAvatarName {
+  max-width: 132px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topNavAvatarMenu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 200px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: #2d333b;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
+}
+
+.topNavMenuItem {
+  width: 100%;
+  text-align: left;
+  color: var(--nav-ink);
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.topNavMenuItem:hover {
+  background: rgba(240, 246, 252, 0.1);
+}
+
+.topNavMenuItemDanger {
+  color: #ffb4b4;
+}
+
+.topNavMobileToggle {
+  display: none;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border-radius: 10px;
+  color: var(--nav-ink);
+  background: rgba(240, 246, 252, 0.08);
+}
+
+.topNavMobileToggle span {
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.topNavMobilePanel {
+  display: none;
+}
+
+@media (max-width: 920px) {
+  .topNavInner {
+    min-height: 68px;
+  }
+
+  .topNavLinks,
+  .topNavDesktopAuth,
+  .topNavAvatarName {
+    display: none;
+  }
+
+  .topNavSearch {
+    width: min(220px, 44vw);
+  }
+
+  .topNavMobileToggle,
+  .topNavMobilePanel {
+    display: flex;
+  }
+
+  .topNavMobilePanel {
+    width: min(100% - 24px, 420px);
+    margin: 0 auto 14px;
+    padding: 12px;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    background: #2d333b;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
+  }
+
+  .topNavMobileLinks,
+  .topNavMobileAuth,
+  .topNavMobileAccount {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .topNavMobileLink {
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    border-radius: 12px;
+    color: var(--nav-ink);
+    background: rgba(240, 246, 252, 0.06);
+  }
+
+  .topNavMobileLinkActive,
+  .topNavMobileLink:hover {
+    background: rgba(47, 129, 247, 0.2);
+  }
+
+  .topNavMobileLinkPrimary {
+    background: rgba(47, 129, 247, 0.24);
+  }
+
+  .topNavMobileLinkDanger {
+    color: #ffb4b4;
+  }
+
+  .topNavMobileAccountLabel {
+    color: var(--nav-muted);
+    padding: 4px 2px 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .appMain {
+    width: calc(100% - 24px);
+    padding-top: 96px;
+  }
+
+  .topNavInner {
+    width: calc(100% - 24px);
+    gap: 12px;
+  }
+
+  .topNavBrandText {
+    font-size: 16px;
+  }
+
+  .topNavSearch {
+    width: min(180px, 42vw);
+    padding: 9px 12px;
+  }
 }
