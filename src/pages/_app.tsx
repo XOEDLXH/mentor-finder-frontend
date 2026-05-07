@@ -13,7 +13,8 @@ const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const auth = useSelector((state: RootState) => state.auth);
     const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
-    const shouldShowUserMenu = router.pathname !== "/" && !isAuthPage && auth.token !== "";
+    const shouldShowHomeButton = router.pathname !== "/" && !isAuthPage;
+    const shouldShowUserMenu = shouldShowHomeButton && auth.token !== "";
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -29,8 +30,17 @@ const App = ({ Component, pageProps }: AppProps) => {
             <Head>
                 <title>找导师</title>
             </Head>
-            <div className={shouldShowUserMenu ? "appShell appShellWithUserMenu" : "appShell"}>
+            <div className={shouldShowHomeButton ? "appShell appShellWithTopBar" : "appShell"}>
                 <Component {...pageProps} />
+                {shouldShowHomeButton && (
+                    <button
+                        className="homeButton"
+                        type="button"
+                        onClick={() => void router.push("/")}
+                    >
+                        首页
+                    </button>
+                )}
                 {shouldShowUserMenu && (
                     <div className="userMenu">
                         <button
@@ -71,9 +81,17 @@ const App = ({ Component, pageProps }: AppProps) => {
                         padding: 12px;
                     }
 
-                    .appShellWithUserMenu {
+                    .appShellWithTopBar {
                         position: relative;
                         padding-top: 72px;
+                    }
+
+                    .homeButton {
+                        position: absolute;
+                        top: 24px;
+                        left: 12px;
+                        padding: 8px 16px;
+                        font-size: 16px;
                     }
 
                     .userMenu {

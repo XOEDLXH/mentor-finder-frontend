@@ -72,7 +72,6 @@ const FollowsPage = () => {
     if (!isLoggedIn) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 960 }}>
-                <button onClick={() => router.push("/")}>返回主页</button>
                 <p>请先登录后查看关注列表。</p>
             </div>
         );
@@ -80,7 +79,6 @@ const FollowsPage = () => {
 
     return (
         <div className="followsPage">
-            <button className="backButton" onClick={() => router.push("/")}>首页</button>
             <h2 className="pageTitle">我的关注</h2>
 
             <div className="content">
@@ -165,12 +163,6 @@ const FollowsPage = () => {
                     flex-direction: column;
                     gap: 12px;
                     max-width: 1040px;
-                }
-
-                .backButton {
-                    align-self: flex-start;
-                    padding: 8px 16px;
-                    font-size: 16px;
                 }
 
                 .pageTitle {
