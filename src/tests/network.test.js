@@ -1,10 +1,13 @@
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
+import { resetAuth } from "../redux/auth";
 
 const mockGetState = jest.fn();
+const mockDispatch = jest.fn();
 
 jest.mock("../redux/store", () => ({
     __esModule: true,
     default: {
+        dispatch: (action) => mockDispatch(action),
         getState: () => mockGetState(),
     },
 }));
@@ -21,6 +24,7 @@ const createJsonResponse = (status, payload) => ({
 describe("request", () => {
     beforeEach(() => {
         mockGetState.mockReset();
+        mockDispatch.mockReset();
         mockGetState.mockReturnValue({
             auth: {
                 token: "",
@@ -73,6 +77,14 @@ describe("request", () => {
     });
 
     it("throws unauthorized network error for 401 + code=2", async () => {
+        mockGetState.mockReturnValue({
+            auth: {
+                token: "expired-token",
+                name: "alice",
+                role: "student",
+            },
+        });
+
         getFetchMock().mockResolvedValue({
             ...createJsonResponse(401, { code: 2, info: "expired" }),
         });
@@ -84,6 +96,20 @@ describe("request", () => {
             type: NetworkErrorType.UNAUTHORIZED,
             message: "[401] expired",
         });
+        expect(mockDispatch).toHaveBeenCalledWith(resetAuth());
+    });
+
+    it("does not reset auth for public requests that return 401 + code=2", async () => {
+        getFetchMock().mockResolvedValue({
+            ...createJsonResponse(401, { code: 2, info: "bad credentials" }),
+        });
+
+        await expect(request("/api/login", "POST", false, { username: "alice" })).rejects.toMatchObject({
+            type: NetworkErrorType.UNAUTHORIZED,
+            message: "[401] bad credentials",
+        });
+
+        expect(mockDispatch).not.toHaveBeenCalled();
     });
 
     it("throws corrupted response for 200 + non-zero code", async () => {
