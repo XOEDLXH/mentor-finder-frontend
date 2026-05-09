@@ -9,6 +9,7 @@ import { MentorVerificationRequestResult } from "../utils/types";
 
 // 定义个人资料的数据结构
 interface ProfilePayload {
+    personalIntro: string;        // 个人简介
     researchExperience: string;   // 科研经历
     honors: string;               // 所获荣誉
     projectExperience: string;    // 项目经历
@@ -17,6 +18,7 @@ interface ProfilePayload {
 
 // 空资料模板，用于初始化或重置
 const EMPTY_PROFILE: ProfilePayload = {
+    personalIntro: "",
     researchExperience: "",
     honors: "",
     projectExperience: "",
@@ -61,6 +63,7 @@ const ProfileScreen = () => {
                 const raw = res.profile ?? {};
                 // 安全地设置各字段，确保类型为字符串
                 setProfile({
+                    personalIntro: typeof raw.personalIntro === "string" ? raw.personalIntro : "",
                     researchExperience: typeof raw.researchExperience === "string" ? raw.researchExperience : "",
                     honors: typeof raw.honors === "string" ? raw.honors : "",
                     projectExperience: typeof raw.projectExperience === "string" ? raw.projectExperience : "",
@@ -91,8 +94,9 @@ const ProfileScreen = () => {
         setErrorMessage("");
 
         try {
-            // 发送 PUT 请求，携带当前 profile 中的三个文本字段
+            // 发送 PUT 请求，携带当前 profile 中的资料字段
             const res = await request<ProfileResponse>("/api/profile/me", "PUT", true, {
+                personalIntro: profile.personalIntro,
                 researchExperience: profile.researchExperience,
                 honors: profile.honors,
                 projectExperience: profile.projectExperience,
@@ -101,6 +105,7 @@ const ProfileScreen = () => {
             // 更新成功后，用返回的最新资料刷新界面
             const raw = res.profile ?? {};
             setProfile({
+                personalIntro: typeof raw.personalIntro === "string" ? raw.personalIntro : "",
                 researchExperience: typeof raw.researchExperience === "string" ? raw.researchExperience : "",
                 honors: typeof raw.honors === "string" ? raw.honors : "",
                 projectExperience: typeof raw.projectExperience === "string" ? raw.projectExperience : "",
@@ -165,7 +170,7 @@ const ProfileScreen = () => {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760 }}>
             <h2>个人主页</h2>
-            <p>你可以在这里维护科研经历、所获荣誉与项目经历等信息。</p>
+            <p>你可以在这里维护个人简介、科研经历、所获荣誉与项目经历等信息。</p>
 
             <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => router.push("/")}>返回首页</button>
@@ -177,6 +182,16 @@ const ProfileScreen = () => {
                 <p>加载中...</p>
             ) : (
                 <>
+                    {/* 个人简介输入框 */}
+                    <label htmlFor="personalIntro">个人简介</label>
+                    <textarea
+                        id="personalIntro"
+                        value={profile.personalIntro}
+                        placeholder="例如：你的研究兴趣、能力特点、未来规划等"
+                        onChange={(e) => setProfile((prev) => ({ ...prev, personalIntro: e.target.value }))}
+                        style={{ minHeight: 100 }}
+                    />
+
                     {/* 科研经历输入框 */}
                     <label htmlFor="researchExperience">科研经历</label>
                     <textarea

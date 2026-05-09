@@ -9,6 +9,7 @@ const DEFAULT_SIGNATURE = "这个人很懒，什么也没有留下";
 const EMPTY_TEXT = "暂无填写";
 
 interface ProfilePayload {
+    personalIntro: string;
     researchExperience: string;
     honors: string;
     projectExperience: string;
@@ -20,12 +21,14 @@ interface ProfileResponse {
 }
 
 const EMPTY_PROFILE: ProfilePayload = {
+    personalIntro: "",
     researchExperience: "",
     honors: "",
     projectExperience: "",
 };
 
 const normalizeProfile = (profile?: Partial<ProfilePayload>): ProfilePayload => ({
+    personalIntro: typeof profile?.personalIntro === "string" ? profile.personalIntro : "",
     researchExperience: typeof profile?.researchExperience === "string" ? profile.researchExperience : "",
     honors: typeof profile?.honors === "string" ? profile.honors : "",
     projectExperience: typeof profile?.projectExperience === "string" ? profile.projectExperience : "",
@@ -64,6 +67,10 @@ const UserHomePage = () => {
     }, [token]);
 
     const sections = [
+        {
+            title: "个人简介",
+            body: profile.personalIntro,
+        },
         {
             title: "科研经历",
             body: profile.researchExperience,
