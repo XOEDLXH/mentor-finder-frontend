@@ -1,12 +1,82 @@
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import { RootState } from "../redux/store";
+import { NetworkError, NetworkErrorType, request } from "../utils/network";
 
 const DEFAULT_SIGNATURE = "这个人很懒，什么也没有留下";
+const EMPTY_TEXT = "暂无填写";
+
+interface ProfilePayload {
+    researchExperience: string;
+    honors: string;
+    projectExperience: string;
+    updatedAt?: string;
+}
+
+interface ProfileResponse {
+    profile?: Partial<ProfilePayload>;
+}
+
+const EMPTY_PROFILE: ProfilePayload = {
+    researchExperience: "",
+    honors: "",
+    projectExperience: "",
+};
+
+const normalizeProfile = (profile?: Partial<ProfilePayload>): ProfilePayload => ({
+    researchExperience: typeof profile?.researchExperience === "string" ? profile.researchExperience : "",
+    honors: typeof profile?.honors === "string" ? profile.honors : "",
+    projectExperience: typeof profile?.projectExperience === "string" ? profile.projectExperience : "",
+    updatedAt: typeof profile?.updatedAt === "string" ? profile.updatedAt : "",
+});
 
 const UserHomePage = () => {
+    const router = useRouter();
+    const token = useSelector((state: RootState) => state.auth.token);
     const userName = useSelector((state: RootState) => state.auth.name);
     const displayName = userName.trim() === "" ? "未命名用户" : userName;
+    const [profile, setProfile] = useState<ProfilePayload>(EMPTY_PROFILE);
+    const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+
+    useEffect(() => {
+        if (token.trim() === "") {
+            setProfile(EMPTY_PROFILE);
+            return;
+        }
+
+        setLoading(true);
+        setErrorMessage("");
+
+        request<ProfileResponse>("/api/profile/me", "GET", true)
+            .then((res) => setProfile(normalizeProfile(res.profile)))
+            .catch((err) => {
+                if (err instanceof NetworkError && err.type === NetworkErrorType.UNAUTHORIZED) {
+                    setErrorMessage("登录已失效，请重新登录后查看个人信息");
+                    return;
+                }
+
+                setErrorMessage("个人信息加载失败：" + String(err));
+            })
+            .finally(() => setLoading(false));
+    }, [token]);
+
+    const sections = [
+        {
+            title: "科研经历",
+            body: profile.researchExperience,
+        },
+        {
+            title: "所获荣誉",
+            body: profile.honors,
+        },
+        {
+            title: "项目经历",
+            body: profile.projectExperience,
+        },
+    ];
 
     return (
         <main className="userHomePage">
@@ -19,10 +89,46 @@ const UserHomePage = () => {
                     </div>
                 </div>
 
-                <button className="settingsButton" type="button">
+                <button
+                    className="settingsButton"
+                    type="button"
+                    onClick={() => void router.push("/profile")}
+                >
                     <span className="settingsIcon" aria-hidden="true" />
                     个人设置
                 </button>
+            </section>
+
+            <section className="profileDetails" aria-label="个人经历信息">
+                <div className="sectionHeader">
+                    <h2>个人资料</h2>
+                    {profile.updatedAt && <p>最近更新：{profile.updatedAt}</p>}
+                </div>
+
+                {token.trim() === "" ? (
+                    <div className="emptyPanel">
+                        <p>请先登录后查看个人资料。</p>
+                    </div>
+                ) : loading ? (
+                    <div className="emptyPanel">
+                        <p>加载中...</p>
+                    </div>
+                ) : (
+                    <div className="detailGrid">
+                        {sections.map((section) => (
+                            <article className="detailCard" key={section.title}>
+                                <h3>{section.title}</h3>
+                                <p>{section.body.trim() === "" ? EMPTY_TEXT : section.body}</p>
+                            </article>
+                        ))}
+                    </div>
+                )}
+
+                {errorMessage !== "" && (
+                    <div className="errorPanel" role="alert">
+                        {errorMessage}
+                    </div>
+                )}
             </section>
 
             <style jsx>{`
@@ -109,9 +215,15 @@ const UserHomePage = () => {
                     border-radius: 4px;
                     background: rgba(35, 47, 59, 0.62);
                     color: #fff;
-                    cursor: default;
+                    cursor: pointer;
                     font-size: 16px;
                     font-weight: 700;
+                }
+
+                .settingsButton:hover,
+                .settingsButton:focus {
+                    background: rgba(35, 47, 59, 0.82);
+                    outline: none;
                 }
 
                 .settingsIcon {
@@ -143,6 +255,80 @@ const UserHomePage = () => {
                     height: 22px;
                 }
 
+                .profileDetails {
+                    max-width: 1120px;
+                    margin: 20px auto 0;
+                }
+
+                .sectionHeader {
+                    display: flex;
+                    align-items: baseline;
+                    justify-content: space-between;
+                    gap: 16px;
+                    margin-bottom: 12px;
+                }
+
+                .sectionHeader h2 {
+                    margin: 0;
+                    font-size: 24px;
+                }
+
+                .sectionHeader p {
+                    margin: 0;
+                    color: #666;
+                    font-size: 14px;
+                }
+
+                .detailGrid {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 14px;
+                }
+
+                .detailCard,
+                .emptyPanel,
+                .errorPanel {
+                    border: 1px solid #d7d7d7;
+                    border-radius: 8px;
+                    background: #fff;
+                }
+
+                .detailCard {
+                    min-height: 132px;
+                    padding: 18px;
+                }
+
+                .detailCard h3 {
+                    margin: 0 0 12px;
+                    font-size: 18px;
+                }
+
+                .detailCard p {
+                    margin: 0;
+                    color: #333;
+                    font-size: 15px;
+                    line-height: 1.7;
+                    white-space: pre-wrap;
+                    overflow-wrap: anywhere;
+                }
+
+                .emptyPanel,
+                .errorPanel {
+                    padding: 16px 18px;
+                }
+
+                .emptyPanel p {
+                    margin: 0;
+                    color: #555;
+                }
+
+                .errorPanel {
+                    margin-top: 12px;
+                    border-color: #f1aeb5;
+                    background: #f8d7da;
+                    color: #58151c;
+                }
+
                 @media (max-width: 720px) {
                     .profileHero {
                         min-height: 210px;
@@ -166,6 +352,17 @@ const UserHomePage = () => {
                     .profileText p {
                         font-size: 16px;
                     }
+
+                    .profileDetails {
+                        margin: 18px 4px 0;
+                    }
+
+                    .sectionHeader {
+                        align-items: flex-start;
+                        flex-direction: column;
+                        gap: 6px;
+                    }
+
                 }
             `}</style>
         </main>
