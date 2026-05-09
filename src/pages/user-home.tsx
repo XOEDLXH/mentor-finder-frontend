@@ -9,10 +9,16 @@ const DEFAULT_SIGNATURE = "这个人很懒，什么也没有留下";
 const EMPTY_TEXT = "暂无填写";
 
 interface ProfilePayload {
+    avatarUrl: string;
+    signature: string;
     personalIntro: string;
     researchExperience: string;
     honors: string;
     projectExperience: string;
+    showPersonalIntro: boolean;
+    showResearchExperience: boolean;
+    showHonors: boolean;
+    showProjectExperience: boolean;
     updatedAt?: string;
 }
 
@@ -21,17 +27,29 @@ interface ProfileResponse {
 }
 
 const EMPTY_PROFILE: ProfilePayload = {
+    avatarUrl: "",
+    signature: "",
     personalIntro: "",
     researchExperience: "",
     honors: "",
     projectExperience: "",
+    showPersonalIntro: true,
+    showResearchExperience: true,
+    showHonors: true,
+    showProjectExperience: true,
 };
 
 const normalizeProfile = (profile?: Partial<ProfilePayload>): ProfilePayload => ({
+    avatarUrl: typeof profile?.avatarUrl === "string" ? profile.avatarUrl : "",
+    signature: typeof profile?.signature === "string" ? profile.signature : "",
     personalIntro: typeof profile?.personalIntro === "string" ? profile.personalIntro : "",
     researchExperience: typeof profile?.researchExperience === "string" ? profile.researchExperience : "",
     honors: typeof profile?.honors === "string" ? profile.honors : "",
     projectExperience: typeof profile?.projectExperience === "string" ? profile.projectExperience : "",
+    showPersonalIntro: typeof profile?.showPersonalIntro === "boolean" ? profile.showPersonalIntro : true,
+    showResearchExperience: typeof profile?.showResearchExperience === "boolean" ? profile.showResearchExperience : true,
+    showHonors: typeof profile?.showHonors === "boolean" ? profile.showHonors : true,
+    showProjectExperience: typeof profile?.showProjectExperience === "boolean" ? profile.showProjectExperience : true,
     updatedAt: typeof profile?.updatedAt === "string" ? profile.updatedAt : "",
 });
 
@@ -43,6 +61,7 @@ const UserHomePage = () => {
     const [profile, setProfile] = useState<ProfilePayload>(EMPTY_PROFILE);
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const signature = profile.signature.trim() === "" ? DEFAULT_SIGNATURE : profile.signature;
 
     useEffect(() => {
         if (token.trim() === "") {
@@ -70,36 +89,44 @@ const UserHomePage = () => {
         {
             title: "个人简介",
             body: profile.personalIntro,
+            visible: profile.showPersonalIntro,
         },
         {
             title: "科研经历",
             body: profile.researchExperience,
+            visible: profile.showResearchExperience,
         },
         {
             title: "所获荣誉",
             body: profile.honors,
+            visible: profile.showHonors,
         },
         {
             title: "项目经历",
             body: profile.projectExperience,
+            visible: profile.showProjectExperience,
         },
-    ];
+    ].filter((section) => section.visible);
 
     return (
         <main className="userHomePage">
             <section className="profileHero" aria-label="个人主页信息">
                 <div className="profileInfo">
-                    <div className="defaultAvatar" aria-label="默认头像" />
+                    {profile.avatarUrl.trim() === "" ? (
+                        <div className="defaultAvatar" aria-label="默认头像" />
+                    ) : (
+                        <img className="avatarImage" src={profile.avatarUrl} alt="用户头像" />
+                    )}
                     <div className="profileText">
                         <h1>{displayName}</h1>
-                        <p>{DEFAULT_SIGNATURE}</p>
+                        <p>{signature}</p>
                     </div>
                 </div>
 
                 <button
                     className="settingsButton"
                     type="button"
-                    onClick={() => void router.push("/profile")}
+                    onClick={() => void router.push("/profile-settings")}
                 >
                     <span className="settingsIcon" aria-hidden="true" />
                     个人设置
@@ -121,14 +148,22 @@ const UserHomePage = () => {
                         <p>加载中...</p>
                     </div>
                 ) : (
-                    <div className="detailGrid">
-                        {sections.map((section) => (
-                            <article className="detailCard" key={section.title}>
-                                <h3>{section.title}</h3>
-                                <p>{section.body.trim() === "" ? EMPTY_TEXT : section.body}</p>
-                            </article>
-                        ))}
-                    </div>
+                    <>
+                        {sections.length === 0 ? (
+                            <div className="emptyPanel">
+                                <p>当前未展示任何个人资料。</p>
+                            </div>
+                        ) : (
+                            <div className="detailGrid">
+                                {sections.map((section) => (
+                                    <article className="detailCard" key={section.title}>
+                                        <h3>{section.title}</h3>
+                                        <p>{section.body.trim() === "" ? EMPTY_TEXT : section.body}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {errorMessage !== "" && (
@@ -186,17 +221,27 @@ const UserHomePage = () => {
                     gap: 14px;
                 }
 
-                .defaultAvatar {
+                .defaultAvatar,
+                .avatarImage {
                     width: 68px;
                     height: 68px;
                     flex: 0 0 auto;
                     border: 2px solid rgba(255, 255, 255, 0.9);
                     border-radius: 50%;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+                }
+
+                .defaultAvatar {
                     background:
                         linear-gradient(135deg, transparent 0 18%, #5ba8e6 18% 30%, transparent 30% 100%),
                         linear-gradient(45deg, #f7fbff 0 25%, transparent 25% 50%, #76b9ec 50% 74%, transparent 74% 100%),
                         #d9eefc;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+                }
+
+                .avatarImage {
+                    display: block;
+                    object-fit: cover;
+                    background: #fff;
                 }
 
                 .profileText h1 {

@@ -50,10 +50,16 @@ describe("UserHomePage", () => {
     it("shows the current user's profile experiences", async () => {
         request.mockResolvedValue({
             profile: {
+                avatarUrl: "https://example.com/avatar.png",
+                signature: "保持好奇",
                 personalIntro: "关注人机交互与数据挖掘",
                 researchExperience: "参与知识图谱实验室课题",
                 honors: "国家奖学金",
                 projectExperience: "导师匹配系统前端开发",
+                showPersonalIntro: true,
+                showResearchExperience: true,
+                showHonors: false,
+                showProjectExperience: true,
                 updatedAt: "2026-05-09 12:00",
             },
         });
@@ -63,16 +69,18 @@ describe("UserHomePage", () => {
         expect(request).toHaveBeenCalledWith("/api/profile/me", "GET", true);
 
         await waitFor(() => {
+            expect(screen.getByRole("img", { name: "用户头像" })).toHaveAttribute("src", "https://example.com/avatar.png");
+            expect(screen.getByText("保持好奇")).toBeInTheDocument();
             expect(screen.getByText("关注人机交互与数据挖掘")).toBeInTheDocument();
             expect(screen.getByText("参与知识图谱实验室课题")).toBeInTheDocument();
-            expect(screen.getByText("国家奖学金")).toBeInTheDocument();
             expect(screen.getByText("导师匹配系统前端开发")).toBeInTheDocument();
         });
 
+        expect(screen.queryByText("国家奖学金")).not.toBeInTheDocument();
         expect(screen.getByText("最近更新：2026-05-09 12:00")).toBeInTheDocument();
     });
 
-    it("navigates to profile edit page from settings", async () => {
+    it("navigates to profile settings page from settings", async () => {
         request.mockResolvedValue({ profile: {} });
 
         renderWithAuth();
@@ -83,6 +91,6 @@ describe("UserHomePage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "个人设置" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/profile");
+        expect(mockPush).toHaveBeenCalledWith("/profile-settings");
     });
 });
