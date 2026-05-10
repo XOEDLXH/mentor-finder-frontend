@@ -17,11 +17,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
     {
-        label: "Home",
-        href: "/",
-        activeMatch: (pathname) => pathname === "/",
-    },
-    {
         label: "Search",
         href: "/search",
         activeMatch: (pathname) => pathname === "/search" || pathname.startsWith("/mentors/"),

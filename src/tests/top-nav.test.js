@@ -60,10 +60,19 @@ describe("TopNav", () => {
         renderTopNav();
 
         expect(screen.getByRole("textbox", { name: "Search or jump to" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Sign up" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /alice/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Admin" })).not.toBeInTheDocument();
+    });
+
+    it("routes to home when clicking the logo", () => {
+        renderTopNav();
+
+        fireEvent.click(screen.getByRole("button", { name: "Go to home" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
     });
 
     it("redirects unauthenticated users to login when they click follows", () => {
