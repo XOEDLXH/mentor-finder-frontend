@@ -144,8 +144,13 @@ const TopNav = () => {
                         onClick={() => goto("/")}
                         aria-label="Go to home"
                     >
-                        <span className="topNavBrandBadge" aria-hidden="true">MF</span>
-                        <span className="topNavBrandText">MentorFinder</span>
+                        <span className="topNavBrandLogoFrame" aria-hidden="true">
+                            <img
+                                src="/mentorfinder-logo-1.svg"
+                                alt=""
+                                className="topNavBrandLogo"
+                            />
+                        </span>
                     </button>
 
                     <nav className="topNavLinks" aria-label="Primary">

@@ -147,7 +147,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 .topNavBrand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   border: none;
   background: transparent;
   color: var(--nav-ink);
@@ -155,24 +155,18 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   min-height: 32px;
 }
 
-.topNavBrandBadge {
-  width: 32px;
+.topNavBrandLogoFrame {
+  width: 216px;
   height: 32px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #58a6ff, #1f6feb);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.08em;
+  flex: 0 0 auto;
 }
 
-.topNavBrandText {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+.topNavBrandLogo {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .topNavLinks,
@@ -1016,8 +1010,9 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
     gap: 12px;
   }
 
-  .topNavBrandText {
-    font-size: 16px;
+  .topNavBrandLogoFrame {
+    width: 188px;
+    height: 28px;
   }
 
   .topNavSearchShell {
