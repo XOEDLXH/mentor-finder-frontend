@@ -34,9 +34,9 @@ const NAV_ITEMS: NavItem[] = [
     },
     {
         label: "Profile",
-        href: "/profile",
+        href: "/user-home",
         requiresAuth: true,
-        activeMatch: (pathname) => pathname === "/profile" || pathname === "/private-mentor",
+        activeMatch: (pathname) => pathname === "/user-home" || pathname === "/profile" || pathname === "/profile-settings" || pathname === "/private-mentor",
     },
     {
         label: "Admin",
@@ -215,7 +215,7 @@ const TopNav = () => {
 
                             {avatarMenuOpen && (
                                 <div className="topNavAvatarMenu" role="menu" aria-label="Account menu">
-                                    <button type="button" className="topNavMenuItem" onClick={() => goto("/profile", true)}>
+                                    <button type="button" className="topNavMenuItem" onClick={() => goto("/user-home", true)}>
                                         Profile
                                     </button>
                                     <button type="button" className="topNavMenuItem" onClick={() => goto("/follows", true)}>
@@ -277,7 +277,7 @@ const TopNav = () => {
                             <div className="topNavMobileAccountLabel">
                                 Signed in as <strong>{auth.name || "Account"}</strong>
                             </div>
-                            <button type="button" className="topNavMobileLink" onClick={() => goto("/profile", true)}>
+                            <button type="button" className="topNavMobileLink" onClick={() => goto("/user-home", true)}>
                                 Profile
                             </button>
                             <button type="button" className="topNavMobileLink" onClick={() => goto("/follows", true)}>
