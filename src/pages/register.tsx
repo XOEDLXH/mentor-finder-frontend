@@ -209,7 +209,17 @@ const RegisterScreen = () => {
                             }}
                         >
                             <span>See what&apos;s included</span>
-                            <span className={featureListOpen ? "registerAuthChevron registerAuthChevronOpen" : "registerAuthChevron"}>⌄</span>
+                            <span className={featureListOpen ? "registerAuthChevron registerAuthChevronOpen" : "registerAuthChevron"}>
+                                <svg
+                                    aria-hidden="true"
+                                    height="16"
+                                    viewBox="0 0 16 16"
+                                    version="1.1"
+                                    width="16"
+                                >
+                                    <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
+                                </svg>
+                            </span>
                         </summary>
 
                         {featureListOpen && (
@@ -217,7 +227,17 @@ const RegisterScreen = () => {
                                 <ul className="registerAuthFeatureList">
                                     {featureItems.map((item) => (
                                         <li key={item.title} className="registerAuthFeatureItem">
-                                            <span className="registerAuthFeatureCheck" aria-hidden="true">✓</span>
+                                            <span className="registerAuthFeatureCheck" aria-hidden="true">
+                                                <svg
+                                                    aria-hidden="true"
+                                                    height="16"
+                                                    viewBox="0 0 16 16"
+                                                    version="1.1"
+                                                    width="16"
+                                                >
+                                                    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
+                                                </svg>
+                                            </span>
                                             <div>
                                                 <p className="registerAuthFeatureTitle">{item.title}</p>
                                                 <p className="registerAuthFeatureDescription">{item.description}</p>

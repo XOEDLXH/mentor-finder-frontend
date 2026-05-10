@@ -554,10 +554,20 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 
 .registerAuthChevron {
   display: inline-flex;
-  font-size: 14px;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
   transform: rotate(0deg);
   transition: transform 0.18s ease;
+  transform-origin: center;
+}
+
+.registerAuthChevron svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .registerAuthChevronOpen {
@@ -574,34 +584,48 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-width: 430px;
+  gap: 16px;
+  max-width: 400px;
 }
 
 .registerAuthFeatureItem {
   display: grid;
-  grid-template-columns: 20px 1fr;
-  gap: 16px;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
   align-items: start;
 }
 
 .registerAuthFeatureCheck {
-  font-size: 18px;
-  line-height: 1.3;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.registerAuthFeatureCheck svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .registerAuthFeatureTitle {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.25;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 21px;
+  margin-bottom: 4px;
 }
 
 .registerAuthFeatureDescription {
-  margin: 8px 0 0;
+  margin: 0;
   color: rgba(255, 255, 255, 0.82);
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
 }
 
 .registerAuthVisual {
