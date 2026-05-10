@@ -471,6 +471,327 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transform: none;
 }
 
+.registerAuthPage {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(420px, 1.08fr) minmax(540px, 1fr);
+  background: #ffffff;
+}
+
+.registerAuthMarketing {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 100%, rgba(114, 74, 255, 0.58), rgba(114, 74, 255, 0) 34%),
+    radial-gradient(circle at 24% 82%, rgba(118, 104, 255, 0.28), rgba(118, 104, 255, 0) 24%),
+    linear-gradient(180deg, #050608 0%, #050608 64%, #110b2c 100%);
+  color: #ffffff;
+}
+
+.registerAuthMarketingContent {
+  position: relative;
+  z-index: 2;
+  max-width: 460px;
+  padding: 84px 48px 48px;
+}
+
+.registerAuthMarketingTitle {
+  margin: 0;
+  font-size: 54px;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+}
+
+.registerAuthMarketingCopy {
+  margin: 20px 0 0;
+  max-width: 420px;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.registerAuthMarketingToggle {
+  margin-top: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+  font-size: 24px;
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+}
+
+.registerAuthMarketingToggle:hover:not(:disabled) {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.registerAuthChevron {
+  display: inline-flex;
+  transform: rotate(0deg);
+  transition: transform 0.18s ease;
+}
+
+.registerAuthChevronOpen {
+  transform: rotate(180deg);
+}
+
+.registerAuthFeatureList {
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 430px;
+}
+
+.registerAuthFeatureItem {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.registerAuthFeatureCheck {
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.registerAuthFeatureTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.registerAuthFeatureDescription {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.registerAuthVisual {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.registerAuthGlow {
+  position: absolute;
+  left: 50%;
+  bottom: -12%;
+  width: 88%;
+  height: 42%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(131, 96, 255, 0.95) 0%, rgba(131, 96, 255, 0.26) 38%, rgba(131, 96, 255, 0) 72%);
+  filter: blur(18px);
+}
+
+.registerAuthOrb {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  filter: drop-shadow(0 22px 30px rgba(26, 13, 82, 0.45));
+}
+
+.registerAuthOrbA {
+  left: 22%;
+  bottom: 9%;
+  width: 146px;
+  height: 146px;
+  background: linear-gradient(160deg, #f98ff9 0%, #d36cff 42%, #8b52ff 100%);
+}
+
+.registerAuthOrbB {
+  left: 43%;
+  bottom: 24%;
+  width: 108px;
+  height: 108px;
+  background: linear-gradient(160deg, #b990ff 0%, #e780ff 48%, #7f63ff 100%);
+}
+
+.registerAuthOrbC {
+  left: 62%;
+  bottom: 11%;
+  width: 94px;
+  height: 94px;
+  background: linear-gradient(160deg, #ffe083 0%, #ffb94d 42%, #ff7c58 100%);
+}
+
+.registerAuthStar {
+  position: absolute;
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    80px 40px 0 rgba(255, 255, 255, 0.44),
+    140px -24px 0 rgba(255, 255, 255, 0.62),
+    -92px 86px 0 rgba(255, 255, 255, 0.38),
+    164px 152px 0 rgba(255, 255, 255, 0.5),
+    -136px 214px 0 rgba(255, 255, 255, 0.42),
+    224px 236px 0 rgba(255, 255, 255, 0.38);
+}
+
+.registerAuthStarA {
+  left: 26%;
+  top: 45%;
+}
+
+.registerAuthStarB {
+  left: 58%;
+  top: 54%;
+}
+
+.registerAuthStarC {
+  left: 36%;
+  top: 68%;
+}
+
+.registerAuthPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.registerAuthTopLink {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 28px 0;
+  color: #59636e;
+  font-size: 14px;
+}
+
+.registerAuthTopLinkAnchor {
+  color: #1f2328;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.registerAuthFormWrap {
+  width: min(100%, 420px);
+  margin: 54px auto 64px;
+  display: flex;
+  flex-direction: column;
+}
+
+.registerAuthFormTitle {
+  margin: 0 0 28px;
+  color: #1f2328;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.registerAuthSocialButton {
+  width: 100%;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #f6f8fa;
+  color: #57606a;
+  font-weight: 600;
+  padding: 11px 14px;
+  box-shadow: none;
+}
+
+.registerAuthSocialButton:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.registerAuthDivider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #656d76;
+  font-size: 12px;
+  line-height: 1;
+  margin: 22px 0 18px;
+}
+
+.registerAuthDivider::before,
+.registerAuthDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #d8dee4;
+}
+
+.registerAuthField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.registerAuthLabel {
+  color: #1f2328;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.registerAuthField input {
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  padding: 10px 12px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
+}
+
+.registerAuthField input:focus-visible {
+  outline: 3px solid rgba(9, 105, 218, 0.2);
+  outline-offset: 0;
+  border-color: #0969da;
+}
+
+.registerAuthHelper {
+  margin: 8px 0 0;
+  color: #656d76;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.registerAuthError {
+  margin: 8px 0 0;
+  color: #cf222e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.registerAuthSubmit {
+  width: 100%;
+  margin-top: 18px;
+  border: 1px solid #1f2328;
+  border-radius: 8px;
+  background: #1f2328;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 12px 16px;
+  box-shadow: none;
+}
+
+.registerAuthSubmit:hover:not(:disabled) {
+  background: #11161b;
+  border-color: #11161b;
+  box-shadow: none;
+  transform: none;
+}
+
 @media (max-width: 920px) {
   .topNavInner {
     min-height: 68px;
@@ -537,6 +858,30 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
     color: var(--nav-muted);
     padding: 4px 2px 0;
   }
+
+  .registerAuthPage {
+    display: block;
+    background: #ffffff;
+  }
+
+  .registerAuthMarketing {
+    display: none;
+  }
+
+  .registerAuthPanel {
+    min-height: 100vh;
+  }
+
+  .registerAuthTopLink {
+    justify-content: center;
+    padding: 20px 20px 0;
+  }
+
+  .registerAuthFormWrap {
+    width: min(100%, 420px);
+    padding: 0 20px;
+    margin-top: 44px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -571,5 +916,9 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 
   .loginAuthTitle {
     font-size: 22px;
+  }
+
+  .registerAuthFormTitle {
+    font-size: 30px;
   }
 }

@@ -320,10 +320,59 @@ describe("RegisterScreen", () => {
         jest.restoreAllMocks();
     });
 
+    it("keeps create account enabled and focuses email when the form is empty", () => {
+        render(<RegisterScreen />);
+
+        const emailInput = screen.getByPlaceholderText("Email");
+        const createAccountButton = screen.getByRole("button", { name: "Create account" });
+
+        expect(createAccountButton).toBeEnabled();
+        fireEvent.click(createAccountButton);
+
+        expect(emailInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses password when email is filled but password is missing", () => {
+        render(<RegisterScreen />);
+
+        const emailInput = screen.getByPlaceholderText("Email");
+        const passwordInput = screen.getByPlaceholderText("Password");
+
+        fireEvent.change(emailInput, { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        expect(passwordInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses confirm password when password is filled but confirmation is missing", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        expect(screen.getByPlaceholderText("Confirm your password")).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses username when other fields are valid but username is missing", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        expect(screen.getByPlaceholderText("Username")).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
     it("shows weak-password hint after password input is blurred", () => {
         render(<RegisterScreen />);
 
-        const passwordInput = screen.getByPlaceholderText("密码");
+        const passwordInput = screen.getByPlaceholderText("Password");
 
         fireEvent.change(passwordInput, { target: { value: "abc12" } });
         expect(screen.queryByText(REGISTER_PASSWORD_WEAK)).not.toBeInTheDocument();
@@ -336,8 +385,8 @@ describe("RegisterScreen", () => {
     it("prioritizes mismatch hint over weak-password hint", () => {
         render(<RegisterScreen />);
 
-        const passwordInput = screen.getByPlaceholderText("密码");
-        const confirmPasswordInput = screen.getByPlaceholderText("确认密码");
+        const passwordInput = screen.getByPlaceholderText("Password");
+        const confirmPasswordInput = screen.getByPlaceholderText("Confirm your password");
 
         fireEvent.change(passwordInput, { target: { value: "abc12" } });
         fireEvent.blur(passwordInput);
@@ -352,7 +401,7 @@ describe("RegisterScreen", () => {
     it("shows invalid-email hint after email input is blurred", () => {
         render(<RegisterScreen />);
 
-        const emailInput = screen.getByPlaceholderText("邮箱");
+        const emailInput = screen.getByPlaceholderText("Email");
 
         fireEvent.change(emailInput, { target: { value: "invalid" } });
         fireEvent.blur(emailInput);
@@ -363,7 +412,7 @@ describe("RegisterScreen", () => {
     it("shows invalid-username hint after username input is blurred", () => {
         render(<RegisterScreen />);
 
-        const usernameInput = screen.getByPlaceholderText("用户名");
+        const usernameInput = screen.getByPlaceholderText("Username");
 
         fireEvent.change(usernameInput, { target: { value: "bad user!" } });
         fireEvent.blur(usernameInput);
@@ -378,12 +427,12 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: " alice " } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: " alice " } });
 
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -420,11 +469,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/follows");
@@ -441,11 +490,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/");
@@ -459,11 +508,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(screen.getByText("注册失败")).toBeInTheDocument();
@@ -480,11 +529,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(screen.getByText("注册失败")).toBeInTheDocument();
@@ -494,10 +543,41 @@ describe("RegisterScreen", () => {
         expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it("navigates to login page when clicking secondary button", () => {
+    it("renders the MentorFinder signup shell and marketing content", () => {
         render(<RegisterScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "前往登录页面" }));
+        expect(screen.getByRole("heading", { name: "Sign up for MentorFinder" })).toBeInTheDocument();
+        expect(screen.getByText("Already have an account?")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Sign in →" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
+        expect(screen.getByText("Create your account")).toBeInTheDocument();
+        expect(screen.getByText("Explore MentorFinder's unique features for both students and teachers")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /See what's included/i })).toBeInTheDocument();
+        expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
+        expect(screen.queryByText("Your Country/Region")).not.toBeInTheDocument();
+        expect(screen.queryByText("Email preferences")).not.toBeInTheDocument();
+    });
+
+    it("toggles the marketing feature list", () => {
+        render(<RegisterScreen />);
+
+        const toggleButton = screen.getByRole("button", { name: /See what's included/i });
+        expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+
+        fireEvent.click(toggleButton);
+        expect(toggleButton).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByText("Discover mentors by research interests")).toBeInTheDocument();
+        expect(screen.getByText("Track papers on a living timeline")).toBeInTheDocument();
+
+        fireEvent.click(toggleButton);
+        expect(toggleButton).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+    });
+
+    it("navigates to login page when clicking sign-in link", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login");
     });
@@ -509,16 +589,8 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "前往登录页面" }));
+        fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fprofile");
-    });
-
-    it("navigates to home page when clicking back-home button", () => {
-        render(<RegisterScreen />);
-
-        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
-
-        expect(mockPush).toHaveBeenCalledWith("/");
     });
 });

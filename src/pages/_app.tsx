@@ -13,7 +13,7 @@ import store from "../redux/store";
 const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const router = useRouter();
-    const isAuthPage = router.pathname === "/login";
+    const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
 
     useEffect(() => {
         dispatch(hydrateAuth(loadAuthFromStorage()));
