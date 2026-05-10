@@ -4,6 +4,7 @@
  */
 
 import store from "../redux/store";
+import { resetAuth } from "../redux/auth";
 
 export enum NetworkErrorType {
     UNAUTHORIZED,
@@ -81,6 +82,10 @@ export const request = async <T extends object = Record<string, unknown>>(
 
     // HTTP status 401
     if (response.status === 401 && code === 2) {
+        if (needAuth) {
+            store.dispatch(resetAuth());
+        }
+
         throw new NetworkError(
             NetworkErrorType.UNAUTHORIZED,
             "[401] " + info,

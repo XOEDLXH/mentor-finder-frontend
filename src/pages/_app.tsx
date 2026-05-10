@@ -14,10 +14,17 @@ const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const router = useRouter();
     const isAuthPage = router.pathname === "/login" || router.pathname === "/register";
+    const shouldShowHomeButton = router.pathname !== "/" && !isAuthPage;
+    const shouldShowUserMenu = shouldShowHomeButton && auth.token !== "";
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
     useEffect(() => {
         dispatch(hydrateAuth(loadAuthFromStorage()));
     }, [dispatch]);
+
+    useEffect(() => {
+        setIsUserMenuOpen(false);
+    }, [router.pathname]);
 
     return (
         <>
