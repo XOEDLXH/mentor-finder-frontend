@@ -210,7 +210,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 .topNavLink:hover,
 .topNavLinkActive,
 .topNavAuthLink:hover {
-  background: #ffffff;
+  background: #eaeef2;
   color: var(--nav-ink);
 }
 
