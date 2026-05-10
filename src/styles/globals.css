@@ -21,9 +21,7 @@ body {
   padding: 0;
   margin: 0;
   min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(47, 129, 247, 0.08), transparent 28%),
-    linear-gradient(180deg, #eef2f7 0, #f6f8fa 180px, #f6f8fa 100%);
+  background: #ffffff;
   color: var(--ink-strong);
   font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
@@ -100,8 +98,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 .appChromeAuth {
-  background:
-    linear-gradient(180deg, #f6f8fa 0, #f6f8fa 100%);
+  background: #ffffff;
 }
 
 .appMain {
@@ -328,9 +325,9 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
-  padding: 48px 20px 56px;
+  padding: 96px 20px 56px;
 }
 
 .loginAuthBrand {
@@ -362,19 +359,8 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   text-align: center;
 }
 
-.loginAuthCard {
-  width: min(100%, 340px);
-  padding: 20px;
-  border: 1px solid #d8dee4;
-  border-radius: 12px;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
-}
-
 .loginAuthField {
+  width: min(100%, 340px);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -392,7 +378,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   justify-content: space-between;
 }
 
-.loginAuthCard input {
+.loginAuthField input {
   border-radius: 8px;
   border: 1px solid #d0d7de;
   padding: 9px 12px;
@@ -400,14 +386,14 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   box-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
 }
 
-.loginAuthCard input:focus-visible {
+.loginAuthField input:focus-visible {
   outline: 3px solid rgba(9, 105, 218, 0.2);
   outline-offset: 0;
   border-color: #0969da;
 }
 
 .loginAuthSubmit {
-  width: 100%;
+  width: min(100%, 340px);
   border: 1px solid rgba(31, 35, 40, 0.15);
   border-radius: 8px;
   background: #1f883d;
@@ -470,9 +456,11 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   background: transparent;
   color: #0969da;
   padding: 0;
-  font-weight: 600;
+  font-weight: 400;
   box-shadow: none;
   transform: none;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .loginAuthInlineLink:hover:not(:disabled) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
@@ -38,12 +38,24 @@ const LoginScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const userNameInputRef = useRef<HTMLInputElement | null>(null);
+    const passwordInputRef = useRef<HTMLInputElement | null>(null);
 
     const router = useRouter();
     const dispatch = useDispatch();
     const redirectTarget = resolveRedirectTarget(router.query.redirect);
 
     const login = () => {
+        if (userName.trim() === "") {
+            userNameInputRef.current?.focus();
+            return;
+        }
+
+        if (password === "") {
+            passwordInputRef.current?.focus();
+            return;
+        }
+
         setSubmitting(true);
         fetch("/api/login", {
             method: "POST",
@@ -82,37 +94,37 @@ const LoginScreen = () => {
 
             <h1 className="loginAuthTitle">Sign in to MentorFinder</h1>
 
-            <div className="loginAuthCard">
-                <label className="loginAuthField">
-                    <span className="loginAuthLabel">Username or email address</span>
-                    <input
-                        type="text"
-                        placeholder="Username or email address"
-                        value={userName}
-                        onChange={(e) => setUserName(e.target.value)}
-                    />
-                </label>
+            <label className="loginAuthField">
+                <span className="loginAuthLabel">Username or email address</span>
+                <input
+                    ref={userNameInputRef}
+                    type="text"
+                    placeholder="Username or email address"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                />
+            </label>
 
-                <label className="loginAuthField">
-                    <div className="loginAuthPasswordRow">
-                        <span className="loginAuthLabel">Password</span>
-                    </div>
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                </label>
+            <label className="loginAuthField">
+                <div className="loginAuthPasswordRow">
+                    <span className="loginAuthLabel">Password</span>
+                </div>
+                <input
+                    ref={passwordInputRef}
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+            </label>
 
-                <button
-                    className="loginAuthSubmit"
-                    onClick={login}
-                    disabled={submitting || userName === "" || password === ""}
-                >
-                    {submitting ? "Signing in..." : "Sign in"}
-                </button>
-            </div>
+            <button
+                className="loginAuthSubmit"
+                onClick={login}
+                disabled={submitting}
+            >
+                {submitting ? "Signing in..." : "Sign in"}
+            </button>
 
             <div className="loginAuthDivider" aria-hidden="true">
                 <span>or</span>
@@ -129,14 +141,19 @@ const LoginScreen = () => {
 
             <p className="loginAuthSignup">
                 New to MentorFinder?{" "}
-                <button
-                    type="button"
+                <a
+                    href={buildRedirectHref("/register", router.query.redirect)}
                     className="loginAuthInlineLink"
-                    onClick={() => router.push(buildRedirectHref("/register", router.query.redirect))}
-                    disabled={submitting}
+                    onClick={(event) => {
+                        event.preventDefault();
+                        if (submitting) {
+                            return;
+                        }
+                        void router.push(buildRedirectHref("/register", router.query.redirect));
+                    }}
                 >
                     Create an account
-                </button>
+                </a>
             </p>
         </section>
     );

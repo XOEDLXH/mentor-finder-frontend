@@ -123,6 +123,32 @@ describe("LoginScreen", () => {
         });
     });
 
+    it("keeps sign in enabled and focuses username when both fields are empty", () => {
+        render(<LoginScreen />);
+
+        const userNameInput = screen.getByPlaceholderText("Username or email address");
+        const signInButton = screen.getByRole("button", { name: "Sign in" });
+
+        expect(signInButton).toBeEnabled();
+        fireEvent.click(signInButton);
+
+        expect(userNameInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses password when username is filled but password is missing", () => {
+        render(<LoginScreen />);
+
+        const userNameInput = screen.getByPlaceholderText("Username or email address");
+        const passwordInput = screen.getByPlaceholderText("Password");
+
+        fireEvent.change(userNameInput, { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+        expect(passwordInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
     it("redirects to the requested relative path after successful login", async () => {
         mockRouter.query = {
             redirect: "/profile",
@@ -240,9 +266,10 @@ describe("LoginScreen", () => {
 
         expect(screen.getByRole("heading", { name: "Sign in to MentorFinder" })).toBeInTheDocument();
         expect(screen.getByText("MF")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
         expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
         expect(screen.getByText("New to MentorFinder?")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Create an account" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Create an account" })).toBeInTheDocument();
         expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
         expect(screen.queryByText("Sign in with a passkey")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "返回首页" })).not.toBeInTheDocument();
@@ -251,7 +278,7 @@ describe("LoginScreen", () => {
     it("navigates to register page when clicking account creation link", () => {
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
+        fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register");
     });
@@ -263,7 +290,7 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
+        fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register?redirect=%2Ffollows");
     });
