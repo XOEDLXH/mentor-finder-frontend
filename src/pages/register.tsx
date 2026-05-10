@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { RefCallback, useRef, useState } from "react";
 import {
     FAILURE_PREFIX,
     REGISTER_EMAIL_INVALID,
@@ -65,16 +65,16 @@ const RegisterScreen = () => {
     const router = useRouter();
     const dispatch = useDispatch();
     const redirectTarget = resolveRedirectTarget(router.query.redirect);
-    const bindEmailInputRef = (node: HTMLInputElement | null) => {
+    const bindEmailInputRef: RefCallback<HTMLInputElement> = (node) => {
         emailInputRef.current = node ?? undefined;
     };
-    const bindPasswordInputRef = (node: HTMLInputElement | null) => {
+    const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         passwordInputRef.current = node ?? undefined;
     };
-    const bindConfirmPasswordInputRef = (node: HTMLInputElement | null) => {
+    const bindConfirmPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         confirmPasswordInputRef.current = node ?? undefined;
     };
-    const bindUserNameInputRef = (node: HTMLInputElement | null) => {
+    const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
         userNameInputRef.current = node ?? undefined;
     };
 
