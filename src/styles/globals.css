@@ -755,6 +755,16 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   letter-spacing: -0.03em;
 }
 
+.registerAuthFormLead {
+  display: block;
+  margin: 0;
+  color: #1f2328;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 30px;
+  letter-spacing: 0;
+}
+
 .registerAuthFormLogoRow {
   display: inline-flex;
   align-items: center;
