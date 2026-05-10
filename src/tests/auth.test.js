@@ -67,14 +67,17 @@ describe("auth reducer", () => {
 describe("LoginScreen", () => {
     const mockPush = jest.fn();
     const mockDispatch = jest.fn();
+    const mockRouter = {
+        push: mockPush,
+        query: {},
+    };
 
     beforeEach(() => {
         mockPush.mockReset();
         mockDispatch.mockReset();
+        mockRouter.query = {};
 
-        useRouter.mockReturnValue({
-            push: mockPush,
-        });
+        useRouter.mockReturnValue(mockRouter);
         useDispatch.mockReturnValue(mockDispatch);
 
         globalThis.fetch = jest.fn();
@@ -92,9 +95,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -120,6 +123,70 @@ describe("LoginScreen", () => {
         });
     });
 
+    it("keeps sign in enabled and focuses username when both fields are empty", () => {
+        render(<LoginScreen />);
+
+        const userNameInput = screen.getByPlaceholderText("Username or email address");
+        const signInButton = screen.getByRole("button", { name: "Sign in" });
+
+        expect(signInButton).toBeEnabled();
+        fireEvent.click(signInButton);
+
+        expect(userNameInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses password when username is filled but password is missing", () => {
+        render(<LoginScreen />);
+
+        const userNameInput = screen.getByPlaceholderText("Username or email address");
+        const passwordInput = screen.getByPlaceholderText("Password");
+
+        fireEvent.change(userNameInput, { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+        expect(passwordInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("redirects to the requested relative path after successful login", async () => {
+        mockRouter.query = {
+            redirect: "/profile",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/profile");
+        });
+    });
+
+    it("falls back to home after successful login when redirect is unsafe", async () => {
+        mockRouter.query = {
+            redirect: "https://evil.example.com",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/");
+        });
+    });
+
     it("alerts failure and stays on page when login fails", async () => {
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 1 }),
@@ -127,9 +194,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
@@ -145,9 +212,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "banned_user" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "banned_user" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith("User is banned");
@@ -163,9 +230,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
@@ -182,9 +249,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith("<html>502 Bad Gateway</html>");
@@ -194,34 +261,55 @@ describe("LoginScreen", () => {
         expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it("navigates to register page when clicking secondary button", () => {
+    it("renders the MentorFinder login shell and placeholder actions", () => {
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "前往注册页面" }));
+        expect(screen.getByRole("heading", { name: "Sign in to MentorFinder" })).toBeInTheDocument();
+        expect(screen.getByText("MF")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
+        expect(screen.getByText("New to MentorFinder?")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Create an account" })).toBeInTheDocument();
+        expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
+        expect(screen.queryByText("Sign in with a passkey")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "返回首页" })).not.toBeInTheDocument();
+    });
+
+    it("navigates to register page when clicking account creation link", () => {
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register");
     });
 
-    it("navigates to home page when clicking back-home button", () => {
+    it("preserves redirect when navigating from login to register", () => {
+        mockRouter.query = {
+            redirect: "/follows",
+        };
+
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+        fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/");
+        expect(mockPush).toHaveBeenCalledWith("/register?redirect=%2Ffollows");
     });
 });
 
 describe("RegisterScreen", () => {
     const mockPush = jest.fn();
     const mockDispatch = jest.fn();
+    const mockRouter = {
+        push: mockPush,
+        query: {},
+    };
 
     beforeEach(() => {
         mockPush.mockReset();
         mockDispatch.mockReset();
+        mockRouter.query = {};
 
-        useRouter.mockReturnValue({
-            push: mockPush,
-        });
+        useRouter.mockReturnValue(mockRouter);
         useDispatch.mockReturnValue(mockDispatch);
 
         globalThis.fetch = jest.fn();
@@ -232,10 +320,59 @@ describe("RegisterScreen", () => {
         jest.restoreAllMocks();
     });
 
+    it("keeps create account enabled and focuses email when the form is empty", () => {
+        render(<RegisterScreen />);
+
+        const emailInput = screen.getByPlaceholderText("Email");
+        const createAccountButton = screen.getByRole("button", { name: "Create account" });
+
+        expect(createAccountButton).toBeEnabled();
+        fireEvent.click(createAccountButton);
+
+        expect(emailInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses password when email is filled but password is missing", () => {
+        render(<RegisterScreen />);
+
+        const emailInput = screen.getByPlaceholderText("Email");
+        const passwordInput = screen.getByPlaceholderText("Password");
+
+        fireEvent.change(emailInput, { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        expect(passwordInput).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses confirm password when password is filled but confirmation is missing", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        expect(screen.getByPlaceholderText("Confirm your password")).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
+    it("focuses username when other fields are valid but username is missing", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        expect(screen.getByPlaceholderText("Username")).toHaveFocus();
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+
     it("shows weak-password hint after password input is blurred", () => {
         render(<RegisterScreen />);
 
-        const passwordInput = screen.getByPlaceholderText("密码");
+        const passwordInput = screen.getByPlaceholderText("Password");
 
         fireEvent.change(passwordInput, { target: { value: "abc12" } });
         expect(screen.queryByText(REGISTER_PASSWORD_WEAK)).not.toBeInTheDocument();
@@ -248,8 +385,8 @@ describe("RegisterScreen", () => {
     it("prioritizes mismatch hint over weak-password hint", () => {
         render(<RegisterScreen />);
 
-        const passwordInput = screen.getByPlaceholderText("密码");
-        const confirmPasswordInput = screen.getByPlaceholderText("确认密码");
+        const passwordInput = screen.getByPlaceholderText("Password");
+        const confirmPasswordInput = screen.getByPlaceholderText("Confirm your password");
 
         fireEvent.change(passwordInput, { target: { value: "abc12" } });
         fireEvent.blur(passwordInput);
@@ -264,7 +401,7 @@ describe("RegisterScreen", () => {
     it("shows invalid-email hint after email input is blurred", () => {
         render(<RegisterScreen />);
 
-        const emailInput = screen.getByPlaceholderText("邮箱");
+        const emailInput = screen.getByPlaceholderText("Email");
 
         fireEvent.change(emailInput, { target: { value: "invalid" } });
         fireEvent.blur(emailInput);
@@ -275,7 +412,7 @@ describe("RegisterScreen", () => {
     it("shows invalid-username hint after username input is blurred", () => {
         render(<RegisterScreen />);
 
-        const usernameInput = screen.getByPlaceholderText("用户名");
+        const usernameInput = screen.getByPlaceholderText("Username");
 
         fireEvent.change(usernameInput, { target: { value: "bad user!" } });
         fireEvent.blur(usernameInput);
@@ -290,12 +427,12 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: " alice " } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: " alice " } });
 
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -322,6 +459,48 @@ describe("RegisterScreen", () => {
         });
     });
 
+    it("redirects to the requested relative path after successful register", async () => {
+        mockRouter.query = {
+            redirect: "/follows",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/follows");
+        });
+    });
+
+    it("falls back to home after successful register when redirect is unsafe", async () => {
+        mockRouter.query = {
+            redirect: "//evil.example.com",
+        };
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/");
+        });
+    });
+
     it("does not crash when register response body is empty", async () => {
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue(""),
@@ -329,11 +508,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(screen.getByText("注册失败")).toBeInTheDocument();
@@ -350,11 +529,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("确认密码"), { target: { value: "abc12345" } });
-        fireEvent.change(screen.getByPlaceholderText("邮箱"), { target: { value: "alice@example.com" } });
-        fireEvent.click(screen.getByRole("button", { name: "注册" }));
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
             expect(screen.getByText("注册失败")).toBeInTheDocument();
@@ -364,19 +543,55 @@ describe("RegisterScreen", () => {
         expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it("navigates to login page when clicking secondary button", () => {
+    it("renders the MentorFinder signup shell and marketing content", () => {
         render(<RegisterScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "前往登录页面" }));
+        expect(screen.getByRole("heading", { name: "Sign up for MentorFinder" })).toBeInTheDocument();
+        expect(screen.getByText("Already have an account?")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Sign in →" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
+        expect(screen.getByText("Create your account")).toBeInTheDocument();
+        expect(screen.getByText("Explore MentorFinder's unique features for both students and teachers")).toBeInTheDocument();
+        expect(screen.getByText("See what's included")).toBeInTheDocument();
+        expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
+        expect(screen.queryByText("Your Country/Region")).not.toBeInTheDocument();
+        expect(screen.queryByText("Email preferences")).not.toBeInTheDocument();
+    });
+
+    it("toggles the marketing feature list", () => {
+        render(<RegisterScreen />);
+
+        const toggleButton = screen.getByText("See what's included").closest("summary");
+        expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+        expect(toggleButton).not.toBeNull();
+
+        fireEvent.click(toggleButton);
+        expect(toggleButton).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByText("Discover mentors by research interests")).toBeInTheDocument();
+        expect(screen.getByText("Track papers on a living timeline")).toBeInTheDocument();
+
+        fireEvent.click(toggleButton);
+        expect(toggleButton).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+    });
+
+    it("navigates to login page when clicking sign-in link", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login");
     });
 
-    it("navigates to home page when clicking back-home button", () => {
+    it("preserves redirect when navigating from register to login", () => {
+        mockRouter.query = {
+            redirect: "/profile",
+        };
+
         render(<RegisterScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+        fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/");
+        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fprofile");
     });
 });

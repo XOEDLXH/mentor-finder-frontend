@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { RefCallback, useRef, useState } from "react";
 import {
     FAILURE_PREFIX,
     REGISTER_EMAIL_INVALID,
@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
+import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
 
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
@@ -55,9 +56,50 @@ const RegisterScreen = () => {
     const [emailBlurred, setEmailBlurred] = useState(false);
     const [registerErrorMessage, setRegisterErrorMessage] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [featureListOpen, setFeatureListOpen] = useState(false);
+    const emailInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const confirmPasswordInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
 
     const router = useRouter();
     const dispatch = useDispatch();
+    const redirectTarget = resolveRedirectTarget(router.query.redirect);
+    const bindEmailInputRef: RefCallback<HTMLInputElement> = (node) => {
+        emailInputRef.current = node ?? undefined;
+    };
+    const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
+        passwordInputRef.current = node ?? undefined;
+    };
+    const bindConfirmPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
+        confirmPasswordInputRef.current = node ?? undefined;
+    };
+    const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
+        userNameInputRef.current = node ?? undefined;
+    };
+
+    const featureItems = [
+        {
+            title: "Discover mentors by research interests",
+            description: "Search mentors and papers together to quickly narrow down the right academic fit.",
+        },
+        {
+            title: "Track papers on a living timeline",
+            description: "Follow publication activity across directions and stay aligned with new research momentum.",
+        },
+        {
+            title: "Save and manage followed mentors",
+            description: "Keep a focused shortlist of mentors you want to revisit, compare, and contact later.",
+        },
+        {
+            title: "Build a personal academic profile",
+            description: "Show research experience, honors, and projects in one place for future mentor interactions.",
+        },
+        {
+            title: "Add private mentors and request verification",
+            description: "Maintain your own mentor library and support mentor identity workflows when needed.",
+        },
+    ];
 
     const isPasswordStrong = (passwordToCheck: string) => {
         if (passwordToCheck.length < 8) {
@@ -101,23 +143,34 @@ const RegisterScreen = () => {
     const register = () => {
         setRegisterErrorMessage("");
 
+        if (email.trim() === "" || !isEmailValid(email)) {
+            setEmailBlurred(true);
+            emailInputRef.current?.focus();
+            return;
+        }
+
+        if (password === "" || !isPasswordStrong(password)) {
+            setPasswordBlurred(true);
+            passwordInputRef.current?.focus();
+            return;
+        }
+
         if (password !== confirmPassword) {
+            setConfirmPasswordBlurred(true);
+            confirmPasswordInputRef.current?.focus();
             alert(REGISTER_PASSWORD_MISMATCH);
+            return;
+        }
+
+        if (confirmPassword === "") {
+            setConfirmPasswordBlurred(true);
+            confirmPasswordInputRef.current?.focus();
             return;
         }
 
         if (normalizedUserName === "" || !USERNAME_REGEX.test(normalizedUserName)) {
             setUserNameBlurred(true);
-            return;
-        }
-
-        if (isPasswordWeak) {
-            setPasswordBlurred(true);
-            return;
-        }
-
-        if (isEmailInvalid) {
-            setEmailBlurred(true);
+            userNameInputRef.current?.focus();
             return;
         }
 
@@ -140,7 +193,7 @@ const RegisterScreen = () => {
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
                     dispatch(setName(normalizedUserName));
                     alert(REGISTER_SUCCESS_PREFIX + normalizedUserName);
-                    router.push("/");
+                    router.push(redirectTarget);
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
@@ -151,78 +204,197 @@ const RegisterScreen = () => {
     };
 
     return (
-        <>
-            <h4> 注册 </h4>
-            <input
-                type="text"
-                placeholder="用户名"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                onBlur={() => setUserNameBlurred(true)}
-            />
-            <input
-                type="password"
-                placeholder="密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={() => setPasswordBlurred(true)}
-            />
-            <input
-                type="password"
-                placeholder="确认密码"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onBlur={() => setConfirmPasswordBlurred(true)}
-            />
-            <input
-                type="text"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="邮箱"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={() => setEmailBlurred(true)}
-            />
-            {shouldShowPasswordMismatchHint && (
-                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_MISMATCH}</p>
-            )}
-            {userNameBlurred && isUserNameInvalid && (
-                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_USERNAME_INVALID}</p>
-            )}
-            {shouldShowPasswordWeakHint && (
-                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_PASSWORD_WEAK}</p>
-            )}
-            {emailBlurred && isEmailInvalid && (
-                <p style={{ color: "#c62828", margin: 0 }}>{REGISTER_EMAIL_INVALID}</p>
-            )}
-            {registerErrorMessage !== "" && (
-                <p style={{ color: "#c62828", margin: 0 }}>{registerErrorMessage}</p>
-            )}
-            <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
-                <button
-                    onClick={register}
-                    disabled={
-                        submitting ||
-                        normalizedUserName === "" ||
-                        isUserNameInvalid ||
-                        password === "" ||
-                        isPasswordWeak ||
-                        confirmPassword === "" ||
-                        password !== confirmPassword ||
-                        email === "" ||
-                        isEmailInvalid
-                    }
-                >
-                    {submitting ? "提交中..." : "注册"}
-                </button>
-                <button onClick={() => router.push("/login")} disabled={submitting}>
-                    前往登录页面
-                </button>
-                <button onClick={() => router.push("/")} disabled={submitting}>
-                    返回首页
-                </button>
+        <section className="registerAuthPage" aria-label="Sign up page">
+            <aside className="registerAuthMarketing" aria-label="MentorFinder feature overview">
+                <div className="registerAuthMarketingContent">
+                    <h1 className="registerAuthMarketingTitle">Create your account</h1>
+                    <p className="registerAuthMarketingCopy">
+                        Explore MentorFinder's unique features for both students and teachers
+                    </p>
+                    <details className="registerAuthDetails" open={featureListOpen}>
+                        <summary
+                            className="registerAuthMarketingToggle"
+                            aria-expanded={featureListOpen}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                setFeatureListOpen((open) => !open);
+                            }}
+                        >
+                            <span>See what&apos;s included</span>
+                            <span className={featureListOpen ? "registerAuthChevron registerAuthChevronOpen" : "registerAuthChevron"}>
+                                <svg
+                                    aria-hidden="true"
+                                    height="16"
+                                    viewBox="0 0 16 16"
+                                    version="1.1"
+                                    width="16"
+                                >
+                                    <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
+                                </svg>
+                            </span>
+                        </summary>
+
+                        {featureListOpen && (
+                            <div className="registerAuthDetailsContent">
+                                <ul className="registerAuthFeatureList">
+                                    {featureItems.map((item) => (
+                                        <li key={item.title} className="registerAuthFeatureItem">
+                                            <span className="registerAuthFeatureCheck" aria-hidden="true">
+                                                <svg
+                                                    aria-hidden="true"
+                                                    height="16"
+                                                    viewBox="0 0 16 16"
+                                                    version="1.1"
+                                                    width="16"
+                                                >
+                                                    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
+                                                </svg>
+                                            </span>
+                                            <div>
+                                                <p className="registerAuthFeatureTitle">{item.title}</p>
+                                                <p className="registerAuthFeatureDescription">{item.description}</p>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </details>
+                </div>
+                <div className="registerAuthVisual" aria-hidden="true">
+                    <span className="registerAuthStar registerAuthStarA" />
+                    <span className="registerAuthStar registerAuthStarB" />
+                    <span className="registerAuthStar registerAuthStarC" />
+                    <span className="registerAuthOrb registerAuthOrbA" />
+                    <span className="registerAuthOrb registerAuthOrbB" />
+                    <span className="registerAuthOrb registerAuthOrbC" />
+                    <span className="registerAuthGlow" />
+                </div>
+            </aside>
+
+            <div className="registerAuthPanel">
+                <div className="registerAuthTopLink">
+                    <span>Already have an account?</span>
+                    <a
+                        href={buildRedirectHref("/login", router.query.redirect)}
+                        className="registerAuthTopLinkAnchor"
+                        onClick={(event) => {
+                            event.preventDefault();
+                            void router.push(buildRedirectHref("/login", router.query.redirect));
+                        }}
+                    >
+                        Sign in →
+                    </a>
+                </div>
+
+                <div className="registerAuthFormWrap">
+                    <h2 className="registerAuthFormTitle" aria-label="Sign up for MentorFinder">
+                        <span className="registerAuthFormLead">Sign up for</span>
+                        <span className="registerAuthFormLogoRow">
+                            <img
+                                src="/mentorfinder-logo-1.svg"
+                                alt=""
+                                aria-hidden="true"
+                                className="registerAuthFormLogo"
+                            />
+                        </span>
+                    </h2>
+
+                    <button
+                        type="button"
+                        className="registerAuthSocialButton"
+                        disabled
+                        aria-label="Continue with TsinghuaID"
+                    >
+                        Continue with TsinghuaID
+                    </button>
+
+                    <div className="registerAuthDivider" aria-hidden="true">
+                        <span>or</span>
+                    </div>
+
+                    <label className="registerAuthField">
+                        <span className="registerAuthLabel">Email</span>
+                        <input
+                            ref={bindEmailInputRef}
+                            type="text"
+                            inputMode="email"
+                            autoComplete="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            onBlur={() => setEmailBlurred(true)}
+                        />
+                    </label>
+                    {emailBlurred && isEmailInvalid && (
+                        <p className="registerAuthError">{REGISTER_EMAIL_INVALID}</p>
+                    )}
+
+                    <label className="registerAuthField">
+                        <span className="registerAuthLabel">Password</span>
+                        <input
+                            ref={bindPasswordInputRef}
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            onBlur={() => setPasswordBlurred(true)}
+                        />
+                    </label>
+                    <p className="registerAuthHelper">
+                        Password must be at least 8 characters and include both letters and numbers.
+                    </p>
+                    {shouldShowPasswordWeakHint && (
+                        <p className="registerAuthError">{REGISTER_PASSWORD_WEAK}</p>
+                    )}
+
+                    <label className="registerAuthField">
+                        <span className="registerAuthLabel">Confirm your password</span>
+                        <input
+                            ref={bindConfirmPasswordInputRef}
+                            type="password"
+                            placeholder="Confirm your password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            onBlur={() => setConfirmPasswordBlurred(true)}
+                        />
+                    </label>
+                    {shouldShowPasswordMismatchHint && (
+                        <p className="registerAuthError">{REGISTER_PASSWORD_MISMATCH}</p>
+                    )}
+
+                    <label className="registerAuthField">
+                        <span className="registerAuthLabel">Username</span>
+                        <input
+                            ref={bindUserNameInputRef}
+                            type="text"
+                            placeholder="Username"
+                            value={userName}
+                            onChange={(e) => setUserName(e.target.value)}
+                            onBlur={() => setUserNameBlurred(true)}
+                        />
+                    </label>
+                    <p className="registerAuthHelper">
+                        Username may only contain letters, numbers, underscores, and hyphens.
+                    </p>
+                    {userNameBlurred && isUserNameInvalid && (
+                        <p className="registerAuthError">{REGISTER_USERNAME_INVALID}</p>
+                    )}
+
+                    {registerErrorMessage !== "" && (
+                        <p className="registerAuthError">{registerErrorMessage}</p>
+                    )}
+
+                    <button
+                        className="registerAuthSubmit"
+                        onClick={register}
+                        disabled={submitting}
+                    >
+                        {submitting ? "Creating account..." : "Create account"}
+                    </button>
+                </div>
             </div>
-        </>
+        </section>
     );
 };
 

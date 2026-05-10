@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { RefCallback, useRef, useState } from "react";
 import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
+import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
 
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
@@ -37,11 +38,30 @@ const LoginScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
 
     const router = useRouter();
     const dispatch = useDispatch();
+    const redirectTarget = resolveRedirectTarget(router.query.redirect);
+    const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
+        userNameInputRef.current = node ?? undefined;
+    };
+    const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
+        passwordInputRef.current = node ?? undefined;
+    };
 
     const login = () => {
+        if (userName.trim() === "") {
+            userNameInputRef.current?.focus();
+            return;
+        }
+
+        if (password === "") {
+            passwordInputRef.current?.focus();
+            return;
+        }
+
         setSubmitting(true);
         fetch("/api/login", {
             method: "POST",
@@ -62,7 +82,7 @@ const LoginScreen = () => {
                     dispatch(setName(userName));
                     alert(LOGIN_SUCCESS_PREFIX + userName);
 
-                    router.push("/");
+                    router.push(redirectTarget);
                 }
                 else {
                     alert(typeof res.info === "string" && res.info !== "" ? res.info : LOGIN_FAILED);
@@ -73,32 +93,75 @@ const LoginScreen = () => {
     };
 
     return (
-        <>
-            <h4> 登录 </h4>
-            <input
-                type="text"
-                placeholder="用户名"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-            />
-            <input
-                type="password"
-                placeholder="密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
-            <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
-                <button onClick={login} disabled={submitting || userName === "" || password === ""}>
-                    {submitting ? "提交中..." : "登录"}
-                </button>
-                <button onClick={() => router.push("/register")} disabled={submitting}>
-                    前往注册页面
-                </button>
-                <button onClick={() => router.push("/")} disabled={submitting}>
-                    返回首页
-                </button>
+        <section className="loginAuthPage" aria-label="Sign in page">
+            <div className="loginAuthBrand" aria-hidden="true">
+                <div className="loginAuthBrandMark">MF</div>
             </div>
-        </>
+
+            <h1 className="loginAuthTitle">Sign in to MentorFinder</h1>
+
+            <label className="loginAuthField">
+                <span className="loginAuthLabel">Username or email address</span>
+                <input
+                    ref={bindUserNameInputRef}
+                    type="text"
+                    placeholder="Username or email address"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                />
+            </label>
+
+            <label className="loginAuthField">
+                <div className="loginAuthPasswordRow">
+                    <span className="loginAuthLabel">Password</span>
+                </div>
+                <input
+                    ref={bindPasswordInputRef}
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+            </label>
+
+            <button
+                className="loginAuthSubmit"
+                onClick={login}
+                disabled={submitting}
+            >
+                {submitting ? "Signing in..." : "Sign in"}
+            </button>
+
+            <div className="loginAuthDivider" aria-hidden="true">
+                <span>or</span>
+            </div>
+
+            <button
+                type="button"
+                className="loginAuthSecondary"
+                disabled
+                aria-label="Continue with TsinghuaID"
+            >
+                Continue with TsinghuaID
+            </button>
+
+            <p className="loginAuthSignup">
+                New to MentorFinder?{" "}
+                <a
+                    href={buildRedirectHref("/register", router.query.redirect)}
+                    className="loginAuthInlineLink"
+                    onClick={(event) => {
+                        event.preventDefault();
+                        if (submitting) {
+                            return;
+                        }
+                        void router.push(buildRedirectHref("/register", router.query.redirect));
+                    }}
+                >
+                    Create an account
+                </a>
+            </p>
+        </section>
     );
 };
 

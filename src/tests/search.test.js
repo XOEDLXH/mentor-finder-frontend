@@ -16,6 +16,13 @@ jest.mock("../utils/network", () => ({
 
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
+    const mockReplace = jest.fn();
+    const mockRouter = {
+        push: mockPush,
+        replace: mockReplace,
+        query: {},
+        isReady: true,
+    };
 
     const mockPrivateMentor = {
         id: 101,
@@ -67,6 +74,7 @@ describe("SearchScreen", () => {
 
     beforeEach(() => {
         mockPush.mockReset();
+        mockReplace.mockReset();
         request.mockReset();
 
         request.mockImplementation(async (url) => {
@@ -85,9 +93,8 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        useRouter.mockReturnValue({
-            push: mockPush,
-        });
+        mockRouter.query = {};
+        useRouter.mockReturnValue(mockRouter);
     });
 
     it("shows admin operation panel only for admin role", async () => {
@@ -117,6 +124,81 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+    });
+
+    it("initializes from URL query and auto loads paper fuzzy search results", async () => {
+        mockRouter.query = {
+            keyword: "大模型",
+            mode: "paper",
+            search_mode: "fuzzy",
+            sort_mode: "default",
+        };
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/papers?keyword=%E5%A4%A7%E6%A8%A1%E5%9E%8B&search_mode=fuzzy&sort_mode=default") {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "2024-06-15",
+                        author_names: "李四,张三",
+                        subjects: "cs.CL",
+                        arxiv_id: "2401.00001",
+                        arxiv_url: "https://arxiv.org/abs/2401.00001",
+                        mentorNames: ["李四", "张三"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E5%A4%A7%E6%A8%A1%E5%9E%8B&search_mode=fuzzy&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        expect(screen.getByRole("button", { name: "搜论文" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "模糊搜索" })).toBeDisabled();
+        expect(screen.getByDisplayValue("大模型")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+        expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it("falls back to default values when URL query is invalid", async () => {
+        mockRouter.query = {
+            keyword: "图神经网络",
+            mode: "invalid-mode",
+            search_mode: "bad-mode",
+            sort_mode: "bad-sort",
+            page: "0",
+        };
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E5%9B%BE%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C&search_mode=exact",
+                "GET",
+                true,
+            );
+        });
+
+        expect(screen.getByRole("button", { name: "搜人" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "精确搜索" })).toBeDisabled();
+        expect(screen.getByDisplayValue("图神经网络")).toBeInTheDocument();
     });
 
     it("renders mentor results using backend response fields", async () => {
@@ -341,11 +423,10 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
-        fireEvent.click(screen.getByRole("button", { name: "模糊搜索" }));
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "模糊搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -354,6 +435,12 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+
+        expect(mockReplace).toHaveBeenCalledWith(
+            "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy",
+            undefined,
+            { shallow: true },
+        );
     });
 
     it("auto loads all results when switching mode with empty keyword", async () => {
@@ -453,6 +540,12 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+
+        expect(mockReplace).toHaveBeenCalledWith(
+            "/search?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&mode=paper&search_mode=exact&sort_mode=late",
+            undefined,
+            { shallow: true },
+        );
     });
 
     it("supports mentor result pagination", async () => {
@@ -533,5 +626,11 @@ describe("SearchScreen", () => {
             expect(screen.getByText("共 2 条结果，第 2 / 2 页")).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
+
+        expect(mockReplace).toHaveBeenCalledWith(
+            "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=exact&page=2",
+            undefined,
+            { shallow: true },
+        );
     });
 });
