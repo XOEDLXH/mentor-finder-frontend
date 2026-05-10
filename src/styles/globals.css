@@ -746,9 +746,26 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 .registerAuthFormTitle {
   margin: 0 0 28px;
   color: #1f2328;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   font-size: 38px;
   font-weight: 700;
+  line-height: 1.12;
   letter-spacing: -0.03em;
+}
+
+.registerAuthFormLogoRow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+}
+
+.registerAuthFormLogo {
+  display: block;
+  width: auto;
+  height: 38px;
+  max-width: 100%;
 }
 
 .registerAuthSocialButton {

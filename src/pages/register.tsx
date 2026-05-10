@@ -276,7 +276,17 @@ const RegisterScreen = () => {
                 </div>
 
                 <div className="registerAuthFormWrap">
-                    <h2 className="registerAuthFormTitle">Sign up for MentorFinder</h2>
+                    <h2 className="registerAuthFormTitle" aria-label="Sign up for MentorFinder">
+                        <span>Sign up for</span>
+                        <span className="registerAuthFormLogoRow">
+                            <img
+                                src="/mentorfinder-logo-1.svg"
+                                alt=""
+                                aria-hidden="true"
+                                className="registerAuthFormLogo"
+                            />
+                        </span>
+                    </h2>
 
                     <button
                         type="button"
