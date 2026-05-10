@@ -552,7 +552,7 @@ describe("RegisterScreen", () => {
         expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
         expect(screen.getByText("Create your account")).toBeInTheDocument();
         expect(screen.getByText("Explore MentorFinder's unique features for both students and teachers")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /See what's included/i })).toBeInTheDocument();
+        expect(screen.getByText("See what's included")).toBeInTheDocument();
         expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
         expect(screen.queryByText("Your Country/Region")).not.toBeInTheDocument();
         expect(screen.queryByText("Email preferences")).not.toBeInTheDocument();
@@ -561,8 +561,9 @@ describe("RegisterScreen", () => {
     it("toggles the marketing feature list", () => {
         render(<RegisterScreen />);
 
-        const toggleButton = screen.getByRole("button", { name: /See what's included/i });
+        const toggleButton = screen.getByText("See what's included").closest("summary");
         expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+        expect(toggleButton).not.toBeNull();
 
         fireEvent.click(toggleButton);
         expect(toggleButton).toHaveAttribute("aria-expanded", "true");

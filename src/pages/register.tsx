@@ -199,29 +199,35 @@ const RegisterScreen = () => {
                     <p className="registerAuthMarketingCopy">
                         Explore MentorFinder's unique features for both students and teachers
                     </p>
-                    <button
-                        type="button"
-                        className="registerAuthMarketingToggle"
-                        aria-expanded={featureListOpen}
-                        onClick={() => setFeatureListOpen((open) => !open)}
-                    >
-                        <span>See what&apos;s included</span>
-                        <span className={featureListOpen ? "registerAuthChevron registerAuthChevronOpen" : "registerAuthChevron"}>⌄</span>
-                    </button>
+                    <details className="registerAuthDetails" open={featureListOpen}>
+                        <summary
+                            className="registerAuthMarketingToggle"
+                            aria-expanded={featureListOpen}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                setFeatureListOpen((open) => !open);
+                            }}
+                        >
+                            <span>See what&apos;s included</span>
+                            <span className={featureListOpen ? "registerAuthChevron registerAuthChevronOpen" : "registerAuthChevron"}>⌄</span>
+                        </summary>
 
-                    {featureListOpen && (
-                        <ul className="registerAuthFeatureList">
-                            {featureItems.map((item) => (
-                                <li key={item.title} className="registerAuthFeatureItem">
-                                    <span className="registerAuthFeatureCheck" aria-hidden="true">✓</span>
-                                    <div>
-                                        <p className="registerAuthFeatureTitle">{item.title}</p>
-                                        <p className="registerAuthFeatureDescription">{item.description}</p>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+                        {featureListOpen && (
+                            <div className="registerAuthDetailsContent">
+                                <ul className="registerAuthFeatureList">
+                                    {featureItems.map((item) => (
+                                        <li key={item.title} className="registerAuthFeatureItem">
+                                            <span className="registerAuthFeatureCheck" aria-hidden="true">✓</span>
+                                            <div>
+                                                <p className="registerAuthFeatureTitle">{item.title}</p>
+                                                <p className="registerAuthFeatureDescription">{item.description}</p>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </details>
                 </div>
                 <div className="registerAuthVisual" aria-hidden="true">
                     <span className="registerAuthStar registerAuthStarA" />

@@ -491,42 +491,62 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 .registerAuthMarketingContent {
   position: relative;
   z-index: 2;
-  max-width: 460px;
-  padding: 84px 48px 48px;
+  max-width: 412px;
+  padding: 72px 40px 48px;
 }
 
 .registerAuthMarketingTitle {
   margin: 0;
-  font-size: 54px;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  max-width: 320px;
+  font-size: 56px;
+  line-height: 0.96;
+  letter-spacing: -0.045em;
   font-weight: 700;
 }
 
 .registerAuthMarketingCopy {
-  margin: 20px 0 0;
-  max-width: 420px;
+  margin: 18px 0 0;
+  max-width: 348px;
   color: rgba(255, 255, 255, 0.84);
-  font-size: 19px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.registerAuthDetails {
+  margin-top: 12px;
 }
 
 .registerAuthMarketingToggle {
-  margin-top: 26px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  border: none;
+  gap: 6px;
+  border: 0;
   background: transparent;
   color: #ffffff;
   padding: 0;
-  font-size: 24px;
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.5;
   box-shadow: none;
   transform: none;
+  outline-offset: 4px;
+  text-align: left;
+  list-style: none;
+  appearance: none;
+  cursor: pointer;
 }
 
-.registerAuthMarketingToggle:hover:not(:disabled) {
+.registerAuthMarketingToggle::-webkit-details-marker {
+  display: none;
+}
+
+.registerAuthMarketingToggle::marker {
+  display: none;
+  content: "";
+}
+
+.registerAuthMarketingToggle:hover {
+  background: transparent;
   border-color: transparent;
   box-shadow: none;
   transform: none;
@@ -534,6 +554,8 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 
 .registerAuthChevron {
   display: inline-flex;
+  font-size: 14px;
+  line-height: 1;
   transform: rotate(0deg);
   transition: transform 0.18s ease;
 }
@@ -542,8 +564,12 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transform: rotate(180deg);
 }
 
+.registerAuthDetailsContent {
+  padding-top: 12px;
+}
+
 .registerAuthFeatureList {
-  margin: 26px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
