@@ -88,7 +88,7 @@ describe("TopNav", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Profile" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fprofile");
+        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fuser-home");
     });
 
     it("allows typing into the top search input", () => {
@@ -208,7 +208,7 @@ describe("TopNav", () => {
         const menu = screen.getByRole("menu", { name: "Account menu" });
         fireEvent.click(within(menu).getByRole("button", { name: "Profile" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/profile");
+        expect(mockPush).toHaveBeenCalledWith("/user-home");
         expect(screen.queryByRole("menu", { name: "Account menu" })).not.toBeInTheDocument();
     });
 
