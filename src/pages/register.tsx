@@ -57,14 +57,26 @@ const RegisterScreen = () => {
     const [registerErrorMessage, setRegisterErrorMessage] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [featureListOpen, setFeatureListOpen] = useState(false);
-    const emailInputRef = useRef<HTMLInputElement | null>(null);
-    const passwordInputRef = useRef<HTMLInputElement | null>(null);
-    const confirmPasswordInputRef = useRef<HTMLInputElement | null>(null);
-    const userNameInputRef = useRef<HTMLInputElement | null>(null);
+    const emailInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const confirmPasswordInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
 
     const router = useRouter();
     const dispatch = useDispatch();
     const redirectTarget = resolveRedirectTarget(router.query.redirect);
+    const bindEmailInputRef = (node: HTMLInputElement | null) => {
+        emailInputRef.current = node ?? undefined;
+    };
+    const bindPasswordInputRef = (node: HTMLInputElement | null) => {
+        passwordInputRef.current = node ?? undefined;
+    };
+    const bindConfirmPasswordInputRef = (node: HTMLInputElement | null) => {
+        confirmPasswordInputRef.current = node ?? undefined;
+    };
+    const bindUserNameInputRef = (node: HTMLInputElement | null) => {
+        userNameInputRef.current = node ?? undefined;
+    };
 
     const featureItems = [
         {
@@ -304,7 +316,7 @@ const RegisterScreen = () => {
                     <label className="registerAuthField">
                         <span className="registerAuthLabel">Email</span>
                         <input
-                            ref={emailInputRef}
+                            ref={bindEmailInputRef}
                             type="text"
                             inputMode="email"
                             autoComplete="email"
@@ -321,7 +333,7 @@ const RegisterScreen = () => {
                     <label className="registerAuthField">
                         <span className="registerAuthLabel">Password</span>
                         <input
-                            ref={passwordInputRef}
+                            ref={bindPasswordInputRef}
                             type="password"
                             placeholder="Password"
                             value={password}
@@ -339,7 +351,7 @@ const RegisterScreen = () => {
                     <label className="registerAuthField">
                         <span className="registerAuthLabel">Confirm your password</span>
                         <input
-                            ref={confirmPasswordInputRef}
+                            ref={bindConfirmPasswordInputRef}
                             type="password"
                             placeholder="Confirm your password"
                             value={confirmPassword}
@@ -354,7 +366,7 @@ const RegisterScreen = () => {
                     <label className="registerAuthField">
                         <span className="registerAuthLabel">Username</span>
                         <input
-                            ref={userNameInputRef}
+                            ref={bindUserNameInputRef}
                             type="text"
                             placeholder="Username"
                             value={userName}

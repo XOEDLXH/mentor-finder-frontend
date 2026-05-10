@@ -38,12 +38,18 @@ const LoginScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const userNameInputRef = useRef<HTMLInputElement | null>(null);
-    const passwordInputRef = useRef<HTMLInputElement | null>(null);
+    const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
 
     const router = useRouter();
     const dispatch = useDispatch();
     const redirectTarget = resolveRedirectTarget(router.query.redirect);
+    const bindUserNameInputRef = (node: HTMLInputElement | null) => {
+        userNameInputRef.current = node ?? undefined;
+    };
+    const bindPasswordInputRef = (node: HTMLInputElement | null) => {
+        passwordInputRef.current = node ?? undefined;
+    };
 
     const login = () => {
         if (userName.trim() === "") {
@@ -97,7 +103,7 @@ const LoginScreen = () => {
             <label className="loginAuthField">
                 <span className="loginAuthLabel">Username or email address</span>
                 <input
-                    ref={userNameInputRef}
+                    ref={bindUserNameInputRef}
                     type="text"
                     placeholder="Username or email address"
                     value={userName}
@@ -110,7 +116,7 @@ const LoginScreen = () => {
                     <span className="loginAuthLabel">Password</span>
                 </div>
                 <input
-                    ref={passwordInputRef}
+                    ref={bindPasswordInputRef}
                     type="password"
                     placeholder="Password"
                     value={password}

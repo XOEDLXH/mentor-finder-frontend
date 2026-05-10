@@ -190,7 +190,7 @@ describe("TopNav", () => {
         expect(avatarButton).toHaveAttribute("aria-expanded", "true");
         expect(screen.getByRole("menu", { name: "Account menu" })).toBeInTheDocument();
 
-        fireEvent.keyDown(window, { key: "Escape" });
+        fireEvent.keyDown(globalThis, { key: "Escape" });
         expect(avatarButton).toHaveAttribute("aria-expanded", "false");
         expect(screen.queryByRole("menu", { name: "Account menu" })).not.toBeInTheDocument();
     });
@@ -238,7 +238,7 @@ describe("TopNav", () => {
         expect(menuToggle).toHaveAttribute("aria-expanded", "true");
         expect(screen.getByRole("navigation", { name: "Mobile primary navigation" })).toBeInTheDocument();
 
-        fireEvent.keyDown(window, { key: "Escape" });
+        fireEvent.keyDown(globalThis, { key: "Escape" });
         expect(menuToggle).toHaveAttribute("aria-expanded", "false");
         expect(screen.queryByRole("navigation", { name: "Mobile primary navigation" })).not.toBeInTheDocument();
     });
