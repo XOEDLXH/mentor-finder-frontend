@@ -494,7 +494,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   width: fit-content;
   max-width: none;
   margin: 0 auto;
-  padding: 72px 40px 48px;
+  padding: 92px 40px 48px;
 }
 
 .registerAuthMarketingTitle {
