@@ -137,6 +137,44 @@ describe("TopNav", () => {
         expect(within(menu).getByRole("button", { name: "Admin" })).toBeInTheDocument();
     });
 
+    it("toggles avatar menu expanded state and closes it with Escape", () => {
+        mockAuthState = {
+            token: "jwt-token",
+            name: "alice",
+            role: "student",
+        };
+
+        renderTopNav();
+
+        const avatarButton = screen.getByRole("button", { name: /alice/i });
+        expect(avatarButton).toHaveAttribute("aria-expanded", "false");
+
+        fireEvent.click(avatarButton);
+        expect(avatarButton).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("menu", { name: "Account menu" })).toBeInTheDocument();
+
+        fireEvent.keyDown(window, { key: "Escape" });
+        expect(avatarButton).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("menu", { name: "Account menu" })).not.toBeInTheDocument();
+    });
+
+    it("closes avatar menu after choosing a menu item", () => {
+        mockAuthState = {
+            token: "jwt-token",
+            name: "alice",
+            role: "student",
+        };
+
+        renderTopNav();
+
+        fireEvent.click(screen.getByRole("button", { name: /alice/i }));
+        const menu = screen.getByRole("menu", { name: "Account menu" });
+        fireEvent.click(within(menu).getByRole("button", { name: "Profile" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/profile");
+        expect(screen.queryByRole("menu", { name: "Account menu" })).not.toBeInTheDocument();
+    });
+
     it("dispatches resetAuth and returns home when signing out", () => {
         mockAuthState = {
             token: "jwt-token",
@@ -153,6 +191,21 @@ describe("TopNav", () => {
         expect(mockPush).toHaveBeenCalledWith("/");
     });
 
+    it("toggles mobile navigation expanded state and closes it with Escape", () => {
+        renderTopNav();
+
+        const menuToggle = screen.getByRole("button", { name: "Open navigation menu" });
+        expect(menuToggle).toHaveAttribute("aria-expanded", "false");
+
+        fireEvent.click(menuToggle);
+        expect(menuToggle).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("navigation", { name: "Mobile primary navigation" })).toBeInTheDocument();
+
+        fireEvent.keyDown(window, { key: "Escape" });
+        expect(menuToggle).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("navigation", { name: "Mobile primary navigation" })).not.toBeInTheDocument();
+    });
+
     it("opens mobile navigation and keeps restricted redirect behavior there", () => {
         renderTopNav();
 
@@ -162,6 +215,18 @@ describe("TopNav", () => {
         fireEvent.click(within(mobileNav).getByRole("button", { name: "Follows" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Ffollows");
+        expect(screen.queryByRole("navigation", { name: "Mobile primary navigation" })).not.toBeInTheDocument();
+    });
+
+    it("closes mobile navigation after choosing a public route", () => {
+        renderTopNav();
+
+        fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
+        const mobileNav = screen.getByRole("navigation", { name: "Mobile primary navigation" });
+
+        fireEvent.click(within(mobileNav).getByRole("button", { name: "Search" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/search");
         expect(screen.queryByRole("navigation", { name: "Mobile primary navigation" })).not.toBeInTheDocument();
     });
 });
