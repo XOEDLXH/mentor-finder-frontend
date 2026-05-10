@@ -5,11 +5,15 @@ import { useSelector } from "react-redux";
 import { FAILURE_PREFIX } from "../constants/string";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { RootState } from "../redux/store";
+import {
+    buildSearchUrl,
+    DEFAULT_SEARCH_QUERY_STATE,
+    parseSearchQuery,
+    SearchMatchMode,
+    SearchMode,
+    SearchPaperSortMode,
+} from "../utils/searchQuery";
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
-
-type SearchMode = "mentor" | "paper";
-type SearchMatchMode = "exact" | "fuzzy";
-type SearchPaperSortMode = "default" | "early" | "late";
 type MentorResultFilter = "all" | "mine" | "public";
 
 const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
@@ -37,6 +41,15 @@ interface SearchPapersResponse {
     total_pages?: number;
     has_previous?: boolean;
     has_next?: boolean;
+}
+
+interface SearchOptions {
+    keyword?: string;
+    mode?: SearchMode;
+    searchMode?: SearchMatchMode;
+    sortMode?: SearchPaperSortMode;
+    page?: number;
+    shouldSyncUrl?: boolean;
 }
 
 const SearchScreen = () => {
@@ -82,6 +95,7 @@ const SearchScreen = () => {
         publish_date: "",
         author_names: "",
     });
+    const [didInitFromQuery, setDidInitFromQuery] = useState(false);
 
     const resetResults = () => {
         setErrorMessage("");
@@ -133,9 +147,33 @@ const SearchScreen = () => {
         return typeof NetworkError === "function" && err instanceof NetworkError;
     };
 
+    const syncSearchUrl = (
+        nextKeyword: string,
+        nextMode: SearchMode,
+        nextSearchMode: SearchMatchMode,
+        nextSortMode: SearchPaperSortMode,
+        nextPage: number,
+    ) => {
+        void router.replace(
+            buildSearchUrl({
+                keyword: nextKeyword,
+                mode: nextMode,
+                searchMode: nextSearchMode,
+                sortMode: nextSortMode,
+                page: nextPage,
+            }),
+            undefined,
+            { shallow: true },
+        );
+    };
+
     const switchMode = (nextMode: SearchMode) => {
+        const trimmedKeyword = keyword.trim();
+
         setMode(nextMode);
-        setHasSearched(false);
+        if (trimmedKeyword === "") {
+            setHasSearched(false);
+        }
         resetResults();
         setAdminMessage("");
         if (nextMode === "paper") {
@@ -159,8 +197,23 @@ const SearchScreen = () => {
             author_names: "",
         });
 
-        if (keyword.trim() === "") {
-            void search("", undefined, 1, nextMode);
+        if (trimmedKeyword === "") {
+            void search({
+                keyword: "",
+                mode: nextMode,
+                sortMode: paperSortMode,
+                page: 1,
+                shouldSyncUrl: true,
+            });
+            return;
+        }
+
+        if (hasSearched) {
+            void search({
+                mode: nextMode,
+                page: 1,
+                shouldSyncUrl: true,
+            });
         }
     };
 
@@ -220,24 +273,41 @@ const SearchScreen = () => {
         return mentors;
     }, [mentors, mentorResultFilter, privateMentorIdSet]);
 
-    const search = async (
-        overrideKeyword?: string,
-        overridePaperSortMode?: SearchPaperSortMode,
-        overridePage?: number,
-        overrideMode?: SearchMode,
-    ) => {
+    const search = async ({
+        keyword: overrideKeyword,
+        mode: overrideMode,
+        searchMode: overrideSearchMode,
+        sortMode: overrideSortMode,
+        page: overridePage,
+        shouldSyncUrl = true,
+    }: SearchOptions = {}) => {
         const trimmedKeyword = (overrideKeyword ?? keyword).trim();
-        const resolvedPaperSortMode = overridePaperSortMode ?? paperSortMode;
-        const requestedPage = Math.max(1, overridePage ?? 1);
         const resolvedMode = overrideMode ?? mode;
+        const resolvedSearchMode = overrideSearchMode ?? matchMode;
+        const resolvedPaperSortMode = overrideSortMode ?? paperSortMode;
+        const requestedPage = Math.max(1, overridePage ?? 1);
         const pageQuery = requestedPage > 1 ? `&page=${requestedPage}` : "";
 
+        setKeyword(trimmedKeyword);
+        setMode(resolvedMode);
+        setMatchMode(resolvedSearchMode);
+        setPaperSortMode(resolvedPaperSortMode);
         setLoading(true);
         setHasSearched(true);
         setErrorMessage("");
 
+        if (shouldSyncUrl) {
+            syncSearchUrl(
+                trimmedKeyword,
+                resolvedMode,
+                resolvedSearchMode,
+                resolvedPaperSortMode,
+                requestedPage,
+            );
+        }
+
         try {
-            const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${matchMode}`;
+            const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${resolvedSearchMode}`;
 
             if (resolvedMode === "mentor") {
                 const res = await request<SearchMentorsResponse>(
@@ -272,8 +342,34 @@ const SearchScreen = () => {
     };
 
     useEffect(() => {
-        void search("", undefined, 1, "mentor");
-    }, []);
+        if (!router.isReady || didInitFromQuery) {
+            return;
+        }
+
+        const { hasAnySearchParam, state } = parseSearchQuery(router.query);
+        setDidInitFromQuery(true);
+
+        if (hasAnySearchParam) {
+            void search({
+                keyword: state.keyword,
+                mode: state.mode,
+                searchMode: state.searchMode,
+                sortMode: state.sortMode,
+                page: state.page,
+                shouldSyncUrl: false,
+            });
+            return;
+        }
+
+        void search({
+            keyword: DEFAULT_SEARCH_QUERY_STATE.keyword,
+            mode: DEFAULT_SEARCH_QUERY_STATE.mode,
+            searchMode: DEFAULT_SEARCH_QUERY_STATE.searchMode,
+            sortMode: DEFAULT_SEARCH_QUERY_STATE.sortMode,
+            page: DEFAULT_SEARCH_QUERY_STATE.page,
+            shouldSyncUrl: false,
+        });
+    }, [didInitFromQuery, router.isReady, router.query]);
 
     const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
         if (paperSortMode === nextSortMode) {
@@ -283,7 +379,27 @@ const SearchScreen = () => {
         setPaperSortMode(nextSortMode);
 
         if (mode === "paper" && hasSearched) {
-            void search(undefined, nextSortMode, 1);
+            void search({
+                sortMode: nextSortMode,
+                page: 1,
+                shouldSyncUrl: true,
+            });
+        }
+    };
+
+    const changeMatchMode = (nextMatchMode: SearchMatchMode) => {
+        if (matchMode === nextMatchMode) {
+            return;
+        }
+
+        setMatchMode(nextMatchMode);
+
+        if (hasSearched) {
+            void search({
+                searchMode: nextMatchMode,
+                page: 1,
+                shouldSyncUrl: true,
+            });
         }
     };
 
@@ -291,19 +407,28 @@ const SearchScreen = () => {
         if (loading || !hasPreviousPage) {
             return;
         }
-        void search(undefined, undefined, currentPage - 1);
+        void search({
+            page: currentPage - 1,
+            shouldSyncUrl: true,
+        });
     };
 
     const gotoNextPage = () => {
         if (loading || !hasNextPage) {
             return;
         }
-        void search(undefined, undefined, currentPage + 1);
+        void search({
+            page: currentPage + 1,
+            shouldSyncUrl: true,
+        });
     };
 
     const handleEnter = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
-            void search();
+            void search({
+                page: 1,
+                shouldSyncUrl: true,
+            });
         }
     };
 
@@ -514,13 +639,13 @@ const SearchScreen = () => {
 
             <div style={{ display: "flex", gap: 8 }}>
                 <button
-                    onClick={() => setMatchMode("exact")}
+                    onClick={() => changeMatchMode("exact")}
                     disabled={matchMode === "exact"}
                 >
                     精确搜索
                 </button>
                 <button
-                    onClick={() => setMatchMode("fuzzy")}
+                    onClick={() => changeMatchMode("fuzzy")}
                     disabled={matchMode === "fuzzy"}
                 >
                     模糊搜索
@@ -559,7 +684,10 @@ const SearchScreen = () => {
                     onKeyDown={handleEnter}
                     style={{ flex: 1 }}
                 />
-                <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
+                <button
+                    onClick={() => void search({ page: 1, shouldSyncUrl: true })}
+                    disabled={keyword.trim() === "" || loading}
+                >
                     {loading ? "搜索中..." : "搜索"}
                 </button>
             </div>

@@ -1,0 +1,108 @@
+export type SearchMode = "mentor" | "paper";
+export type SearchMatchMode = "exact" | "fuzzy";
+export type SearchPaperSortMode = "default" | "early" | "late";
+
+export interface SearchQueryState {
+    keyword: string;
+    mode: SearchMode;
+    searchMode: SearchMatchMode;
+    sortMode: SearchPaperSortMode;
+    page: number;
+}
+
+export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
+    keyword: "",
+    mode: "mentor",
+    searchMode: "exact",
+    sortMode: "default",
+    page: 1,
+};
+
+const isSafeSearchMode = (value: unknown): value is SearchMode => {
+    return value === "mentor" || value === "paper";
+};
+
+const isSafeMatchMode = (value: unknown): value is SearchMatchMode => {
+    return value === "exact" || value === "fuzzy";
+};
+
+const isSafeSortMode = (value: unknown): value is SearchPaperSortMode => {
+    return value === "default" || value === "early" || value === "late";
+};
+
+const normalizeQueryValue = (value: string | string[] | undefined) => {
+    if (typeof value === "string") {
+        return value;
+    }
+
+    if (Array.isArray(value) && value.length > 0) {
+        return value[0];
+    }
+
+    return "";
+};
+
+const parsePositivePage = (value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+        return 1;
+    }
+
+    return Math.floor(parsed);
+};
+
+export const parseSearchQuery = (
+    query: Record<string, string | string[] | undefined>,
+) => {
+    const rawKeyword = normalizeQueryValue(query.keyword);
+    const rawMode = normalizeQueryValue(query.mode);
+    const rawSearchMode = normalizeQueryValue(query.search_mode);
+    const rawSortMode = normalizeQueryValue(query.sort_mode);
+    const rawPage = normalizeQueryValue(query.page);
+
+    const hasAnySearchParam =
+        rawKeyword !== "" ||
+        rawMode !== "" ||
+        rawSearchMode !== "" ||
+        rawSortMode !== "" ||
+        rawPage !== "";
+
+    return {
+        hasAnySearchParam,
+        state: {
+            keyword: rawKeyword,
+            mode: isSafeSearchMode(rawMode) ? rawMode : DEFAULT_SEARCH_QUERY_STATE.mode,
+            searchMode: isSafeMatchMode(rawSearchMode) ? rawSearchMode : DEFAULT_SEARCH_QUERY_STATE.searchMode,
+            sortMode: isSafeSortMode(rawSortMode) ? rawSortMode : DEFAULT_SEARCH_QUERY_STATE.sortMode,
+            page: rawPage === "" ? DEFAULT_SEARCH_QUERY_STATE.page : parsePositivePage(rawPage),
+        } satisfies SearchQueryState,
+    };
+};
+
+export const buildSearchUrl = (state: SearchQueryState) => {
+    const params = new URLSearchParams();
+
+    params.set("keyword", state.keyword);
+    params.set("mode", state.mode);
+    params.set("search_mode", state.searchMode);
+
+    if (state.mode === "paper") {
+        params.set("sort_mode", state.sortMode);
+    }
+
+    if (state.page > 1) {
+        params.set("page", String(state.page));
+    }
+
+    return `/search?${params.toString()}`;
+};
+
+export const buildGlobalPaperSearchUrl = (keyword: string) => {
+    return buildSearchUrl({
+        keyword: keyword.trim(),
+        mode: "paper",
+        searchMode: "fuzzy",
+        sortMode: "default",
+        page: 1,
+    });
+};

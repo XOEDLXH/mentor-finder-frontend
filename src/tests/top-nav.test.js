@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import TopNav from "../components/TopNav";
 import { resetAuth } from "../redux/auth";
+import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
 
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
@@ -48,6 +49,7 @@ describe("TopNav", () => {
         useRouter.mockReturnValue(mockRouter);
         useDispatch.mockReturnValue(mockDispatch);
         useSelector.mockImplementation((selector) => selector({ auth: mockAuthState }));
+        globalThis.open = jest.fn();
     });
 
     afterEach(() => {
@@ -80,12 +82,38 @@ describe("TopNav", () => {
         expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fprofile");
     });
 
-    it("routes to search page from the top search input", () => {
+    it("allows typing into the top search input", () => {
         renderTopNav();
 
-        fireEvent.click(screen.getByRole("textbox", { name: "Search or jump to" }));
+        const searchInput = screen.getByRole("textbox", { name: "Search or jump to" });
+        fireEvent.change(searchInput, { target: { value: "graph neural network" } });
 
-        expect(mockPush).toHaveBeenCalledWith("/search");
+        expect(searchInput).toHaveValue("graph neural network");
+        expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("opens a new tab with paper fuzzy search when pressing Enter with keyword", () => {
+        renderTopNav();
+
+        const searchInput = screen.getByRole("textbox", { name: "Search or jump to" });
+        fireEvent.change(searchInput, { target: { value: "graph neural network" } });
+        fireEvent.keyDown(searchInput, { key: "Enter" });
+
+        expect(globalThis.open).toHaveBeenCalledWith(
+            buildGlobalPaperSearchUrl("graph neural network"),
+            "_blank",
+            "noopener,noreferrer",
+        );
+    });
+
+    it("does not open a new tab when top search keyword is empty", () => {
+        renderTopNav();
+
+        const searchInput = screen.getByRole("textbox", { name: "Search or jump to" });
+        fireEvent.change(searchInput, { target: { value: "   " } });
+        fireEvent.keyDown(searchInput, { key: "Enter" });
+
+        expect(globalThis.open).not.toHaveBeenCalled();
     });
 
     it("shows avatar menu instead of auth buttons for logged-in users", () => {

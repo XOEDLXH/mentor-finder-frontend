@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { resetAuth } from "../redux/auth";
 import { RootState } from "../redux/store";
 import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
+import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
 
 interface NavItem {
     label: string;
@@ -58,6 +59,7 @@ const TopNav = () => {
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+    const [searchKeyword, setSearchKeyword] = useState("");
 
     const isLoggedIn = auth.token.trim() !== "";
     const isAdmin = auth.role === "admin";
@@ -105,16 +107,19 @@ const TopNav = () => {
         void router.push(nextHref);
     };
 
-    const triggerSearchEntry = () => {
-        if (router.pathname !== "/search") {
-            void router.push("/search");
-        }
-    };
-
     const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
             event.preventDefault();
-            triggerSearchEntry();
+            const trimmedKeyword = searchKeyword.trim();
+            if (trimmedKeyword === "") {
+                return;
+            }
+
+            window.open(
+                buildGlobalPaperSearchUrl(trimmedKeyword),
+                "_blank",
+                "noopener,noreferrer",
+            );
         }
     };
 
@@ -160,11 +165,11 @@ const TopNav = () => {
                 <div className="topNavRight">
                     <input
                         type="text"
-                        readOnly
                         className="topNavSearch"
                         placeholder="Search or jump to..."
                         aria-label="Search or jump to"
-                        onClick={triggerSearchEntry}
+                        value={searchKeyword}
+                        onChange={(event) => setSearchKeyword(event.target.value)}
                         onKeyDown={handleSearchKeyDown}
                     />
 
