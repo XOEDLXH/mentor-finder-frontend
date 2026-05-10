@@ -99,10 +99,22 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   min-height: 100vh;
 }
 
+.appChromeAuth {
+  background:
+    linear-gradient(180deg, #f6f8fa 0, #f6f8fa 100%);
+}
+
 .appMain {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
   padding: 110px 0 48px;
+}
+
+.appMainAuth {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  padding: 0;
 }
 
 .topNav {
@@ -311,6 +323,166 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: none;
 }
 
+.loginAuthPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 20px 56px;
+}
+
+.loginAuthBrand {
+  display: flex;
+  justify-content: center;
+}
+
+.loginAuthBrandMark {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #24292e, #57606a);
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 0 14px 28px rgba(31, 35, 40, 0.12);
+}
+
+.loginAuthTitle {
+  margin: 0;
+  color: #1f2328;
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.loginAuthCard {
+  width: min(100%, 340px);
+  padding: 20px;
+  border: 1px solid #d8dee4;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
+}
+
+.loginAuthField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loginAuthLabel {
+  color: #1f2328;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.loginAuthPasswordRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.loginAuthCard input {
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  padding: 9px 12px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
+}
+
+.loginAuthCard input:focus-visible {
+  outline: 3px solid rgba(9, 105, 218, 0.2);
+  outline-offset: 0;
+  border-color: #0969da;
+}
+
+.loginAuthSubmit {
+  width: 100%;
+  border: 1px solid rgba(31, 35, 40, 0.15);
+  border-radius: 8px;
+  background: #1f883d;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 10px 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.loginAuthSubmit:hover:not(:disabled) {
+  background: #1a7f37;
+  border-color: rgba(31, 35, 40, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transform: none;
+}
+
+.loginAuthDivider {
+  width: min(100%, 340px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #656d76;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.loginAuthDivider::before,
+.loginAuthDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #d8dee4;
+}
+
+.loginAuthSecondary {
+  width: min(100%, 340px);
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #f6f8fa;
+  color: #57606a;
+  font-weight: 600;
+  padding: 10px 14px;
+  box-shadow: none;
+}
+
+.loginAuthSecondary:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.loginAuthSignup {
+  margin: 0;
+  color: #59636e;
+  font-size: 14px;
+  text-align: center;
+}
+
+.loginAuthInlineLink {
+  border: none;
+  background: transparent;
+  color: #0969da;
+  padding: 0;
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+}
+
+.loginAuthInlineLink:hover:not(:disabled) {
+  color: #0969da;
+  text-decoration: underline;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
 @media (max-width: 920px) {
   .topNavInner {
     min-height: 68px;
@@ -385,6 +557,11 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
     padding-top: 96px;
   }
 
+  .appMainAuth {
+    width: 100%;
+    padding-top: 0;
+  }
+
   .topNavInner {
     width: calc(100% - 24px);
     gap: 12px;
@@ -397,5 +574,14 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   .topNavSearch {
     width: min(180px, 42vw);
     padding: 9px 12px;
+  }
+
+  .loginAuthPage {
+    justify-content: flex-start;
+    padding-top: 72px;
+  }
+
+  .loginAuthTitle {
+    font-size: 22px;
   }
 }

@@ -95,9 +95,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.fetch).toHaveBeenCalledTimes(1);
@@ -133,9 +133,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/profile");
@@ -152,9 +152,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/");
@@ -168,9 +168,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
@@ -186,9 +186,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "banned_user" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "banned_user" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith("User is banned");
@@ -204,9 +204,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
@@ -223,9 +223,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("用户名"), { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "abc12345" } });
-        fireEvent.click(screen.getByRole("button", { name: "登录" }));
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
             expect(globalThis.alert).toHaveBeenCalledWith("<html>502 Bad Gateway</html>");
@@ -235,10 +235,23 @@ describe("LoginScreen", () => {
         expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it("navigates to register page when clicking secondary button", () => {
+    it("renders the MentorFinder login shell and placeholder actions", () => {
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "前往注册页面" }));
+        expect(screen.getByRole("heading", { name: "Sign in to MentorFinder" })).toBeInTheDocument();
+        expect(screen.getByText("MF")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
+        expect(screen.getByText("New to MentorFinder?")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Create an account" })).toBeInTheDocument();
+        expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
+        expect(screen.queryByText("Sign in with a passkey")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "返回首页" })).not.toBeInTheDocument();
+    });
+
+    it("navigates to register page when clicking account creation link", () => {
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register");
     });
@@ -250,17 +263,9 @@ describe("LoginScreen", () => {
 
         render(<LoginScreen />);
 
-        fireEvent.click(screen.getByRole("button", { name: "前往注册页面" }));
+        fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register?redirect=%2Ffollows");
-    });
-
-    it("navigates to home page when clicking back-home button", () => {
-        render(<LoginScreen />);
-
-        fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
-
-        expect(mockPush).toHaveBeenCalledWith("/");
     });
 });
 

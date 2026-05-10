@@ -75,32 +75,70 @@ const LoginScreen = () => {
     };
 
     return (
-        <>
-            <h4> 登录 </h4>
-            <input
-                type="text"
-                placeholder="用户名"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-            />
-            <input
-                type="password"
-                placeholder="密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
-            <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
-                <button onClick={login} disabled={submitting || userName === "" || password === ""}>
-                    {submitting ? "提交中..." : "登录"}
-                </button>
-                <button onClick={() => router.push(buildRedirectHref("/register", router.query.redirect))} disabled={submitting}>
-                    前往注册页面
-                </button>
-                <button onClick={() => router.push("/")} disabled={submitting}>
-                    返回首页
+        <section className="loginAuthPage" aria-label="Sign in page">
+            <div className="loginAuthBrand" aria-hidden="true">
+                <div className="loginAuthBrandMark">MF</div>
+            </div>
+
+            <h1 className="loginAuthTitle">Sign in to MentorFinder</h1>
+
+            <div className="loginAuthCard">
+                <label className="loginAuthField">
+                    <span className="loginAuthLabel">Username or email address</span>
+                    <input
+                        type="text"
+                        placeholder="Username or email address"
+                        value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                    />
+                </label>
+
+                <label className="loginAuthField">
+                    <div className="loginAuthPasswordRow">
+                        <span className="loginAuthLabel">Password</span>
+                    </div>
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </label>
+
+                <button
+                    className="loginAuthSubmit"
+                    onClick={login}
+                    disabled={submitting || userName === "" || password === ""}
+                >
+                    {submitting ? "Signing in..." : "Sign in"}
                 </button>
             </div>
-        </>
+
+            <div className="loginAuthDivider" aria-hidden="true">
+                <span>or</span>
+            </div>
+
+            <button
+                type="button"
+                className="loginAuthSecondary"
+                disabled
+                aria-label="Continue with TsinghuaID"
+            >
+                Continue with TsinghuaID
+            </button>
+
+            <p className="loginAuthSignup">
+                New to MentorFinder?{" "}
+                <button
+                    type="button"
+                    className="loginAuthInlineLink"
+                    onClick={() => router.push(buildRedirectHref("/register", router.query.redirect))}
+                    disabled={submitting}
+                >
+                    Create an account
+                </button>
+            </p>
+        </section>
     );
 };
 

@@ -2,6 +2,7 @@ import Head from "next/head";
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { useEffect } from "react";
+import { useRouter } from "next/router";
 import { Provider, useDispatch } from "react-redux";
 
 import TopNav from "../components/TopNav";
@@ -11,6 +12,8 @@ import store from "../redux/store";
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
+    const router = useRouter();
+    const isAuthPage = router.pathname === "/login";
 
     useEffect(() => {
         dispatch(hydrateAuth(loadAuthFromStorage()));
@@ -21,9 +24,9 @@ const App = ({ Component, pageProps }: AppProps) => {
             <Head>
                 <title>找导师</title>
             </Head>
-            <div className="appChrome">
-                <TopNav />
-                <main className="appMain">
+            <div className={isAuthPage ? "appChrome appChromeAuth" : "appChrome"}>
+                {!isAuthPage && <TopNav />}
+                <main className={isAuthPage ? "appMain appMainAuth" : "appMain"}>
                     <Component {...pageProps} />
                 </main>
             </div>
