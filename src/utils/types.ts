@@ -81,6 +81,47 @@ export interface TimelineDirectionsResponse {
     page_size_max: number;
 }
 
+export interface WeeklyPushPaper {
+    id: number;
+    title: string;
+    publishDate?: string;
+    authorNames: string;
+    arxivUrl?: string;
+    arxivId?: string;
+    abstract?: string | null;
+    tldr?: string | null;
+}
+
+export interface WeeklyPushItem {
+    weekStart: string;
+    weekEnd: string;
+    paperCount: number;
+    title: string;
+    fixedSummary: string;
+    aiSummary: string;
+    content: string;
+    papers: WeeklyPushPaper[];
+    generatedBy: string;
+    updatedAt: string;
+}
+
+export interface WeeklyPushResponse {
+    weeklyPush: WeeklyPushItem | null;
+}
+
+export interface WeeklyPushHistoryItem {
+    weekStart: string;
+    weekEnd: string;
+    title: string;
+    paperCount: number;
+    generatedBy: string;
+    updatedAt: string;
+}
+
+export interface WeeklyPushHistoryResponse {
+    history: WeeklyPushHistoryItem[];
+}
+
 export interface TimelinePapersResponse {
     direction: string;
     page: number;
