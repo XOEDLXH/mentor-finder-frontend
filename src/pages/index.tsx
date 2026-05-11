@@ -10,7 +10,7 @@ import {
 
 const HomeScreen = () => {
     const userName = useSelector((state: RootState) => state.auth.name);
-    const [weeklyPush, setWeeklyPush] = useState<WeeklyPushItem | null>(null);
+    const [weeklyPush, setWeeklyPush] = useState<WeeklyPushItem | undefined>(undefined);
     const [weeklyPushHistory, setWeeklyPushHistory] = useState<WeeklyPushHistoryResponse["history"]>([]);
     const [selectedWeekStart, setSelectedWeekStart] = useState("");
 
@@ -27,7 +27,7 @@ const HomeScreen = () => {
                 setSelectedWeekStart(latestRes.weeklyPush?.weekStart || historyRes.history[0]?.weekStart || "");
             }
             catch {
-                setWeeklyPush(null);
+                setWeeklyPush(undefined);
                 setWeeklyPushHistory([]);
                 setSelectedWeekStart("");
             }
@@ -51,7 +51,7 @@ const HomeScreen = () => {
                 setWeeklyPush(res.weeklyPush);
             }
             catch {
-                setWeeklyPush(null);
+                setWeeklyPush(undefined);
             }
         };
 

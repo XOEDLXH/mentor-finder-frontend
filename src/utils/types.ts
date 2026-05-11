@@ -88,8 +88,8 @@ export interface WeeklyPushPaper {
     authorNames: string;
     arxivUrl?: string;
     arxivId?: string;
-    abstract?: string | null;
-    tldr?: string | null;
+    abstract?: string;
+    tldr?: string;
 }
 
 export interface WeeklyPushItem {
@@ -106,7 +106,7 @@ export interface WeeklyPushItem {
 }
 
 export interface WeeklyPushResponse {
-    weeklyPush: WeeklyPushItem | null;
+    weeklyPush?: WeeklyPushItem;
 }
 
 export interface WeeklyPushHistoryItem {
