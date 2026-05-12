@@ -7,7 +7,6 @@ import {
     REGISTER_EMAIL_INVALID,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
-    REGISTER_SUCCESS_PREFIX,
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import LoginScreen from "../pages/login";
@@ -454,12 +453,12 @@ describe("RegisterScreen", () => {
             expect(mockDispatch).toHaveBeenCalledWith(setToken("register-token"));
             expect(mockDispatch).toHaveBeenCalledWith(setRole("student"));
             expect(mockDispatch).toHaveBeenCalledWith(setName("alice"));
-            expect(globalThis.alert).toHaveBeenCalledWith(REGISTER_SUCCESS_PREFIX + "alice");
             expect(mockPush).toHaveBeenCalledWith("/");
         });
+        expect(globalThis.alert).not.toHaveBeenCalled();
     });
 
-    it("redirects to the requested relative path after successful register", async () => {
+    it("still navigates home after successful register when redirect is present", async () => {
         mockRouter.query = {
             redirect: "/follows",
         };
@@ -476,7 +475,7 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
-            expect(mockPush).toHaveBeenCalledWith("/follows");
+            expect(mockPush).toHaveBeenCalledWith("/");
         });
     });
 

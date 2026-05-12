@@ -5,13 +5,12 @@ import {
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
-    REGISTER_SUCCESS_PREFIX,
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
-import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
+import { buildRedirectHref } from "../utils/authRedirect";
 
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
@@ -67,7 +66,6 @@ const RegisterScreen = () => {
 
     const router = useRouter();
     const dispatch = useDispatch();
-    const redirectTarget = resolveRedirectTarget(router.query.redirect);
     const bindEmailInputRef: RefCallback<HTMLInputElement> = (node) => {
         emailInputRef.current = node ?? undefined;
     };
@@ -203,8 +201,7 @@ const RegisterScreen = () => {
                     dispatch(setToken(res.token));
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
                     dispatch(setName(normalizedUserName));
-                    alert(REGISTER_SUCCESS_PREFIX + normalizedUserName);
-                    router.push(redirectTarget);
+                    router.push("/");
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
