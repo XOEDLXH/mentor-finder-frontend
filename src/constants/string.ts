@@ -13,10 +13,10 @@ export const LOGIN_FAILED = "Incorrect username or password.";
 export const REGISTER_SUCCESS_PREFIX = "Registration successful, username: ";
 export const REGISTER_FAILED = "Registration failed.";
 export const REGISTER_USERNAME_TAKEN = "This username has already been used.";
+export const REGISTER_EMAIL_TAKEN = "This email has already been used.";
 export const REGISTER_USERNAME_INVALID =
   "Username can only contain letters, numbers, underscores, and hyphens.";
 export const REGISTER_PASSWORD_MISMATCH = "The two passwords do not match.";
 export const REGISTER_PASSWORD_WEAK =
   "Password must be at least 8 characters long and contain both letters and numbers.";
 export const REGISTER_EMAIL_INVALID = "Invalid email format.";
-

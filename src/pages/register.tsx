@@ -2,6 +2,7 @@ import { RefCallback, useEffect, useRef, useState } from "react";
 import {
     FAILURE_PREFIX,
     REGISTER_EMAIL_INVALID,
+    REGISTER_EMAIL_TAKEN,
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
@@ -225,6 +226,9 @@ const RegisterScreen = () => {
                 else if (Number(res.code) === 3) {
                     setUserNameErrorMessage(REGISTER_USERNAME_TAKEN);
                     setUserNameErrorSource(USERNAME_DUPLICATE_ERROR);
+                }
+                else if (Number(res.code) === 4) {
+                    setRegisterErrorMessage(REGISTER_EMAIL_TAKEN);
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
