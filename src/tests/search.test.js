@@ -431,8 +431,73 @@ describe("SearchScreen", () => {
         expect(screen.getByText("研究方向：机器学习")).toBeInTheDocument();
         expect(screen.getByText("邮箱：zhangsan@example.com")).toBeInTheDocument();
         expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
-        expect(screen.getByText("机器学习方法研究")).toBeInTheDocument();
-        expect(screen.getByText("大语言模型在问答系统中的应用")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+    });
+
+    it("searches papers exactly when clicking mentor related paper title", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=exact") {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习与数据挖掘。",
+                        paperTitles: ["机器学习方法研究"],
+                    }],
+                };
+            }
+
+            if (url === "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E6%96%B9%E6%B3%95%E7%A0%94%E7%A9%B6&search_mode=exact&sort_mode=default") {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "机器学习方法研究",
+                        abstract: "本文讨论常见机器学习方法及其应用场景。",
+                        publish_date: "2024-05-01",
+                        author_names: "张三",
+                        subjects: "cs.LG, cs.AI",
+                        arxiv_id: "2402.00002",
+                        arxiv_url: "https://arxiv.org/abs/2402.00002",
+                        mentorNames: ["张三"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "机器学习方法研究" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E6%96%B9%E6%B3%95%E7%A0%94%E7%A9%B6&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        expect(screen.getByRole("heading", { name: "机器学习方法研究" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "2402.00002" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
@@ -540,10 +605,10 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("link", { name: "2401.00001" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
-        expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
-        expect(screen.getByText("摘要：")).toBeInTheDocument();
-        expect(screen.getByText("本文介绍大语言模型在智能问答中的实践。").closest(".searchPaperAbstractContent")).not.toBeNull();
-        expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "李四" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "张三" })).toBeInTheDocument();
+        expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
+        // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
     });
 
     it("renders inline LaTeX in paper search result abstracts", async () => {
@@ -838,6 +903,72 @@ describe("SearchScreen", () => {
         });
     });
 
+    it("clicking a mentor author in paper result triggers exact mentor search", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 9,
+                        title: "作者可点击测试",
+                        abstract: "",
+                        publish_date: "2025-12-12",
+                        author_names: "李四,赵云",
+                        subjects: "cs.AI",
+                        arxiv_id: "2501.00009",
+                        arxiv_url: "https://arxiv.org/abs/2501.00009",
+                        mentorNames: ["李四"],
+                    }],
+                };
+            }
+
+            if (String(url).startsWith("/api/search/mentors?keyword=%E6%9D%8E%E5%9B%9B")) {
+                return {
+                    mentors: [{
+                        id: 5,
+                        Chinese_name: "李四",
+                        research_direction: "AI",
+                        profile: "",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        // 点击显示的作者李四（数据库中存在的导师）
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "作者可点击测试" })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "李四" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact",
+                "GET",
+                true,
+            );
+        });
+    });
+
     it("sends fuzzy mode when toggled", async () => {
         renderWithStore();
         await waitForMineRequest();
@@ -1051,5 +1182,18 @@ describe("SearchScreen", () => {
             undefined,
             { shallow: true },
         );
+    });
+
+    it("clears keyword when clicking clear button", async () => {
+        renderWithStore();
+        await waitForMineRequest();
+
+        const input = screen.getByPlaceholderText("输入导师姓名或研究方向");
+        fireEvent.change(input, { target: { value: "张三" } });
+        expect(input).toHaveValue("张三");
+
+        fireEvent.click(screen.getByRole("button", { name: "清空" }));
+
+        expect(input).toHaveValue("");
     });
 });
