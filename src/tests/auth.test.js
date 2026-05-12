@@ -7,6 +7,7 @@ import {
     REGISTER_EMAIL_INVALID,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
+    REGISTER_USERNAME_TAKEN,
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import LoginScreen from "../pages/login";
@@ -536,6 +537,27 @@ describe("RegisterScreen", () => {
 
         await waitFor(() => {
             expect(screen.getByText("注册失败")).toBeInTheDocument();
+        });
+
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
+    it("shows a clear message when register username is already used", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 3, info: "User already exists" }),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        await waitFor(() => {
+            expect(screen.getByText(REGISTER_USERNAME_TAKEN)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();

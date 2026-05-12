@@ -5,14 +5,18 @@
 
 export const BACKEND_URL = "";
 
-export const FAILURE_PREFIX = "网络请求失败：";
+export const FAILURE_PREFIX = "Network request failed: ";
 
-export const LOGIN_SUCCESS_PREFIX = "登录成功，用户名：";
-export const LOGIN_FAILED = "登录失败";
+export const LOGIN_SUCCESS_PREFIX = "Login successful, username: ";
+export const LOGIN_FAILED = "Login failed";
 
-export const REGISTER_SUCCESS_PREFIX = "注册成功，用户名：";
-export const REGISTER_FAILED = "注册失败";
-export const REGISTER_USERNAME_INVALID = "用户名只能包含英文、数字、下划线和减号";
-export const REGISTER_PASSWORD_MISMATCH = "两次输入的密码不一致";
-export const REGISTER_PASSWORD_WEAK = "密码至少8位且需同时包含字母和数字";
-export const REGISTER_EMAIL_INVALID = "邮箱格式错误";
+export const REGISTER_SUCCESS_PREFIX = "Registration successful, username: ";
+export const REGISTER_FAILED = "Registration failed";
+export const REGISTER_USERNAME_TAKEN = "This username has already been used.";
+export const REGISTER_USERNAME_INVALID =
+  "Username can only contain letters, numbers, underscores, and hyphens";
+export const REGISTER_PASSWORD_MISMATCH = "The two passwords do not match";
+export const REGISTER_PASSWORD_WEAK =
+  "Password must be at least 8 characters long and contain both letters and numbers";
+export const REGISTER_EMAIL_INVALID = "Invalid email format";
+
