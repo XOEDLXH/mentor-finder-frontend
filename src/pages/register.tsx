@@ -5,6 +5,7 @@ import {
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
+    REGISTER_USERNAME_TAKEN,
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import { useRouter } from "next/router";
@@ -202,6 +203,9 @@ const RegisterScreen = () => {
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
                     dispatch(setName(normalizedUserName));
                     router.push("/");
+                }
+                else if (Number(res.code) === 3) {
+                    setRegisterErrorMessage(REGISTER_USERNAME_TAKEN);
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
