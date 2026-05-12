@@ -413,6 +413,27 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   text-align: center;
 }
 
+.homeWeeklyPaperAbstractRow {
+  margin-top: 6px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.homeWeeklyPaperAbstractContent {
+  white-space: normal;
+}
+
+.homeWeeklyPaperAbstractContent .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homeWeeklyPaperAbstractContent .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
+}
+
 .loginAuthPage {
   min-height: 100vh;
   display: flex;
