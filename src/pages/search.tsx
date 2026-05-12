@@ -1332,7 +1332,12 @@ const SearchScreen = () => {
                                     })()
                                 }
                             </p>
-                            <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
+                            <div className="searchPaperAbstractRow">
+                                <span className="searchPaperAbstractLabel">摘要：</span>
+                                <div className="searchPaperAbstractContent">
+                                    <LatexText text={paper.abstract || "暂无摘要"} />
+                                </div>
+                            </div>
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditPaper(paper)} disabled={adminSaving}>修改论文</button>
