@@ -234,7 +234,7 @@ const TimelinePage = () => {
                                                     href={paper.arxiv_url}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    style={{ color: "#0d6efd", textDecoration: "underline" }}
+                                                    style={{ color: "inherit", textDecoration: "none" }}
                                                 >
                                                     <LatexText text={paper.title} forceInlineMath />
                                                 </a>
