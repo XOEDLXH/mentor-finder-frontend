@@ -60,6 +60,14 @@ interface MentorDeleteTarget {
     email?: string;
 }
 
+interface PaperDeleteTarget {
+    id: number;
+    title: string;
+    publish_date?: string;
+    subjects?: string;
+    mentorNames: string[];
+}
+
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -85,6 +93,8 @@ const SearchScreen = () => {
     const [adminMessage, setAdminMessage] = useState("");
     const [mentorDeleteTarget, setMentorDeleteTarget] = useState<MentorDeleteTarget | undefined>(undefined);
     const [mentorDeleteSubmitting, setMentorDeleteSubmitting] = useState(false);
+    const [paperDeleteTarget, setPaperDeleteTarget] = useState<PaperDeleteTarget | undefined>(undefined);
+    const [paperDeleteSubmitting, setPaperDeleteSubmitting] = useState(false);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
     const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
@@ -548,6 +558,51 @@ const SearchScreen = () => {
         }
     };
 
+    const openDeletePaperDialog = (paper: SearchPaperResult) => {
+        setPaperDeleteTarget({
+            id: paper.id,
+            title: paper.title,
+            publish_date: paper.publish_date,
+            subjects: paper.subjects,
+            mentorNames: Array.isArray(paper.mentorNames) ? paper.mentorNames : [],
+        });
+    };
+
+    const closeDeletePaperDialog = () => {
+        if (paperDeleteSubmitting) {
+            return;
+        }
+
+        setPaperDeleteTarget(undefined);
+    };
+
+    const confirmDeletePaper = async () => {
+        if (paperDeleteTarget === undefined) {
+            return;
+        }
+
+        setAdminSaving(true);
+        setPaperDeleteSubmitting(true);
+        setAdminMessage("");
+
+        try {
+            await request(`/api/dataset/papers/${paperDeleteTarget.id}`, "DELETE", true);
+            setAdminMessage("论文删除成功");
+            setPaperDeleteTarget(undefined);
+
+            if (mode === "paper" && hasSearched) {
+                await search();
+            }
+        }
+        catch (err) {
+            setAdminMessage(formatAdminError(err));
+        }
+        finally {
+            setAdminSaving(false);
+            setPaperDeleteSubmitting(false);
+        }
+    };
+
     const savePaper = async () => {
         const title = paperDraft.title.trim();
 
@@ -580,30 +635,6 @@ const SearchScreen = () => {
                 publish_date: "",
                 author_names: "",
             });
-
-            if (mode === "paper" && hasSearched) {
-                await search();
-            }
-        }
-        catch (err) {
-            setAdminMessage(formatAdminError(err));
-        }
-        finally {
-            setAdminSaving(false);
-        }
-    };
-
-    const removePaper = async (paperId: number) => {
-        if (!globalThis.confirm("确认删除该论文？")) {
-            return;
-        }
-
-        setAdminSaving(true);
-        setAdminMessage("");
-
-        try {
-            await request(`/api/dataset/papers/${paperId}`, "DELETE", true);
-            setAdminMessage("论文删除成功");
 
             if (mode === "paper" && hasSearched) {
                 await search();
@@ -746,6 +777,125 @@ const SearchScreen = () => {
                                 type="button"
                                 onClick={closeDeleteMentorDialog}
                                 disabled={mentorDeleteSubmitting}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    border: "1px solid rgb(209, 217, 224)",
+                                    background: "rgb(246, 248, 250)",
+                                    color: "rgb(37, 41, 46)",
+                                    fontWeight: 600,
+                                    boxShadow: "none",
+                                }}
+                            >
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {paperDeleteTarget !== undefined && (
+                <div
+                    aria-label="删除论文确认弹窗遮罩"
+                    role="presentation"
+                    onClick={closeDeletePaperDialog}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 1100,
+                        background: "rgba(15, 23, 42, 0.42)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 20,
+                    }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-paper-dialog-title"
+                        onClick={(event) => event.stopPropagation()}
+                        style={{
+                            width: "min(100%, 480px)",
+                            borderRadius: 20,
+                            background: "#ffffff",
+                            border: "1px solid #d0d7de",
+                            boxShadow: "0 24px 64px rgba(15, 23, 42, 0.24)",
+                            padding: 24,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 14,
+                        }}
+                    >
+                        <h3 id="delete-paper-dialog-title" style={{ margin: 0, color: "#1f2328" }}>
+                            确认删除论文
+                        </h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, color: "#1f2328" }}>
+                            <p style={{ margin: 0 }}>
+                                标题：{paperDeleteTarget.title}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                发表日期：{paperDeleteTarget.publish_date?.trim() || "未知"}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                导师：{paperDeleteTarget.mentorNames.length > 0 ? paperDeleteTarget.mentorNames.join("、") : "未知导师"}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                分类：{paperDeleteTarget.subjects?.trim() || "暂无分类"}
+                            </p>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <button
+                                type="button"
+                                onClick={() => void confirmDeletePaper()}
+                                disabled={paperDeleteSubmitting}
+                                style={{
+                                    position: "relative",
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    border: paperDeleteSubmitting ? "none" : "1px solid #cf222e",
+                                    background: paperDeleteSubmitting ? "#cf222e" : "#ffffff",
+                                    color: paperDeleteSubmitting ? "#ffffff" : "#cf222e",
+                                    fontWeight: 700,
+                                    overflow: "hidden",
+                                    transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
+                                }}
+                                onMouseEnter={(event) => {
+                                    if (paperDeleteSubmitting) {
+                                        return;
+                                    }
+
+                                    event.currentTarget.style.background = "#cf222e";
+                                    event.currentTarget.style.color = "#ffffff";
+                                    event.currentTarget.style.border = "none";
+                                }}
+                                onMouseLeave={(event) => {
+                                    if (paperDeleteSubmitting) {
+                                        return;
+                                    }
+
+                                    event.currentTarget.style.background = "#ffffff";
+                                    event.currentTarget.style.color = "#cf222e";
+                                    event.currentTarget.style.border = "1px solid #cf222e";
+                                }}
+                            >
+                                <span>确认删除</span>
+                                {paperDeleteSubmitting && (
+                                    <span
+                                        aria-hidden="true"
+                                        style={{
+                                            position: "absolute",
+                                            inset: 0,
+                                            background: "rgba(255, 255, 255, 0.55)",
+                                        }}
+                                    />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeDeletePaperDialog}
+                                disabled={paperDeleteSubmitting}
                                 style={{
                                     width: "100%",
                                     minHeight: 44,
@@ -1096,7 +1246,7 @@ const SearchScreen = () => {
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditPaper(paper)} disabled={adminSaving}>修改论文</button>
-                                    <button onClick={() => void removePaper(paper.id)} disabled={adminSaving}>删除论文</button>
+                                    <button onClick={() => openDeletePaperDialog(paper)} disabled={adminSaving}>删除论文</button>
                                 </div>
                             )}
                         </div>

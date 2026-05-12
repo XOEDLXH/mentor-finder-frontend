@@ -545,6 +545,149 @@ describe("SearchScreen", () => {
         expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
     });
 
+    it("opens a centered delete paper dialog with paper details for admins", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "",
+                        author_names: "李四,张三",
+                        subjects: "",
+                        mentorNames: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        await screen.findByRole("heading", { name: "大语言模型在问答系统中的应用" });
+        fireEvent.click(screen.getByRole("button", { name: "删除论文" }));
+
+        const dialog = screen.getByRole("dialog", { name: "确认删除论文" });
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText("标题：大语言模型在问答系统中的应用")).toBeInTheDocument();
+        expect(within(dialog).getByText("发表日期：未知")).toBeInTheDocument();
+        expect(within(dialog).getByText("导师：未知导师")).toBeInTheDocument();
+        expect(within(dialog).getByText("分类：暂无分类")).toBeInTheDocument();
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/papers/2", "DELETE", true);
+    });
+
+    it("closes the delete paper dialog when clicking cancel without deleting", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "2024-06-15",
+                        author_names: "李四,张三",
+                        subjects: "cs.CL",
+                        mentorNames: ["李四", "张三"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        await screen.findByRole("heading", { name: "大语言模型在问答系统中的应用" });
+        fireEvent.click(screen.getByRole("button", { name: "删除论文" }));
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除论文" })).not.toBeInTheDocument();
+        });
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/papers/2", "DELETE", true);
+    });
+
+    it("deletes paper after confirmation, shows loading state, and refreshes search results", async () => {
+        let deleted = false;
+        let resolveDelete;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/dataset/papers/2" && method === "DELETE") {
+                return new Promise((resolve) => {
+                    resolveDelete = () => {
+                        deleted = true;
+                        resolve({});
+                    };
+                });
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return Promise.resolve({
+                    papers: deleted ? [] : [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "2024-06-15",
+                        author_names: "李四,张三",
+                        subjects: "cs.CL",
+                        mentorNames: ["李四", "张三"],
+                    }],
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        await screen.findByRole("heading", { name: "大语言模型在问答系统中的应用" });
+        fireEvent.click(screen.getByRole("button", { name: "删除论文" }));
+
+        const confirmDeleteButton = screen.getByRole("button", { name: "确认删除" });
+        fireEvent.click(confirmDeleteButton);
+
+        expect(confirmDeleteButton).toBeDisabled();
+        expect(confirmDeleteButton.querySelector("span[aria-hidden='true']")).not.toBeNull();
+        expect(request).toHaveBeenCalledWith("/api/dataset/papers/2", "DELETE", true);
+
+        resolveDelete();
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除论文" })).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+            expect(screen.queryByRole("heading", { name: "大语言模型在问答系统中的应用" })).not.toBeInTheDocument();
+        });
+        expect(screen.getByText("论文删除成功")).toBeInTheDocument();
+    });
+
     it("filters mentor search results by mine and public categories", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
