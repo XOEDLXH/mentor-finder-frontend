@@ -560,9 +560,57 @@ describe("RegisterScreen", () => {
         await waitFor(() => {
             expect(screen.getByText(REGISTER_USERNAME_TAKEN)).toBeInTheDocument();
         });
+        expect(screen.queryByText(REGISTER_USERNAME_INVALID)).not.toBeInTheDocument();
 
         expect(mockPush).not.toHaveBeenCalled();
         expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
+    it("replaces invalid-username hint with duplicate-username hint when duplicate is triggered later", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 3, info: "User already exists" }),
+        });
+
+        render(<RegisterScreen />);
+
+        const usernameInput = screen.getByPlaceholderText("Username");
+        fireEvent.change(usernameInput, { target: { value: "bad user!" } });
+        fireEvent.blur(usernameInput);
+        expect(screen.getByText(REGISTER_USERNAME_INVALID)).toBeInTheDocument();
+
+        fireEvent.change(usernameInput, { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        await waitFor(() => {
+            expect(screen.getByText(REGISTER_USERNAME_TAKEN)).toBeInTheDocument();
+        });
+        expect(screen.queryByText(REGISTER_USERNAME_INVALID)).not.toBeInTheDocument();
+    });
+
+    it("clears duplicate-username hint when username changes", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 3, info: "User already exists" }),
+        });
+
+        render(<RegisterScreen />);
+
+        const usernameInput = screen.getByPlaceholderText("Username");
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(usernameInput, { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        await waitFor(() => {
+            expect(screen.getByText(REGISTER_USERNAME_TAKEN)).toBeInTheDocument();
+        });
+
+        fireEvent.change(usernameInput, { target: { value: "alice-new" } });
+
+        expect(screen.queryByText(REGISTER_USERNAME_TAKEN)).not.toBeInTheDocument();
     });
 
     it("renders the MentorFinder signup shell and marketing content", () => {

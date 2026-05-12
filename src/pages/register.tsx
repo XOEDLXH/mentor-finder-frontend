@@ -16,6 +16,7 @@ import { buildRedirectHref } from "../utils/authRedirect";
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const FEATURE_LIST_CLOSE_ANIMATION_MS = 500;
+const USERNAME_DUPLICATE_ERROR = "duplicate";
 
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
@@ -56,6 +57,8 @@ const RegisterScreen = () => {
     const [email, setEmail] = useState("");
     const [emailBlurred, setEmailBlurred] = useState(false);
     const [registerErrorMessage, setRegisterErrorMessage] = useState("");
+    const [userNameErrorMessage, setUserNameErrorMessage] = useState("");
+    const [userNameErrorSource, setUserNameErrorSource] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [featureListOpen, setFeatureListOpen] = useState(false);
     const [featureListClosing, setFeatureListClosing] = useState(false);
@@ -149,6 +152,20 @@ const RegisterScreen = () => {
     };
 
     const isEmailInvalid = email !== "" && !isEmailValid(email);
+    const shouldShowUserNameFormatError = userNameBlurred && isUserNameInvalid;
+
+    useEffect(() => {
+        if (shouldShowUserNameFormatError) {
+            setUserNameErrorMessage(REGISTER_USERNAME_INVALID);
+            setUserNameErrorSource("format");
+            return;
+        }
+
+        if (userNameErrorSource === "format") {
+            setUserNameErrorMessage("");
+            setUserNameErrorSource("");
+        }
+    }, [shouldShowUserNameFormatError, userNameErrorSource]);
 
     const register = () => {
         setRegisterErrorMessage("");
@@ -180,6 +197,8 @@ const RegisterScreen = () => {
 
         if (normalizedUserName === "" || !USERNAME_REGEX.test(normalizedUserName)) {
             setUserNameBlurred(true);
+            setUserNameErrorMessage(REGISTER_USERNAME_INVALID);
+            setUserNameErrorSource("format");
             userNameInputRef.current?.focus();
             return;
         }
@@ -205,7 +224,8 @@ const RegisterScreen = () => {
                     router.push("/");
                 }
                 else if (Number(res.code) === 3) {
-                    setRegisterErrorMessage(REGISTER_USERNAME_TAKEN);
+                    setUserNameErrorMessage(REGISTER_USERNAME_TAKEN);
+                    setUserNameErrorSource(USERNAME_DUPLICATE_ERROR);
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
@@ -412,15 +432,21 @@ const RegisterScreen = () => {
                             type="text"
                             placeholder="Username"
                             value={userName}
-                            onChange={(e) => setUserName(e.target.value)}
+                            onChange={(e) => {
+                                setUserName(e.target.value);
+                                if (userNameErrorSource === USERNAME_DUPLICATE_ERROR) {
+                                    setUserNameErrorMessage("");
+                                    setUserNameErrorSource("");
+                                }
+                            }}
                             onBlur={() => setUserNameBlurred(true)}
                         />
                     </label>
                     <p className="registerAuthHelper">
                         Username may only contain letters, numbers, underscores, and hyphens.
                     </p>
-                    {userNameBlurred && isUserNameInvalid && (
-                        <p className="registerAuthError">{REGISTER_USERNAME_INVALID}</p>
+                    {userNameErrorMessage !== "" && (
+                        <p className="registerAuthError">{userNameErrorMessage}</p>
                     )}
 
                     {registerErrorMessage !== "" && (
