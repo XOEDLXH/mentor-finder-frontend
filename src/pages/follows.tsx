@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
+import FollowToggleButton from "../components/FollowToggleButton";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
@@ -11,15 +12,18 @@ interface FollowedMentorsResponse {
     mentors?: SearchMentorResult[];
 }
 
+interface FollowedMentorCardState extends SearchMentorResult {
+    followed: boolean;
+}
+
 const FollowsPage = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
     const isLoggedIn = authToken.trim() !== "";
 
-    const [mentors, setMentors] = useState<SearchMentorResult[]>([]);
+    const [mentors, setMentors] = useState<FollowedMentorCardState[]>([]);
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
-    const [openMenuMentorId, setOpenMenuMentorId] = useState<number | undefined>(undefined);
     const [errorMessage, setErrorMessage] = useState("");
 
     const fetchFollows = useCallback(async () => {
@@ -33,7 +37,14 @@ const FollowsPage = () => {
 
         try {
             const res = await request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true);
-            setMentors(Array.isArray(res.mentors) ? res.mentors : []);
+            setMentors(
+                Array.isArray(res.mentors)
+                    ? res.mentors.map((mentor) => ({
+                        ...mentor,
+                        followed: true,
+                    }))
+                    : [],
+            );
         }
         catch (err) {
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -43,19 +54,25 @@ const FollowsPage = () => {
         }
     }, [isLoggedIn]);
 
-    const unfollow = async (mentor: SearchMentorResult) => {
-        if (!window.confirm(`确定要取消关注${mentor.Chinese_name}吗？`)) {
-            return;
-        }
-
+    const toggleFollow = async (mentor: FollowedMentorCardState) => {
         const mentorId = mentor.id;
         setActionMentorId(mentorId);
-        setOpenMenuMentorId(undefined);
         setErrorMessage("");
 
         try {
-            await request(`/api/follow/mentors/${mentorId}`, "DELETE", true);
-            await fetchFollows();
+            const res = await request<{ followed?: boolean }>(
+                `/api/follow/mentors/${mentorId}`,
+                mentor.followed ? "DELETE" : "POST",
+                true,
+            );
+            setMentors((currentMentors) => currentMentors.map((item) => (
+                item.id === mentorId
+                    ? {
+                        ...item,
+                        followed: Boolean(res.followed),
+                    }
+                    : item
+            )));
         }
         catch (err) {
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -77,14 +94,14 @@ const FollowsPage = () => {
         );
     }
 
-    return (
-        <div className="followsPage">
-            <h2 className="pageTitle">我的关注</h2>
+        return (
+            <div className="followsPage">
+                <h2 className="pageTitle">我的关注</h2>
 
             <div className="content">
                 <aside className="sidebar" aria-label="关注筛选">
                     <button className="filterButton" type="button">
-                        全部（{mentors.length}）
+                        全部（{mentors.filter((mentor) => mentor.followed).length}）
                     </button>
                 </aside>
 
@@ -112,33 +129,14 @@ const FollowsPage = () => {
                                     }
                                 }}
                             >
-                                <button
-                                    className="menuButton"
-                                    type="button"
-                                    aria-label={`${mentor.Chinese_name}更多操作`}
-                                    aria-expanded={openMenuMentorId === mentor.id}
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        setOpenMenuMentorId((currentId) => (
-                                            currentId === mentor.id ? undefined : mentor.id
-                                        ));
-                                    }}
-                                >
-                                    ···
-                                </button>
-
-                                {openMenuMentorId === mentor.id && (
-                                    <div className="menu" onClick={(event) => event.stopPropagation()}>
-                                        <button
-                                            className="unfollowButton"
-                                            type="button"
-                                            onClick={() => void unfollow(mentor)}
-                                            disabled={actionMentorId === mentor.id}
-                                        >
-                                            {actionMentorId === mentor.id ? "处理中..." : "取消关注"}
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
+                                    <FollowToggleButton
+                                        className="followToggleButton"
+                                        followed={mentor.followed}
+                                        loading={actionMentorId === mentor.id}
+                                        onClick={() => void toggleFollow(mentor)}
+                                    />
+                                </div>
 
                                 <h3 className="mentorName">
                                     {mentor.Chinese_name}
@@ -205,7 +203,7 @@ const FollowsPage = () => {
                 .mentorCard {
                     position: relative;
                     min-height: 158px;
-                    padding: 14px 44px 14px 14px;
+                    padding: 14px 14px 14px 14px;
                     border: 1px solid #ccc;
                     border-radius: 8px;
                     cursor: pointer;
@@ -221,59 +219,42 @@ const FollowsPage = () => {
                     transform: translateY(-1px);
                 }
 
-                .menuButton {
+                .followButtonShell {
                     position: absolute;
                     top: 8px;
                     right: 8px;
-                    width: 30px;
-                    height: 30px;
-                    border: none;
-                    border-radius: 50%;
-                    background: transparent;
-                    cursor: pointer;
-                    font-size: 18px;
-                    line-height: 1;
                 }
 
-                .menuButton:hover,
-                .menuButton:focus {
-                    background: #f1f1f1;
-                    outline: none;
-                }
-
-                .menu {
-                    position: absolute;
-                    top: 40px;
-                    right: 8px;
-                    z-index: 2;
-                    min-width: 112px;
-                    padding: 6px;
+                .followToggleButton {
+                    position: relative;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 92px;
+                    min-height: 36px;
                     border: 1px solid #ddd;
-                    border-radius: 8px;
+                    border-radius: 999px;
                     background: #fff;
-                    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
-                }
-
-                .unfollowButton {
-                    width: 100%;
-                    border: none;
-                    border-radius: 6px;
-                    background: transparent;
-                    color: #c62828;
-                    cursor: pointer;
-                    padding: 8px 10px;
-                    text-align: left;
+                    color: #1f2328;
+                    padding: 0 16px;
                     font-weight: 600;
+                    overflow: hidden;
                 }
 
-                .unfollowButton:hover,
-                .unfollowButton:focus {
-                    background: #fff1f1;
+                .followToggleButton:hover,
+                .followToggleButton:focus {
+                    background: #f6f8fa;
                     outline: none;
+                }
+
+                :global(.followToggleButtonOverlay) {
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(255, 255, 255, 0.55);
                 }
 
                 .mentorName {
-                    margin: 0 0 8px;
+                    margin: 52px 0 8px;
                     font-size: 18px;
                 }
 

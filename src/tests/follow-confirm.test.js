@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -59,21 +59,7 @@ describe("follow confirmation", () => {
         jest.restoreAllMocks();
     });
 
-    it("does not unfollow from follows page when confirmation is canceled", async () => {
-        request.mockResolvedValue({ mentors: [mentor] });
-        jest.spyOn(globalThis, "confirm").mockReturnValue(false);
-
-        renderWithStore(<FollowsPage />);
-
-        await screen.findByRole("heading", { name: "张三" });
-        fireEvent.click(screen.getByRole("button", { name: "张三更多操作" }));
-        fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
-
-        expect(globalThis.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
-        expect(request).not.toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
-    });
-
-    it("unfollows from follows page after confirmation", async () => {
+    it("shows direct unfollow buttons on follows page and updates card state without refetching the list", async () => {
         request.mockImplementation(async (url, method) => {
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
                 return { followed: false };
@@ -81,46 +67,84 @@ describe("follow confirmation", () => {
 
             return { mentors: [mentor] };
         });
-        jest.spyOn(globalThis, "confirm").mockReturnValue(true);
 
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        fireEvent.click(screen.getByRole("button", { name: "张三更多操作" }));
-        fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
+        expect(screen.getByRole("button", { name: "全部（1）" })).toBeInTheDocument();
+
+        const followButton = screen.getByRole("button", { name: "取消关注" });
+        fireEvent.click(followButton);
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
         });
+        expect(screen.getByRole("button", { name: "关注" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "全部（0）" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "张三" })).toBeInTheDocument();
     });
 
-    it("does not unfollow from mentor detail page when confirmation is canceled", async () => {
-        request.mockImplementation(async (url) => {
-            if (url === "/api/dataset/mentors/7") {
-                return { mentor };
+    it("refollows a kept mentor card on follows page without reloading layout", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/follow/mentors/7" && method === "DELETE") {
+                return { followed: false };
             }
 
-            if (url === "/api/follow/mentors") {
-                return { mentors: [mentor] };
+            if (url === "/api/follow/mentors/7" && method === "POST") {
+                return { followed: true };
             }
 
-            return {};
+            return { mentors: [mentor] };
         });
-        jest.spyOn(globalThis, "confirm").mockReturnValue(false);
 
-        renderWithStore(<MentorDetailPage />);
+        renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        await waitFor(() => {
-            expect(screen.getByRole("button", { name: "取消关注" })).toBeInTheDocument();
-        });
         fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
 
-        expect(globalThis.confirm).toHaveBeenCalledWith("确定要取消关注张三吗？");
-        expect(request).not.toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "关注" })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "关注" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "POST", true);
+        });
+        expect(screen.getByRole("button", { name: "取消关注" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "全部（1）" })).toBeInTheDocument();
     });
 
-    it("unfollows from mentor detail page after confirmation", async () => {
+    it("disables the follows page button and keeps its label while request is pending", async () => {
+        let resolveFollow;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/follow/mentors/7" && method === "DELETE") {
+                return new Promise((resolve) => {
+                    resolveFollow = resolve;
+                });
+            }
+
+            return Promise.resolve({ mentors: [mentor] });
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        const followButton = screen.getByRole("button", { name: "取消关注" });
+        fireEvent.click(followButton);
+
+        expect(followButton).toBeDisabled();
+        expect(within(followButton).getByText("取消关注")).toBeInTheDocument();
+        expect(followButton.querySelector(".followToggleButtonOverlay")).not.toBeNull();
+
+        resolveFollow?.({ followed: false });
+
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "关注" })).toBeEnabled();
+        });
+    });
+
+    it("directly unfollows from mentor detail page without confirmation", async () => {
         request.mockImplementation(async (url, method) => {
             if (url === "/api/dataset/mentors/7") {
                 return { mentor };
@@ -136,18 +160,57 @@ describe("follow confirmation", () => {
 
             return {};
         });
-        jest.spyOn(globalThis, "confirm").mockReturnValue(true);
 
         renderWithStore(<MentorDetailPage />);
 
         await screen.findByRole("heading", { name: "张三" });
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "取消关注" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "取消关注" })).toBeEnabled();
         });
+
         fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
+        });
+        expect(screen.getByRole("button", { name: "关注" })).toBeInTheDocument();
+    });
+
+    it("shows loading overlay state while follow request is pending on mentor detail page", async () => {
+        let resolveFollow;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/7") {
+                return Promise.resolve({ mentor });
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/follow/mentors/7" && method === "POST") {
+                return new Promise((resolve) => {
+                    resolveFollow = resolve;
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore(<MentorDetailPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        const followButton = await screen.findByRole("button", { name: "关注" });
+
+        fireEvent.click(followButton);
+
+        expect(followButton).toBeDisabled();
+        expect(within(followButton).getByText("关注")).toBeInTheDocument();
+        expect(followButton.querySelector(".followToggleButtonOverlay")).not.toBeNull();
+
+        resolveFollow?.({ followed: true });
+
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "取消关注" })).toBeEnabled();
         });
     });
 });
