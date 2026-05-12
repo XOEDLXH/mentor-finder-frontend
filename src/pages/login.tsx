@@ -1,5 +1,5 @@
-import { RefCallback, useRef, useState } from "react";
-import { FAILURE_PREFIX, LOGIN_FAILED, LOGIN_SUCCESS_PREFIX } from "../constants/string";
+import { FormEvent, RefCallback, useRef, useState } from "react";
+import { FAILURE_PREFIX, LOGIN_FAILED } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
 import { useDispatch } from "react-redux";
@@ -37,6 +37,7 @@ const parseJsonSafely = async (response: Response) => {
 const LoginScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
+    const [loginErrorMessage, setLoginErrorMessage] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
@@ -51,6 +52,11 @@ const LoginScreen = () => {
         passwordInputRef.current = node ?? undefined;
     };
 
+    const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        login();
+    };
+
     const login = () => {
         if (userName.trim() === "") {
             userNameInputRef.current?.focus();
@@ -62,6 +68,7 @@ const LoginScreen = () => {
             return;
         }
 
+        setLoginErrorMessage("");
         setSubmitting(true);
         fetch("/api/login", {
             method: "POST",
@@ -80,57 +87,66 @@ const LoginScreen = () => {
                     dispatch(setRole(typeof res.role === "string" ? res.role : ""));
 
                     dispatch(setName(userName));
-                    alert(LOGIN_SUCCESS_PREFIX + userName);
 
                     router.push(redirectTarget);
                 }
                 else {
-                    alert(typeof res.info === "string" && res.info !== "" ? res.info : LOGIN_FAILED);
+                    setLoginErrorMessage(LOGIN_FAILED);
                 }
             })
-            .catch((err) => alert(FAILURE_PREFIX + err))
+            .catch((err) => setLoginErrorMessage(FAILURE_PREFIX + String(err)))
             .finally(() => setSubmitting(false));
     };
 
     return (
         <section className="loginAuthPage" aria-label="Sign in page">
             <div className="loginAuthBrand" aria-hidden="true">
-                <div className="loginAuthBrandMark">MF</div>
+                <img
+                    src="/mentorfinder-logo-1.svg"
+                    alt=""
+                    className="loginAuthBrandLogo"
+                />
             </div>
 
             <h1 className="loginAuthTitle">Sign in to MentorFinder</h1>
 
-            <label className="loginAuthField">
-                <span className="loginAuthLabel">Username or email address</span>
-                <input
-                    ref={bindUserNameInputRef}
-                    type="text"
-                    placeholder="Username or email address"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                />
-            </label>
+            <form className="loginAuthForm" onSubmit={submitLogin}>
+                <label className="loginAuthField">
+                    <span className="loginAuthLabel">Username or email address</span>
+                    <input
+                        ref={bindUserNameInputRef}
+                        type="text"
+                        placeholder="Username or email address"
+                        value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                    />
+                </label>
 
-            <label className="loginAuthField">
-                <div className="loginAuthPasswordRow">
-                    <span className="loginAuthLabel">Password</span>
-                </div>
-                <input
-                    ref={bindPasswordInputRef}
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </label>
+                <label className="loginAuthField">
+                    <div className="loginAuthPasswordRow">
+                        <span className="loginAuthLabel">Password</span>
+                    </div>
+                    <input
+                        ref={bindPasswordInputRef}
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </label>
 
-            <button
-                className="loginAuthSubmit"
-                onClick={login}
-                disabled={submitting}
-            >
-                {submitting ? "Signing in..." : "Sign in"}
-            </button>
+                {loginErrorMessage !== "" && (
+                    <p className="loginAuthError">{loginErrorMessage}</p>
+                )}
+
+                <button
+                    type="submit"
+                    className="loginAuthSubmit"
+                    disabled={submitting}
+                >
+                    {submitting ? "Signing in..." : "Sign in"}
+                </button>
+            </form>
 
             <div className="loginAuthDivider" aria-hidden="true">
                 <span>or</span>

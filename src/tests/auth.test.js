@@ -2,9 +2,10 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import {
+    FAILURE_PREFIX,
     LOGIN_FAILED,
-    LOGIN_SUCCESS_PREFIX,
     REGISTER_EMAIL_INVALID,
+    REGISTER_EMAIL_TAKEN,
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
@@ -119,8 +120,33 @@ describe("LoginScreen", () => {
             expect(mockDispatch).toHaveBeenCalledWith(setToken("jwt-token"));
             expect(mockDispatch).toHaveBeenCalledWith(setRole("admin"));
             expect(mockDispatch).toHaveBeenCalledWith(setName("alice"));
-            expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_SUCCESS_PREFIX + "alice");
             expect(mockPush).toHaveBeenCalledWith("/");
+        });
+        expect(globalThis.alert).not.toHaveBeenCalled();
+    });
+
+    it("submits login form when the form is submitted", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
+        });
+
+        const { container } = render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.submit(container.querySelector("form"));
+
+        await waitFor(() => {
+            expect(globalThis.fetch).toHaveBeenCalledWith("/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: "alice",
+                    password: "abc12345",
+                }),
+            });
         });
     });
 
@@ -188,7 +214,7 @@ describe("LoginScreen", () => {
         });
     });
 
-    it("alerts failure and stays on page when login fails", async () => {
+    it("shows failure message and stays on page when login fails", async () => {
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 1 }),
         });
@@ -200,13 +226,13 @@ describe("LoginScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
-            expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
+            expect(screen.getByText(LOGIN_FAILED)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it("shows backend ban message when login is rejected for banned user", async () => {
+    it("shows stable failure message when login is rejected for banned user", async () => {
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 3, info: "User is banned" }),
         });
@@ -218,7 +244,7 @@ describe("LoginScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
-            expect(globalThis.alert).toHaveBeenCalledWith("User is banned");
+            expect(screen.getByText(LOGIN_FAILED)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();
@@ -236,14 +262,14 @@ describe("LoginScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
-            expect(globalThis.alert).toHaveBeenCalledWith(LOGIN_FAILED);
+            expect(screen.getByText(LOGIN_FAILED)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();
         expect(mockDispatch).not.toHaveBeenCalled();
     });
 
-    it("shows stable message when login response is non-json text", async () => {
+    it("shows stable failure message when login response is non-json text", async () => {
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue("<html>502 Bad Gateway</html>"),
         });
@@ -255,7 +281,7 @@ describe("LoginScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
         await waitFor(() => {
-            expect(globalThis.alert).toHaveBeenCalledWith("<html>502 Bad Gateway</html>");
+            expect(screen.getByText(LOGIN_FAILED)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();
@@ -266,7 +292,6 @@ describe("LoginScreen", () => {
         render(<LoginScreen />);
 
         expect(screen.getByRole("heading", { name: "Sign in to MentorFinder" })).toBeInTheDocument();
-        expect(screen.getByText("MF")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
         expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
         expect(screen.getByText("New to MentorFinder?")).toBeInTheDocument();
@@ -460,6 +485,34 @@ describe("RegisterScreen", () => {
         expect(globalThis.alert).not.toHaveBeenCalled();
     });
 
+    it("submits register form when the form is submitted", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
+        });
+
+        const { container } = render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.submit(container.querySelector(".registerAuthFormWrap form"));
+
+        await waitFor(() => {
+            expect(globalThis.fetch).toHaveBeenCalledWith("/api/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: "alice",
+                    password: "abc12345",
+                    email: "alice@example.com",
+                }),
+            });
+        });
+    });
+
     it("still navigates home after successful register when redirect is present", async () => {
         mockRouter.query = {
             redirect: "/follows",
@@ -561,6 +614,28 @@ describe("RegisterScreen", () => {
             expect(screen.getByText(REGISTER_USERNAME_TAKEN)).toBeInTheDocument();
         });
         expect(screen.queryByText(REGISTER_USERNAME_INVALID)).not.toBeInTheDocument();
+
+        expect(mockPush).not.toHaveBeenCalled();
+        expect(mockDispatch).not.toHaveBeenCalled();
+    });
+
+    it("shows a clear message when register email is already used", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 4, info: "Email already exists" }),
+        });
+
+        render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+        await waitFor(() => {
+            expect(screen.getByText(REGISTER_EMAIL_TAKEN)).toBeInTheDocument();
+        });
+        expect(screen.queryByText(REGISTER_FAILED)).not.toBeInTheDocument();
 
         expect(mockPush).not.toHaveBeenCalled();
         expect(mockDispatch).not.toHaveBeenCalled();

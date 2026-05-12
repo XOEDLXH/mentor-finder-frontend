@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
+import FollowToggleButton from "../../components/FollowToggleButton";
 import { FAILURE_PREFIX } from "../../constants/string";
 import { RootState } from "../../redux/store";
 import { request } from "../../utils/network";
@@ -78,10 +79,6 @@ const MentorDetailPage = () => {
             return;
         }
 
-        if (followed && !window.confirm(`确定要取消关注${mentor?.Chinese_name ?? "该导师"}吗？`)) {
-            return;
-        }
-
         setFollowLoading(true);
         setErrorMessage("");
 
@@ -135,9 +132,26 @@ const MentorDetailPage = () => {
                 )}
 
                 {canFollow && (
-                    <button onClick={() => void toggleFollow()} disabled={followLoading}>
-                        {followLoading ? "处理中..." : followed ? "取消关注" : "关注导师"}
-                    </button>
+                    <FollowToggleButton
+                        followed={followed}
+                        loading={followLoading}
+                        onClick={() => void toggleFollow()}
+                        style={{
+                            position: "relative",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            minWidth: 92,
+                            minHeight: 36,
+                            border: "1px solid #d0d7de",
+                            borderRadius: 999,
+                            background: "#fff",
+                            color: "#1f2328",
+                            padding: "0 16px",
+                            fontWeight: 600,
+                            overflow: "hidden",
+                        }}
+                    />
                 )}
 
                 {mentor.English_name && (

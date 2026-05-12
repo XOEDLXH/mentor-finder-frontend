@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -111,6 +111,192 @@ describe("SearchScreen", () => {
         expect(screen.queryByRole("heading", { name: "我的私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "添加私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText("导师中文名（可选）")).not.toBeInTheDocument();
+    });
+
+    it("opens a centered delete mentor dialog with mentor details for admins", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        research_direction: "机器学习",
+                        email: "",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+
+        const dialog = screen.getByRole("dialog", { name: "确认删除导师" });
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText("中文名：张三")).toBeInTheDocument();
+        expect(within(dialog).getByText("英文名：暂无英文名")).toBeInTheDocument();
+        expect(within(dialog).getByText("研究方向：机器学习")).toBeInTheDocument();
+        expect(within(dialog).getByText("邮箱：暂无邮箱")).toBeInTheDocument();
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/mentors/1", "DELETE", true);
+    });
+
+    it("closes the delete mentor dialog when clicking the overlay", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+        fireEvent.click(screen.getByLabelText("删除导师确认弹窗遮罩"));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除导师" })).not.toBeInTheDocument();
+        });
+    });
+
+    it("closes the delete mentor dialog when clicking cancel without deleting", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除导师" })).not.toBeInTheDocument();
+        });
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/mentors/1", "DELETE", true);
+    });
+
+    it("deletes mentor after confirmation, shows loading state, and refreshes search results", async () => {
+        let deleted = false;
+        let resolveDelete;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/dataset/mentors/1" && method === "DELETE") {
+                return new Promise((resolve) => {
+                    resolveDelete = () => {
+                        deleted = true;
+                        resolve({});
+                    };
+                });
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return Promise.resolve({
+                    mentors: deleted ? [] : [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+
+        const confirmDeleteButton = screen.getByRole("button", { name: "确认删除" });
+        fireEvent.click(confirmDeleteButton);
+
+        expect(confirmDeleteButton).toBeDisabled();
+        expect(confirmDeleteButton.querySelector("span[aria-hidden='true']")).not.toBeNull();
+        expect(request).toHaveBeenCalledWith("/api/dataset/mentors/1", "DELETE", true);
+
+        resolveDelete();
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除导师" })).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+            expect(screen.queryByRole("heading", { name: "张三" })).not.toBeInTheDocument();
+        });
+        expect(screen.getByText("导师删除成功")).toBeInTheDocument();
     });
 
     it("auto loads all mentors when entering search page with empty keyword", async () => {
@@ -357,6 +543,149 @@ describe("SearchScreen", () => {
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
         expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
         expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
+    });
+
+    it("opens a centered delete paper dialog with paper details for admins", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "",
+                        author_names: "李四,张三",
+                        subjects: "",
+                        mentorNames: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "GET",
+                true,
+            );
+        });
+
+        await screen.findByRole("heading", { name: "大语言模型在问答系统中的应用" });
+        fireEvent.click(screen.getByRole("button", { name: "删除论文" }));
+
+        const dialog = screen.getByRole("dialog", { name: "确认删除论文" });
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText("标题：大语言模型在问答系统中的应用")).toBeInTheDocument();
+        expect(within(dialog).getByText("发表日期：未知")).toBeInTheDocument();
+        expect(within(dialog).getByText("导师：未知导师")).toBeInTheDocument();
+        expect(within(dialog).getByText("分类：暂无分类")).toBeInTheDocument();
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/papers/2", "DELETE", true);
+    });
+
+    it("closes the delete paper dialog when clicking cancel without deleting", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "2024-06-15",
+                        author_names: "李四,张三",
+                        subjects: "cs.CL",
+                        mentorNames: ["李四", "张三"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        await screen.findByRole("heading", { name: "大语言模型在问答系统中的应用" });
+        fireEvent.click(screen.getByRole("button", { name: "删除论文" }));
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除论文" })).not.toBeInTheDocument();
+        });
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/papers/2", "DELETE", true);
+    });
+
+    it("deletes paper after confirmation, shows loading state, and refreshes search results", async () => {
+        let deleted = false;
+        let resolveDelete;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/dataset/papers/2" && method === "DELETE") {
+                return new Promise((resolve) => {
+                    resolveDelete = () => {
+                        deleted = true;
+                        resolve({});
+                    };
+                });
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return Promise.resolve({
+                    papers: deleted ? [] : [{
+                        id: 2,
+                        title: "大语言模型在问答系统中的应用",
+                        abstract: "本文介绍大语言模型在智能问答中的实践。",
+                        publish_date: "2024-06-15",
+                        author_names: "李四,张三",
+                        subjects: "cs.CL",
+                        mentorNames: ["李四", "张三"],
+                    }],
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        await screen.findByRole("heading", { name: "大语言模型在问答系统中的应用" });
+        fireEvent.click(screen.getByRole("button", { name: "删除论文" }));
+
+        const confirmDeleteButton = screen.getByRole("button", { name: "确认删除" });
+        fireEvent.click(confirmDeleteButton);
+
+        expect(confirmDeleteButton).toBeDisabled();
+        expect(confirmDeleteButton.querySelector("span[aria-hidden='true']")).not.toBeNull();
+        expect(request).toHaveBeenCalledWith("/api/dataset/papers/2", "DELETE", true);
+
+        resolveDelete();
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除论文" })).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+            expect(screen.queryByRole("heading", { name: "大语言模型在问答系统中的应用" })).not.toBeInTheDocument();
+        });
+        expect(screen.getByText("论文删除成功")).toBeInTheDocument();
     });
 
     it("filters mentor search results by mine and public categories", async () => {
