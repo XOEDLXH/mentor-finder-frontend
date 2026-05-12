@@ -353,6 +353,34 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: none;
 }
 
+.timelineAbstract {
+  margin: 0;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.timelineAbstractLabel {
+  display: inline;
+  font-weight: 400;
+}
+
+.timelineAbstractContent {
+  display: inline-block;
+  vertical-align: top;
+  max-width: calc(100% - 3em);
+}
+
+.timelineAbstractContent .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.timelineAbstractContent .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
+}
+
 .loginAuthPage {
   min-height: 100vh;
   display: flex;
