@@ -382,8 +382,15 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   text-align: center;
 }
 
-.loginAuthField {
+.loginAuthForm {
   width: min(100%, 340px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loginAuthField {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -416,7 +423,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 .loginAuthSubmit {
-  width: min(100%, 340px);
+  width: 100%;
   border: 1px solid rgba(31, 35, 40, 0.15);
   border-radius: 8px;
   background: #1f883d;
@@ -434,8 +441,8 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 .loginAuthError {
-  width: min(100%, 340px);
-  margin: 8px 0 0;
+  width: 100%;
+  margin: 0;
   color: #cf222e;
   font-size: 13px;
   line-height: 1.45;

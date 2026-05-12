@@ -1,4 +1,4 @@
-import { RefCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, RefCallback, useEffect, useRef, useState } from "react";
 import {
     FAILURE_PREFIX,
     REGISTER_EMAIL_INVALID,
@@ -167,6 +167,11 @@ const RegisterScreen = () => {
             setUserNameErrorSource("");
         }
     }, [shouldShowUserNameFormatError, userNameErrorSource]);
+
+    const submitRegister = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        register();
+    };
 
     const register = () => {
         setRegisterErrorMessage("");
@@ -378,91 +383,93 @@ const RegisterScreen = () => {
                         <span>or</span>
                     </div>
 
-                    <label className="registerAuthField">
-                        <span className="registerAuthLabel">Email</span>
-                        <input
-                            ref={bindEmailInputRef}
-                            type="text"
-                            inputMode="email"
-                            autoComplete="email"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            onBlur={() => setEmailBlurred(true)}
-                        />
-                    </label>
-                    {emailBlurred && isEmailInvalid && (
-                        <p className="registerAuthError">{REGISTER_EMAIL_INVALID}</p>
-                    )}
+                    <form onSubmit={submitRegister}>
+                        <label className="registerAuthField">
+                            <span className="registerAuthLabel">Email</span>
+                            <input
+                                ref={bindEmailInputRef}
+                                type="text"
+                                inputMode="email"
+                                autoComplete="email"
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                onBlur={() => setEmailBlurred(true)}
+                            />
+                        </label>
+                        {emailBlurred && isEmailInvalid && (
+                            <p className="registerAuthError">{REGISTER_EMAIL_INVALID}</p>
+                        )}
 
-                    <label className="registerAuthField">
-                        <span className="registerAuthLabel">Password</span>
-                        <input
-                            ref={bindPasswordInputRef}
-                            type="password"
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onBlur={() => setPasswordBlurred(true)}
-                        />
-                    </label>
-                    <p className="registerAuthHelper">
-                        Password must be at least 8 characters and include both letters and numbers.
-                    </p>
-                    {shouldShowPasswordWeakHint && (
-                        <p className="registerAuthError">{REGISTER_PASSWORD_WEAK}</p>
-                    )}
+                        <label className="registerAuthField">
+                            <span className="registerAuthLabel">Password</span>
+                            <input
+                                ref={bindPasswordInputRef}
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onBlur={() => setPasswordBlurred(true)}
+                            />
+                        </label>
+                        <p className="registerAuthHelper">
+                            Password must be at least 8 characters and include both letters and numbers.
+                        </p>
+                        {shouldShowPasswordWeakHint && (
+                            <p className="registerAuthError">{REGISTER_PASSWORD_WEAK}</p>
+                        )}
 
-                    <label className="registerAuthField">
-                        <span className="registerAuthLabel">Confirm your password</span>
-                        <input
-                            ref={bindConfirmPasswordInputRef}
-                            type="password"
-                            placeholder="Confirm your password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            onBlur={() => setConfirmPasswordBlurred(true)}
-                        />
-                    </label>
-                    {shouldShowPasswordMismatchHint && (
-                        <p className="registerAuthError">{REGISTER_PASSWORD_MISMATCH}</p>
-                    )}
+                        <label className="registerAuthField">
+                            <span className="registerAuthLabel">Confirm your password</span>
+                            <input
+                                ref={bindConfirmPasswordInputRef}
+                                type="password"
+                                placeholder="Confirm your password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                onBlur={() => setConfirmPasswordBlurred(true)}
+                            />
+                        </label>
+                        {shouldShowPasswordMismatchHint && (
+                            <p className="registerAuthError">{REGISTER_PASSWORD_MISMATCH}</p>
+                        )}
 
-                    <label className="registerAuthField">
-                        <span className="registerAuthLabel">Username</span>
-                        <input
-                            ref={bindUserNameInputRef}
-                            type="text"
-                            placeholder="Username"
-                            value={userName}
-                            onChange={(e) => {
-                                setUserName(e.target.value);
-                                if (userNameErrorSource === USERNAME_DUPLICATE_ERROR) {
-                                    setUserNameErrorMessage("");
-                                    setUserNameErrorSource("");
-                                }
-                            }}
-                            onBlur={() => setUserNameBlurred(true)}
-                        />
-                    </label>
-                    <p className="registerAuthHelper">
-                        Username may only contain letters, numbers, underscores, and hyphens.
-                    </p>
-                    {userNameErrorMessage !== "" && (
-                        <p className="registerAuthError">{userNameErrorMessage}</p>
-                    )}
+                        <label className="registerAuthField">
+                            <span className="registerAuthLabel">Username</span>
+                            <input
+                                ref={bindUserNameInputRef}
+                                type="text"
+                                placeholder="Username"
+                                value={userName}
+                                onChange={(e) => {
+                                    setUserName(e.target.value);
+                                    if (userNameErrorSource === USERNAME_DUPLICATE_ERROR) {
+                                        setUserNameErrorMessage("");
+                                        setUserNameErrorSource("");
+                                    }
+                                }}
+                                onBlur={() => setUserNameBlurred(true)}
+                            />
+                        </label>
+                        <p className="registerAuthHelper">
+                            Username may only contain letters, numbers, underscores, and hyphens.
+                        </p>
+                        {userNameErrorMessage !== "" && (
+                            <p className="registerAuthError">{userNameErrorMessage}</p>
+                        )}
 
-                    {registerErrorMessage !== "" && (
-                        <p className="registerAuthError">{registerErrorMessage}</p>
-                    )}
+                        {registerErrorMessage !== "" && (
+                            <p className="registerAuthError">{registerErrorMessage}</p>
+                        )}
 
-                    <button
-                        className="registerAuthSubmit"
-                        onClick={register}
-                        disabled={submitting}
-                    >
-                        {submitting ? "Creating account..." : "Create account"}
-                    </button>
+                        <button
+                            type="submit"
+                            className="registerAuthSubmit"
+                            disabled={submitting}
+                        >
+                            {submitting ? "Creating account..." : "Create account"}
+                        </button>
+                    </form>
                 </div>
             </div>
         </section>

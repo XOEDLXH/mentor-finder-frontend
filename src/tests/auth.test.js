@@ -125,6 +125,31 @@ describe("LoginScreen", () => {
         expect(globalThis.alert).not.toHaveBeenCalled();
     });
 
+    it("submits login form when the form is submitted", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
+        });
+
+        const { container } = render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.submit(container.querySelector("form"));
+
+        await waitFor(() => {
+            expect(globalThis.fetch).toHaveBeenCalledWith("/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: "alice",
+                    password: "abc12345",
+                }),
+            });
+        });
+    });
+
     it("keeps sign in enabled and focuses username when both fields are empty", () => {
         render(<LoginScreen />);
 
@@ -458,6 +483,34 @@ describe("RegisterScreen", () => {
             expect(mockPush).toHaveBeenCalledWith("/");
         });
         expect(globalThis.alert).not.toHaveBeenCalled();
+    });
+
+    it("submits register form when the form is submitted", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
+        });
+
+        const { container } = render(<RegisterScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.submit(container.querySelector(".registerAuthFormWrap form"));
+
+        await waitFor(() => {
+            expect(globalThis.fetch).toHaveBeenCalledWith("/api/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: "alice",
+                    password: "abc12345",
+                    email: "alice@example.com",
+                }),
+            });
+        });
     });
 
     it("still navigates home after successful register when redirect is present", async () => {

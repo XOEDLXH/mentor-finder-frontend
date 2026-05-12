@@ -1,4 +1,4 @@
-import { RefCallback, useRef, useState } from "react";
+import { FormEvent, RefCallback, useRef, useState } from "react";
 import { FAILURE_PREFIX, LOGIN_FAILED } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken } from "../redux/auth";
@@ -50,6 +50,11 @@ const LoginScreen = () => {
     };
     const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         passwordInputRef.current = node ?? undefined;
+    };
+
+    const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        login();
     };
 
     const login = () => {
@@ -105,41 +110,43 @@ const LoginScreen = () => {
 
             <h1 className="loginAuthTitle">Sign in to MentorFinder</h1>
 
-            <label className="loginAuthField">
-                <span className="loginAuthLabel">Username or email address</span>
-                <input
-                    ref={bindUserNameInputRef}
-                    type="text"
-                    placeholder="Username or email address"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                />
-            </label>
+            <form className="loginAuthForm" onSubmit={submitLogin}>
+                <label className="loginAuthField">
+                    <span className="loginAuthLabel">Username or email address</span>
+                    <input
+                        ref={bindUserNameInputRef}
+                        type="text"
+                        placeholder="Username or email address"
+                        value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                    />
+                </label>
 
-            <label className="loginAuthField">
-                <div className="loginAuthPasswordRow">
-                    <span className="loginAuthLabel">Password</span>
-                </div>
-                <input
-                    ref={bindPasswordInputRef}
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </label>
+                <label className="loginAuthField">
+                    <div className="loginAuthPasswordRow">
+                        <span className="loginAuthLabel">Password</span>
+                    </div>
+                    <input
+                        ref={bindPasswordInputRef}
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </label>
 
-            {loginErrorMessage !== "" && (
-                <p className="loginAuthError">{loginErrorMessage}</p>
-            )}
+                {loginErrorMessage !== "" && (
+                    <p className="loginAuthError">{loginErrorMessage}</p>
+                )}
 
-            <button
-                className="loginAuthSubmit"
-                onClick={login}
-                disabled={submitting}
-            >
-                {submitting ? "Signing in..." : "Sign in"}
-            </button>
+                <button
+                    type="submit"
+                    className="loginAuthSubmit"
+                    disabled={submitting}
+                >
+                    {submitting ? "Signing in..." : "Sign in"}
+                </button>
+            </form>
 
             <div className="loginAuthDivider" aria-hidden="true">
                 <span>or</span>
