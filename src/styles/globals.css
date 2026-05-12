@@ -507,6 +507,9 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 
 .registerAuthMarketing {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 100%, rgba(114, 74, 255, 0.58), rgba(114, 74, 255, 0) 34%),
@@ -521,7 +524,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   width: fit-content;
   max-width: none;
   margin: 0 auto;
-  padding: 92px 40px 48px;
+  padding: 92px 40px 24px;
 }
 
 .registerAuthMarketingTitle {
@@ -698,8 +701,11 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 .registerAuthVisual {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  z-index: 1;
+  width: min(100%, 760px);
+  min-height: clamp(420px, 52vh, 680px);
+  margin: auto auto 0;
   overflow: hidden;
   pointer-events: none;
 }
