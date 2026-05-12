@@ -1277,7 +1277,9 @@ const SearchScreen = () => {
                             key={paper.id}
                             style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            <h3 style={{ margin: "0 0 8px" }}>{paper.title}</h3>
+                            <h3 style={{ margin: "0 0 8px" }}>
+                                <LatexText text={paper.title} forceInlineMath />
+                            </h3>
                             <p style={{ margin: "4px 0" }}>
                                 arXiv：
                                 {paper.arxiv_id && paper.arxiv_url ? (

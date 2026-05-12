@@ -658,6 +658,52 @@ describe("SearchScreen", () => {
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
     });
 
+    it("renders inline LaTeX in paper search result titles while keeping the arXiv link", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 4,
+                        title: "Compression $x^2$ Paper",
+                        abstract: "摘要保持纯文本。",
+                        publish_date: "2026-05-03",
+                        subjects: "cs.LG",
+                        arxiv_id: "2501.00003",
+                        arxiv_url: "https://arxiv.org/abs/2501.00003",
+                        mentorNames: ["李四"],
+                    }],
+                };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+            target: { value: "标题公式" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByText(/Compression/i);
+
+        const titleHeading = container.querySelector("h3");
+        const arxivLink = container.querySelector("a[href='https://arxiv.org/abs/2501.00003']");
+        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
+        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/2501.00003");
+        expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
+    });
+
     it("renders block LaTeX in paper search result abstracts", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
@@ -699,6 +745,53 @@ describe("SearchScreen", () => {
 
         expect(container.querySelector(".searchPaperAbstractContent .latexTextDisplay")).not.toBeNull();
         expect(container.querySelector(".katex-display")).not.toBeNull();
+    });
+
+    it("renders block-delimited LaTeX inline in paper search result titles", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 5,
+                        title: "Block $$E=mc^2$$ Title",
+                        abstract: "摘要保持纯文本。",
+                        publish_date: "2026-05-04",
+                        subjects: "cs.AI",
+                        arxiv_id: "2501.00004",
+                        arxiv_url: "https://arxiv.org/abs/2501.00004",
+                        mentorNames: ["张三"],
+                    }],
+                };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+            target: { value: "块标题公式" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByText(/Block/i);
+
+        const titleHeading = container.querySelector("h3");
+        const arxivLink = container.querySelector("a[href='https://arxiv.org/abs/2501.00004']");
+        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
+        expect(titleHeading?.querySelector(".latexTextDisplay")).toBeNull();
+        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/2501.00004");
+        expect(screen.queryByText(/\$\$E=mc\^2\$\$/)).not.toBeInTheDocument();
     });
 
     it("opens a centered delete paper dialog with paper details for admins", async () => {

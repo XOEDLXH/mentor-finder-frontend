@@ -63,6 +63,47 @@ describe("TimelinePage LaTeX rendering", () => {
         });
     };
 
+    const mockTimelinePaperApi = (paperOverrides = {}) => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return {
+                    directions: [
+                        { direction: "机器学习", paper_count: 1 },
+                    ],
+                    default_direction: "机器学习",
+                    page_size_default: 20,
+                    page_size_max: 100,
+                };
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&page=1&page_size=20") {
+                return {
+                    direction: "机器学习",
+                    page: 1,
+                    page_size: 20,
+                    total_papers: 1,
+                    total_pages: 1,
+                    has_previous: false,
+                    has_next: false,
+                    papers: [
+                        {
+                            id: 1,
+                            title: "Compression Paper",
+                            abstract: "普通摘要。",
+                            tldr: "",
+                            arxiv_url: "https://arxiv.org/abs/1234.5678",
+                            publish_date: "2026-05-01",
+                            author_names: "Alice, Bob",
+                            ...paperOverrides,
+                        },
+                    ],
+                };
+            }
+
+            return {};
+        });
+    };
+
     it("renders inline LaTeX in timeline abstracts", async () => {
         mockTimelineApis({
             summaryText: "sequence length, but performing semantic-level compression through a specific ratio $k$}. This $O(n/k)$ bound remains effective.",
@@ -77,6 +118,55 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
         expect(screen.queryByText(/\$k\$/)).not.toBeInTheDocument();
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
+    });
+
+    it("renders inline LaTeX in timeline titles while keeping the arXiv link", async () => {
+        mockTimelinePaperApi({
+            title: "Compression $x^2$ Paper",
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/1234.5678']");
+        const titleHeading = container.querySelector("h4");
+        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
+        expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
+    });
+
+    it("renders block-delimited LaTeX inline in timeline titles", async () => {
+        mockTimelinePaperApi({
+            title: "Compression $$E=mc^2$$ Paper",
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/1234.5678']");
+        const titleHeading = container.querySelector("h4");
+        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
+        expect(titleHeading?.querySelector(".latexTextDisplay")).toBeNull();
+        expect(screen.queryByText(/\$\$E=mc\^2\$\$/)).not.toBeInTheDocument();
+    });
+
+    it("renders LaTeX in timeline titles without arXiv links", async () => {
+        mockTimelinePaperApi({
+            title: "Compression \\(x^2\\) Paper",
+            arxiv_url: undefined,
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        const titleHeading = container.querySelector("h4");
+        expect(container.querySelector("a[href]")).toBeNull();
+        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
+        expect(screen.queryByText(/\\\(x\^2\\\)/)).not.toBeInTheDocument();
     });
 
     it("renders author and abstract rows with the shared aligned layout", async () => {

@@ -2,6 +2,7 @@ import katex from "katex";
 
 interface LatexTextProps {
     text: string;
+    forceInlineMath?: boolean;
 }
 
 interface LatexSegment {
@@ -120,14 +121,18 @@ const renderTextWithLineBreaks = (value: string) => {
     ));
 };
 
-const LatexText = ({ text }: LatexTextProps) => {
+const LatexText = ({ text, forceInlineMath = false }: LatexTextProps) => {
     const segments = parseLatexSegments(text);
 
     return (
         <>
             {segments.map((segment, index) => (
                 segment.kind === "math"
-                    ? renderMathSegment(segment.value, Boolean(segment.displayMode), `math-${index}`)
+                    ? renderMathSegment(
+                        segment.value,
+                        forceInlineMath ? false : Boolean(segment.displayMode),
+                        `math-${index}`,
+                    )
                     : (
                         <span key={`text-${index}`}>
                             {renderTextWithLineBreaks(segment.value)}

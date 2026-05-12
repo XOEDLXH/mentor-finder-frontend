@@ -127,6 +127,70 @@ describe("HomeScreen weekly paper abstracts", () => {
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
     });
 
+    it("renders LaTeX in weekly paper titles while keeping the arXiv link", async () => {
+        const weeklyPushWithLatexTitle = buildWeeklyPush({
+            title: "Weekly $x^2$ Paper",
+        });
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/weekly-push/latest" || url === "/api/dataset/weekly-push/latest?week_start=2026-05-01") {
+                return {
+                    weeklyPush: weeklyPushWithLatexTitle,
+                };
+            }
+
+            if (url === "/api/dataset/weekly-push/history") {
+                return {
+                    history: [],
+                };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+
+        await screen.findByText(/Weekly/i);
+
+        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/2501.00001']");
+        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/2501.00001");
+        expect(container.querySelector(".katex")).not.toBeNull();
+        expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
+    });
+
+    it("renders LaTeX in weekly paper titles without arXiv links", async () => {
+        const weeklyPushWithLatexTitle = buildWeeklyPush({
+            title: "Weekly $$x^2$$ Paper",
+            arxivUrl: undefined,
+        });
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/weekly-push/latest" || url === "/api/dataset/weekly-push/latest?week_start=2026-05-01") {
+                return {
+                    weeklyPush: weeklyPushWithLatexTitle,
+                };
+            }
+
+            if (url === "/api/dataset/weekly-push/history") {
+                return {
+                    history: [],
+                };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+
+        await screen.findByText("本周论文");
+
+        expect(container.querySelector("a[href]")).toBeNull();
+        expect(screen.getByText(/Weekly/i)).toBeInTheDocument();
+        expect(container.querySelector(".katex")).not.toBeNull();
+        expect(container.querySelector(".latexTextDisplay")).toBeNull();
+        expect(screen.queryByText(/\$\$x\^2\$\$/)).not.toBeInTheDocument();
+    });
+
     it("renders block LaTeX in weekly paper abstracts", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/weekly-push/latest") {

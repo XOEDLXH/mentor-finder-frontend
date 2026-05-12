@@ -234,11 +234,11 @@ const TimelinePage = () => {
                                                     href={paper.arxiv_url}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    style={{ color: "#0d6efd", textDecoration: "underline" }}
+                                                    style={{ color: "inherit", textDecoration: "none" }}
                                                 >
-                                                    {paper.title}
+                                                    <LatexText text={paper.title} forceInlineMath />
                                                 </a>
-                                            ) : paper.title}
+                                            ) : <LatexText text={paper.title} forceInlineMath />}
                                         </h4>
                                         <div className="timelineMetaRow">
                                             <span className="timelineMetaLabel">作者：</span>
