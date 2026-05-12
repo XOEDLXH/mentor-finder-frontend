@@ -82,10 +82,10 @@ const HomeScreen = () => {
                                             <div style={{ fontWeight: 600 }}>
                                                 {paper.arxivUrl ? (
                                                     <a href={paper.arxivUrl} target="_blank" rel="noreferrer">
-                                                        {paper.title}
+                                                        <LatexText text={paper.title} forceInlineMath />
                                                     </a>
                                                 ) : (
-                                                    paper.title
+                                                    <LatexText text={paper.title} forceInlineMath />
                                                 )}
                                             </div>
                                             <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
