@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import {
-    FAILURE_PREFIX,
     LOGIN_FAILED,
     REGISTER_EMAIL_INVALID,
     REGISTER_EMAIL_TAKEN,

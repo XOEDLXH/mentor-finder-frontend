@@ -177,14 +177,14 @@ describe("TimelinePage LaTeX rendering", () => {
             return {};
         });
 
-        render(<TimelinePage />);
+        const { container } = render(<TimelinePage />);
 
         await screen.findByRole("heading", { name: "Compression Paper" });
 
         expect(screen.getByText(/tldr/i)).toBeInTheDocument();
         expect(screen.queryByText(/abstract/i)).not.toBeInTheDocument();
         await waitFor(() => {
-            expect(document.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(1);
+            expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(1);
         });
     });
 });
