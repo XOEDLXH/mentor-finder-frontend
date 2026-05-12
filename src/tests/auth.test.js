@@ -5,6 +5,7 @@ import {
     LOGIN_FAILED,
     LOGIN_SUCCESS_PREFIX,
     REGISTER_EMAIL_INVALID,
+    REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
     REGISTER_USERNAME_TAKEN,
@@ -515,7 +516,7 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
-            expect(screen.getByText("注册失败")).toBeInTheDocument();
+            expect(screen.getByText(REGISTER_FAILED)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();
@@ -536,7 +537,7 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
-            expect(screen.getByText("注册失败")).toBeInTheDocument();
+            expect(screen.getByText(REGISTER_FAILED)).toBeInTheDocument();
         });
 
         expect(mockPush).not.toHaveBeenCalled();
