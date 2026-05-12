@@ -150,8 +150,9 @@ describe("HomeScreen weekly paper abstracts", () => {
 
         const { container } = renderWithStore();
 
-        const titleLink = await screen.findByRole("link", { name: /Weekly/i });
+        await screen.findByText(/Weekly/i);
 
+        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/2501.00001']");
         expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/2501.00001");
         expect(container.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
@@ -183,7 +184,7 @@ describe("HomeScreen weekly paper abstracts", () => {
 
         await screen.findByText("本周论文");
 
-        expect(screen.queryByRole("link", { name: /Weekly/i })).not.toBeInTheDocument();
+        expect(container.querySelector("a[href]")).toBeNull();
         expect(screen.getByText(/Weekly/i)).toBeInTheDocument();
         expect(container.querySelector(".katex")).not.toBeNull();
         expect(container.querySelector(".latexTextDisplay")).toBeNull();
