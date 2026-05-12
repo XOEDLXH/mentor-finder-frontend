@@ -41,6 +41,21 @@ export interface MentorDetail {
     paper_ids: PrivateMentorPaper[];
 }
 
+export interface MentorRecentDirectionAnalysisPaper {
+    id: number;
+    title: string;
+    publish_date: string;
+}
+
+export interface MentorRecentDirectionAnalysisResponse {
+    mentorId: number;
+    mentorName: string;
+    paperCount: number;
+    generatedBy: string;
+    analysis: string;
+    papers: MentorRecentDirectionAnalysisPaper[];
+}
+
 export interface SearchPaperResult {
     id: number;
     title: string;
