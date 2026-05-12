@@ -607,7 +607,8 @@ describe("SearchScreen", () => {
         expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "李四" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "张三" })).toBeInTheDocument();
-        expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
+        expect(screen.getByText("摘要：")).toBeInTheDocument();
+        expect(screen.getByText("本文介绍大语言模型在智能问答中的实践。").closest(".searchPaperAbstractContent")).not.toBeNull();
         // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
     });
 
