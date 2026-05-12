@@ -353,21 +353,25 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: none;
 }
 
-.timelineAbstract {
+.timelineMetaRow {
   margin: 0;
   line-height: 1.6;
   white-space: normal;
 }
 
-.timelineAbstractLabel {
+.timelineMetaLabel {
   display: inline;
   font-weight: 400;
 }
 
-.timelineAbstractContent {
+.timelineMetaContent {
   display: inline-block;
   vertical-align: top;
   max-width: calc(100% - 3em);
+}
+
+.timelineAbstractContent {
+  white-space: normal;
 }
 
 .timelineAbstractContent .latexTextInline {

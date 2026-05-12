@@ -240,10 +240,15 @@ const TimelinePage = () => {
                                                 </a>
                                             ) : paper.title}
                                         </h4>
-                                        <p style={{ margin: "0 0 8px" }}>作者：{paper.author_names || "未知"}</p>
-                                        <div className="timelineAbstract">
-                                            <span className="timelineAbstractLabel">摘要：</span>
-                                            <div className="timelineAbstractContent">
+                                        <div className="timelineMetaRow">
+                                            <span className="timelineMetaLabel">作者：</span>
+                                            <div className="timelineMetaContent">
+                                                {paper.author_names || "未知"}
+                                            </div>
+                                        </div>
+                                        <div className="timelineMetaRow">
+                                            <span className="timelineMetaLabel">摘要：</span>
+                                            <div className="timelineMetaContent timelineAbstractContent">
                                                 <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
                                             </div>
                                         </div>

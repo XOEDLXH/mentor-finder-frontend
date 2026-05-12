@@ -79,6 +79,23 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
     });
 
+    it("renders author and abstract rows with the shared aligned layout", async () => {
+        mockTimelineApis({
+            summaryText: "普通摘要 $x$。",
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByRole("heading", { name: "Compression Paper" });
+
+        const metaRows = container.querySelectorAll(".timelineMetaRow");
+        expect(metaRows.length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByText("作者：").closest(".timelineMetaRow")).not.toBeNull();
+        expect(screen.getByText("摘要：").closest(".timelineMetaRow")).not.toBeNull();
+        expect(screen.getByText("Alice, Bob").closest(".timelineMetaContent")).not.toBeNull();
+        expect(container.querySelector(".timelineAbstractContent")).not.toBeNull();
+    });
+
     it("renders block LaTeX in timeline abstracts", async () => {
         mockTimelineApis({
             summaryText: "核心结论如下：$$E=mc^2$$并且后续仍成立。",
