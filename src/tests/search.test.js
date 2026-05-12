@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -111,6 +111,151 @@ describe("SearchScreen", () => {
         expect(screen.queryByRole("heading", { name: "我的私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "添加私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText("导师中文名（可选）")).not.toBeInTheDocument();
+    });
+
+    it("opens a centered delete mentor dialog with mentor details for admins", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        research_direction: "机器学习",
+                        email: "",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+
+        const dialog = screen.getByRole("dialog", { name: "确认删除导师" });
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText("中文名：张三")).toBeInTheDocument();
+        expect(within(dialog).getByText("英文名：暂无英文名")).toBeInTheDocument();
+        expect(within(dialog).getByText("研究方向：机器学习")).toBeInTheDocument();
+        expect(within(dialog).getByText("邮箱：暂无邮箱")).toBeInTheDocument();
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/mentors/1", "DELETE", true);
+    });
+
+    it("closes the delete mentor dialog when clicking the overlay", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+        fireEvent.click(screen.getByLabelText("删除导师确认弹窗遮罩"));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除导师" })).not.toBeInTheDocument();
+        });
+    });
+
+    it("deletes mentor after confirmation, shows loading state, and refreshes search results", async () => {
+        let deleted = false;
+        let resolveDelete;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/dataset/mentors/1" && method === "DELETE") {
+                return new Promise((resolve) => {
+                    resolveDelete = () => {
+                        deleted = true;
+                        resolve({});
+                    };
+                });
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return Promise.resolve({
+                    mentors: deleted ? [] : [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+
+        const confirmDeleteButton = screen.getByRole("button", { name: "确认删除" });
+        fireEvent.click(confirmDeleteButton);
+
+        expect(confirmDeleteButton).toBeDisabled();
+        expect(confirmDeleteButton.querySelector("span[aria-hidden='true']")).not.toBeNull();
+        expect(request).toHaveBeenCalledWith("/api/dataset/mentors/1", "DELETE", true);
+
+        resolveDelete();
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除导师" })).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+            expect(screen.queryByRole("heading", { name: "张三" })).not.toBeInTheDocument();
+        });
+        expect(screen.getByText("导师删除成功")).toBeInTheDocument();
     });
 
     it("auto loads all mentors when entering search page with empty keyword", async () => {

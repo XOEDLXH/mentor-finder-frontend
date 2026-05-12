@@ -52,6 +52,14 @@ interface SearchOptions {
     shouldSyncUrl?: boolean;
 }
 
+interface MentorDeleteTarget {
+    id: number;
+    Chinese_name: string;
+    English_name?: string;
+    research_direction: string;
+    email?: string;
+}
+
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -75,6 +83,8 @@ const SearchScreen = () => {
     const [hasNextPage, setHasNextPage] = useState(false);
     const [adminSaving, setAdminSaving] = useState(false);
     const [adminMessage, setAdminMessage] = useState("");
+    const [mentorDeleteTarget, setMentorDeleteTarget] = useState<MentorDeleteTarget | undefined>(undefined);
+    const [mentorDeleteSubmitting, setMentorDeleteSubmitting] = useState(false);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
     const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
@@ -493,17 +503,37 @@ const SearchScreen = () => {
         }
     };
 
-    const removeMentor = async (mentorId: number) => {
-        if (!globalThis.confirm("确认删除该导师？")) {
+    const openDeleteMentorDialog = (mentor: SearchMentorResult) => {
+        setMentorDeleteTarget({
+            id: mentor.id,
+            Chinese_name: mentor.Chinese_name,
+            English_name: mentor.English_name,
+            research_direction: mentor.research_direction,
+            email: mentor.email,
+        });
+    };
+
+    const closeDeleteMentorDialog = () => {
+        if (mentorDeleteSubmitting) {
+            return;
+        }
+
+        setMentorDeleteTarget(undefined);
+    };
+
+    const confirmDeleteMentor = async () => {
+        if (mentorDeleteTarget === undefined) {
             return;
         }
 
         setAdminSaving(true);
+        setMentorDeleteSubmitting(true);
         setAdminMessage("");
 
         try {
-            await request(`/api/dataset/mentors/${mentorId}`, "DELETE", true);
+            await request(`/api/dataset/mentors/${mentorDeleteTarget.id}`, "DELETE", true);
             setAdminMessage("导师删除成功");
+            setMentorDeleteTarget(undefined);
 
             if (mode === "mentor" && hasSearched) {
                 await search();
@@ -514,6 +544,7 @@ const SearchScreen = () => {
         }
         finally {
             setAdminSaving(false);
+            setMentorDeleteSubmitting(false);
         }
     };
 
@@ -613,6 +644,106 @@ const SearchScreen = () => {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
+            {mentorDeleteTarget !== undefined && (
+                <div
+                    aria-label="删除导师确认弹窗遮罩"
+                    role="presentation"
+                    onClick={closeDeleteMentorDialog}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 1100,
+                        background: "rgba(15, 23, 42, 0.42)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 20,
+                    }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-mentor-dialog-title"
+                        onClick={(event) => event.stopPropagation()}
+                        style={{
+                            width: "min(100%, 480px)",
+                            borderRadius: 20,
+                            background: "#ffffff",
+                            border: "1px solid #d0d7de",
+                            boxShadow: "0 24px 64px rgba(15, 23, 42, 0.24)",
+                            padding: 24,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 14,
+                        }}
+                    >
+                        <h3 id="delete-mentor-dialog-title" style={{ margin: 0, color: "#1f2328" }}>
+                            确认删除导师
+                        </h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, color: "#1f2328" }}>
+                            <p style={{ margin: 0 }}>
+                                中文名：{mentorDeleteTarget.Chinese_name}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                英文名：{mentorDeleteTarget.English_name?.trim() || "暂无英文名"}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                研究方向：{mentorDeleteTarget.research_direction?.trim() || "暂无研究方向"}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                邮箱：{mentorDeleteTarget.email?.trim() || "暂无邮箱"}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => void confirmDeleteMentor()}
+                            disabled={mentorDeleteSubmitting}
+                            style={{
+                                position: "relative",
+                                width: "100%",
+                                minHeight: 44,
+                                borderRadius: 12,
+                                border: mentorDeleteSubmitting ? "none" : "1px solid #cf222e",
+                                background: mentorDeleteSubmitting ? "#cf222e" : "#ffffff",
+                                color: mentorDeleteSubmitting ? "#ffffff" : "#cf222e",
+                                fontWeight: 700,
+                                overflow: "hidden",
+                                transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
+                            }}
+                            onMouseEnter={(event) => {
+                                if (mentorDeleteSubmitting) {
+                                    return;
+                                }
+
+                                event.currentTarget.style.background = "#cf222e";
+                                event.currentTarget.style.color = "#ffffff";
+                                event.currentTarget.style.border = "none";
+                            }}
+                            onMouseLeave={(event) => {
+                                if (mentorDeleteSubmitting) {
+                                    return;
+                                }
+
+                                event.currentTarget.style.background = "#ffffff";
+                                event.currentTarget.style.color = "#cf222e";
+                                event.currentTarget.style.border = "1px solid #cf222e";
+                            }}
+                        >
+                            <span>确认删除</span>
+                            {mentorDeleteSubmitting && (
+                                <span
+                                    aria-hidden="true"
+                                    style={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        background: "rgba(255, 255, 255, 0.55)",
+                                    }}
+                                />
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
             <h2>信息检索</h2>
             <p>输入关键词，按导师姓名或论文相关信息进行搜索。</p>
 
@@ -914,7 +1045,7 @@ const SearchScreen = () => {
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditMentor(mentor)} disabled={adminSaving}>修改导师</button>
-                                    <button onClick={() => void removeMentor(mentor.id)} disabled={adminSaving}>删除导师</button>
+                                    <button onClick={() => openDeleteMentorDialog(mentor)} disabled={adminSaving}>删除导师</button>
                                 </div>
                             )}
                         </div>
