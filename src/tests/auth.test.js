@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import {
-    FAILURE_PREFIX,
     LOGIN_FAILED,
     REGISTER_EMAIL_INVALID,
     REGISTER_EMAIL_TAKEN,
@@ -307,6 +306,14 @@ describe("LoginScreen", () => {
         fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register");
+    });
+
+    it("navigates to home page when clicking the login logo", () => {
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Go to home page" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
     });
 
     it("preserves redirect when navigating from login to register", () => {
@@ -737,6 +744,14 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+
+    it("navigates to home page when clicking the signup logo", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Go to home page" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
     });
 
     it("preserves redirect when navigating from register to login", () => {

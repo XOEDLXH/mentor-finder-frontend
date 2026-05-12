@@ -100,13 +100,18 @@ const LoginScreen = () => {
 
     return (
         <section className="loginAuthPage" aria-label="Sign in page">
-            <div className="loginAuthBrand" aria-hidden="true">
+            <button
+                type="button"
+                className="loginAuthBrand"
+                aria-label="Go to home page"
+                onClick={() => void router.push("/")}
+            >
                 <img
                     src="/mentorfinder-logo-1.svg"
                     alt=""
                     className="loginAuthBrandLogo"
                 />
-            </div>
+            </button>
 
             <h1 className="loginAuthTitle">Sign in to MentorFinder</h1>
 

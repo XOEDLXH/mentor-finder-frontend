@@ -1,6 +1,7 @@
 import { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
+import LatexText from "../components/LatexText";
 import { request } from "../utils/network";
 import {
     WeeklyPushHistoryResponse,
@@ -90,8 +91,10 @@ const HomeScreen = () => {
                                             <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
                                                 作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"}
                                             </div>
-                                            <div style={{ marginTop: 6, lineHeight: 1.5 }}>
-                                                {paper.tldr || paper.abstract || "暂无摘要"}
+                                            <div className="homeWeeklyPaperAbstractRow">
+                                                <div className="homeWeeklyPaperAbstractContent">
+                                                    <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
+                                                </div>
                                             </div>
                                         </div>
                                     ))}

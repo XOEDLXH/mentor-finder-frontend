@@ -69,7 +69,7 @@ select:disabled {
   opacity: 0.65;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--surface-panel);
@@ -78,7 +78,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):hover:not(:disabled) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
@@ -353,6 +353,87 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: none;
 }
 
+.timelineMetaRow {
+  margin: 0;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.timelineMetaLabel {
+  display: inline;
+  font-weight: 400;
+}
+
+.timelineMetaContent {
+  display: inline-block;
+  vertical-align: top;
+  max-width: calc(100% - 3em);
+}
+
+.timelineAbstractContent {
+  white-space: normal;
+}
+
+.timelineAbstractContent .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.timelineAbstractContent .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.searchPaperAbstractRow {
+  margin: 4px 0;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.searchPaperAbstractLabel {
+  display: inline;
+}
+
+.searchPaperAbstractContent {
+  display: inline-block;
+  vertical-align: top;
+  max-width: calc(100% - 3em);
+  white-space: normal;
+}
+
+.searchPaperAbstractContent .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.searchPaperAbstractContent .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.homeWeeklyPaperAbstractRow {
+  margin-top: 6px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.homeWeeklyPaperAbstractContent {
+  white-space: normal;
+}
+
+.homeWeeklyPaperAbstractContent .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homeWeeklyPaperAbstractContent .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
+}
+
 .loginAuthPage {
   min-height: 100vh;
   display: flex;
@@ -364,8 +445,21 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 .loginAuthBrand {
+  border: none;
+  background: transparent;
+  padding: 0;
   display: flex;
   justify-content: center;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+}
+
+.loginAuthBrand:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .loginAuthBrandLogo {
@@ -788,6 +882,19 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: inline-flex;
   align-items: center;
   min-height: 42px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+}
+
+.registerAuthFormLogoRow:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .registerAuthFormLogo {

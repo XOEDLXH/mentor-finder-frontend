@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
+import LatexText from "../components/LatexText";
 import { FAILURE_PREFIX } from "../constants/string";
 import { request } from "../utils/network";
 import {
@@ -239,10 +240,18 @@ const TimelinePage = () => {
                                                 </a>
                                             ) : paper.title}
                                         </h4>
-                                        <p style={{ margin: "0 0 8px" }}>作者：{paper.author_names || "未知"}</p>
-                                        <p style={{ margin: 0, lineHeight: 1.6 }}>
-                                            摘要：{paper.tldr || paper.abstract || "暂无摘要"}
-                                        </p>
+                                        <div className="timelineMetaRow">
+                                            <span className="timelineMetaLabel">作者：</span>
+                                            <div className="timelineMetaContent">
+                                                {paper.author_names || "未知"}
+                                            </div>
+                                        </div>
+                                        <div className="timelineMetaRow">
+                                            <span className="timelineMetaLabel">摘要：</span>
+                                            <div className="timelineMetaContent timelineAbstractContent">
+                                                <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
+                                            </div>
+                                        </div>
                                     </article>
                                 ))}
 
