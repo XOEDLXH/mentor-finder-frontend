@@ -195,6 +195,47 @@ describe("SearchScreen", () => {
         });
     });
 
+    it("closes the delete mentor dialog when clicking cancel without deleting", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore("alice", "admin");
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "确认删除导师" })).not.toBeInTheDocument();
+        });
+        expect(request).not.toHaveBeenCalledWith("/api/dataset/mentors/1", "DELETE", true);
+    });
+
     it("deletes mentor after confirmation, shows loading state, and refreshes search results", async () => {
         let deleted = false;
         let resolveDelete;

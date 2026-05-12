@@ -694,53 +694,72 @@ const SearchScreen = () => {
                                 邮箱：{mentorDeleteTarget.email?.trim() || "暂无邮箱"}
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => void confirmDeleteMentor()}
-                            disabled={mentorDeleteSubmitting}
-                            style={{
-                                position: "relative",
-                                width: "100%",
-                                minHeight: 44,
-                                borderRadius: 12,
-                                border: mentorDeleteSubmitting ? "none" : "1px solid #cf222e",
-                                background: mentorDeleteSubmitting ? "#cf222e" : "#ffffff",
-                                color: mentorDeleteSubmitting ? "#ffffff" : "#cf222e",
-                                fontWeight: 700,
-                                overflow: "hidden",
-                                transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
-                            }}
-                            onMouseEnter={(event) => {
-                                if (mentorDeleteSubmitting) {
-                                    return;
-                                }
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <button
+                                type="button"
+                                onClick={() => void confirmDeleteMentor()}
+                                disabled={mentorDeleteSubmitting}
+                                style={{
+                                    position: "relative",
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    border: mentorDeleteSubmitting ? "none" : "1px solid #cf222e",
+                                    background: mentorDeleteSubmitting ? "#cf222e" : "#ffffff",
+                                    color: mentorDeleteSubmitting ? "#ffffff" : "#cf222e",
+                                    fontWeight: 700,
+                                    overflow: "hidden",
+                                    transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
+                                }}
+                                onMouseEnter={(event) => {
+                                    if (mentorDeleteSubmitting) {
+                                        return;
+                                    }
 
-                                event.currentTarget.style.background = "#cf222e";
-                                event.currentTarget.style.color = "#ffffff";
-                                event.currentTarget.style.border = "none";
-                            }}
-                            onMouseLeave={(event) => {
-                                if (mentorDeleteSubmitting) {
-                                    return;
-                                }
+                                    event.currentTarget.style.background = "#cf222e";
+                                    event.currentTarget.style.color = "#ffffff";
+                                    event.currentTarget.style.border = "none";
+                                }}
+                                onMouseLeave={(event) => {
+                                    if (mentorDeleteSubmitting) {
+                                        return;
+                                    }
 
-                                event.currentTarget.style.background = "#ffffff";
-                                event.currentTarget.style.color = "#cf222e";
-                                event.currentTarget.style.border = "1px solid #cf222e";
-                            }}
-                        >
-                            <span>确认删除</span>
-                            {mentorDeleteSubmitting && (
-                                <span
-                                    aria-hidden="true"
-                                    style={{
-                                        position: "absolute",
-                                        inset: 0,
-                                        background: "rgba(255, 255, 255, 0.55)",
-                                    }}
-                                />
-                            )}
-                        </button>
+                                    event.currentTarget.style.background = "#ffffff";
+                                    event.currentTarget.style.color = "#cf222e";
+                                    event.currentTarget.style.border = "1px solid #cf222e";
+                                }}
+                            >
+                                <span>确认删除</span>
+                                {mentorDeleteSubmitting && (
+                                    <span
+                                        aria-hidden="true"
+                                        style={{
+                                            position: "absolute",
+                                            inset: 0,
+                                            background: "rgba(255, 255, 255, 0.55)",
+                                        }}
+                                    />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeDeleteMentorDialog}
+                                disabled={mentorDeleteSubmitting}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 6,
+                                    border: "1px solid rgb(209, 217, 224)",
+                                    background: "rgb(246, 248, 250)",
+                                    color: "rgb(37, 41, 46)",
+                                    fontWeight: 600,
+                                    boxShadow: "none",
+                                }}
+                            >
+                                取消
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
