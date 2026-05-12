@@ -749,7 +749,7 @@ const SearchScreen = () => {
                                 style={{
                                     width: "100%",
                                     minHeight: 44,
-                                    borderRadius: 6,
+                                    borderRadius: 12,
                                     border: "1px solid rgb(209, 217, 224)",
                                     background: "rgb(246, 248, 250)",
                                     color: "rgb(37, 41, 46)",
