@@ -185,7 +185,6 @@ const RegisterScreen = () => {
         if (password !== confirmPassword) {
             setConfirmPasswordBlurred(true);
             confirmPasswordInputRef.current?.focus();
-            alert(REGISTER_PASSWORD_MISMATCH);
             return;
         }
 
