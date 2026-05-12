@@ -452,6 +452,36 @@ const SearchScreen = () => {
         }
     };
 
+    const clearKeyword = () => {
+        setKeyword("");
+    };
+
+    const searchPaperByTitle = (paperTitle: string) => {
+        setMode("paper");
+        setMatchMode("exact");
+        setKeyword(paperTitle);
+        setPaperSortMode("default");
+        void search({
+            keyword: paperTitle,
+            sortMode: "default",
+            page: 1,
+            mode: "paper",
+            searchMode: "exact",
+        });
+    };
+
+    const searchMentorByName = (mentorName: string) => {
+        setMode("mentor");
+        setMatchMode("exact");
+        setKeyword(mentorName);
+        void search({
+            keyword: mentorName,
+            page: 1,
+            mode: "mentor",
+            searchMode: "exact",
+        });
+    };
+
     const toggleMentorExpand = (mentorId: number) => {
         setExpandedMentorIds((prev) => {
             const next = new Set(prev);
@@ -984,10 +1014,10 @@ const SearchScreen = () => {
                     onKeyDown={handleEnter}
                     style={{ flex: 1 }}
                 />
-                <button
-                    onClick={() => void search({ page: 1, shouldSyncUrl: true })}
-                    disabled={keyword.trim() === "" || loading}
-                >
+                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading}>
+                    清空
+                </button>
+                <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
                     {loading ? "搜索中..." : "搜索"}
                 </button>
             </div>
@@ -1200,7 +1230,23 @@ const SearchScreen = () => {
                             <p style={{ margin: "8px 0 4px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 20 }}>
                                 {visiblePaperTitles.map((title) => (
-                                    <li key={title}>{title}</li>
+                                    <li key={title}>
+                                        <button
+                                            type="button"
+                                            onClick={() => searchPaperByTitle(title)}
+                                            style={{
+                                                border: "none",
+                                                background: "transparent",
+                                                padding: 0,
+                                                color: "#0070f3",
+                                                textDecoration: "underline",
+                                                cursor: "pointer",
+                                                font: "inherit",
+                                            }}
+                                        >
+                                            {title}
+                                        </button>
+                                    </li>
                                 ))}
                             </ul>
                             {hasMoreDetails && (
@@ -1241,7 +1287,50 @@ const SearchScreen = () => {
                             </p>
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
-                            <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
+                            <p style={{ margin: "4px 0" }}>
+                                作者：{
+                                    (() => {
+                                        const names = (paper.author_names || "").split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+                                        if (names.length === 0) {
+                                            return "未知";
+                                        }
+
+                                        return names.map((name, idx) => {
+                                            const isMentor = Array.isArray(paper.mentorNames) && paper.mentorNames.includes(name);
+                                            const separator = idx === names.length - 1 ? "" : "、";
+                                            if (isMentor) {
+                                                return (
+                                                    <span key={name}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => searchMentorByName(name)}
+                                                            style={{
+                                                                border: "none",
+                                                                background: "transparent",
+                                                                padding: 0,
+                                                                color: "#0070f3",
+                                                                textDecoration: "underline",
+                                                                cursor: "pointer",
+                                                                font: "inherit",
+                                                            }}
+                                                        >
+                                                            {name}
+                                                        </button>
+                                                        {separator}
+                                                    </span>
+                                                );
+                                            }
+
+                                            return (
+                                                <span key={name}>
+                                                    {name}
+                                                    {separator}
+                                                </span>
+                                            );
+                                        });
+                                    })()
+                                }
+                            </p>
                             <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
