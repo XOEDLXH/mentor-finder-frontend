@@ -309,6 +309,14 @@ describe("LoginScreen", () => {
         expect(mockPush).toHaveBeenCalledWith("/register");
     });
 
+    it("navigates to home page when clicking the login logo", () => {
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Go to home page" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
+    });
+
     it("preserves redirect when navigating from login to register", () => {
         mockRouter.query = {
             redirect: "/follows",
@@ -737,6 +745,14 @@ describe("RegisterScreen", () => {
         fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+
+    it("navigates to home page when clicking the signup logo", () => {
+        render(<RegisterScreen />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Go to home page" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/");
     });
 
     it("preserves redirect when navigating from register to login", () => {

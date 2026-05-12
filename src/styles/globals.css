@@ -69,7 +69,7 @@ select:disabled {
   opacity: 0.65;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--surface-panel);
@@ -78,7 +78,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):hover:not(:disabled) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
@@ -396,8 +396,21 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 .loginAuthBrand {
+  border: none;
+  background: transparent;
+  padding: 0;
   display: flex;
   justify-content: center;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+}
+
+.loginAuthBrand:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .loginAuthBrandLogo {
@@ -820,6 +833,19 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: inline-flex;
   align-items: center;
   min-height: 42px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+}
+
+.registerAuthFormLogoRow:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .registerAuthFormLogo {

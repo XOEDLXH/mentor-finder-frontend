@@ -360,14 +360,19 @@ const RegisterScreen = () => {
                 <div className="registerAuthFormWrap">
                     <h2 className="registerAuthFormTitle" aria-label="Sign up for MentorFinder">
                         <span className="registerAuthFormLead">Sign up for</span>
-                        <span className="registerAuthFormLogoRow">
+                        <button
+                            type="button"
+                            className="registerAuthFormLogoRow"
+                            aria-label="Go to home page"
+                            onClick={() => void router.push("/")}
+                        >
                             <img
                                 src="/mentorfinder-logo-1.svg"
                                 alt=""
                                 aria-hidden="true"
                                 className="registerAuthFormLogo"
                             />
-                        </span>
+                        </button>
                     </h2>
 
                     <button
