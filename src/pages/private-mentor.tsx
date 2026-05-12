@@ -281,7 +281,7 @@ const PrivateMentorScreen = () => {
                             (customMentorDraft.Chinese_name.trim() === "" && customMentorDraft.English_name.trim() === "")
                         }
                     >
-                        {privateMentorSaving ? "爬取中..." : "添加私有导师"}
+                        {privateMentorSaving ? "添加中..." : "添加私有导师"}
                     </button>
                     <button
                         onClick={() => void fetchMyPrivateMentors()}
