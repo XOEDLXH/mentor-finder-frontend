@@ -708,79 +708,17 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   margin: auto auto 0;
   overflow: hidden;
   pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.registerAuthGlow {
-  position: absolute;
-  left: 50%;
-  bottom: -12%;
-  width: 88%;
-  height: 42%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(131, 96, 255, 0.95) 0%, rgba(131, 96, 255, 0.26) 38%, rgba(131, 96, 255, 0) 72%);
-  filter: blur(18px);
-}
-
-.registerAuthOrb {
-  position: absolute;
+.registerAuthVisualImage {
   display: block;
-  border-radius: 999px;
-  filter: drop-shadow(0 22px 30px rgba(26, 13, 82, 0.45));
-}
-
-.registerAuthOrbA {
-  left: 22%;
-  bottom: 9%;
-  width: 146px;
-  height: 146px;
-  background: linear-gradient(160deg, #f98ff9 0%, #d36cff 42%, #8b52ff 100%);
-}
-
-.registerAuthOrbB {
-  left: 43%;
-  bottom: 24%;
-  width: 108px;
-  height: 108px;
-  background: linear-gradient(160deg, #b990ff 0%, #e780ff 48%, #7f63ff 100%);
-}
-
-.registerAuthOrbC {
-  left: 62%;
-  bottom: 11%;
-  width: 94px;
-  height: 94px;
-  background: linear-gradient(160deg, #ffe083 0%, #ffb94d 42%, #ff7c58 100%);
-}
-
-.registerAuthStar {
-  position: absolute;
-  display: block;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow:
-    80px 40px 0 rgba(255, 255, 255, 0.44),
-    140px -24px 0 rgba(255, 255, 255, 0.62),
-    -92px 86px 0 rgba(255, 255, 255, 0.38),
-    164px 152px 0 rgba(255, 255, 255, 0.5),
-    -136px 214px 0 rgba(255, 255, 255, 0.42),
-    224px 236px 0 rgba(255, 255, 255, 0.38);
-}
-
-.registerAuthStarA {
-  left: 26%;
-  top: 45%;
-}
-
-.registerAuthStarB {
-  left: 58%;
-  top: 54%;
-}
-
-.registerAuthStarC {
-  left: 36%;
-  top: 68%;
+  width: min(100%, 860px);
+  height: auto;
+  object-fit: contain;
+  object-position: center bottom;
 }
 
 .registerAuthPanel {

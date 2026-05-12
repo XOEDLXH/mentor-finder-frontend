@@ -309,13 +309,7 @@ const RegisterScreen = () => {
                     </details>
                 </div>
                 <div className="registerAuthVisual" aria-hidden="true">
-                    <span className="registerAuthStar registerAuthStarA" />
-                    <span className="registerAuthStar registerAuthStarB" />
-                    <span className="registerAuthStar registerAuthStarC" />
-                    <span className="registerAuthOrb registerAuthOrbA" />
-                    <span className="registerAuthOrb registerAuthOrbB" />
-                    <span className="registerAuthOrb registerAuthOrbC" />
-                    <span className="registerAuthGlow" />
+                    <img src="/signupbg.png" alt="" className="registerAuthVisualImage" />
                 </div>
             </aside>
 
