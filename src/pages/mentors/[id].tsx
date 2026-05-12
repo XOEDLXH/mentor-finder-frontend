@@ -6,7 +6,11 @@ import FollowToggleButton from "../../components/FollowToggleButton";
 import { FAILURE_PREFIX } from "../../constants/string";
 import { RootState } from "../../redux/store";
 import { request } from "../../utils/network";
-import { MentorDetail, SearchMentorResult } from "../../utils/types";
+import {
+    MentorDetail,
+    MentorRecentDirectionAnalysisResponse,
+    SearchMentorResult,
+} from "../../utils/types";
 
 const MentorDetailPage = () => {
     const router = useRouter();
@@ -21,6 +25,8 @@ const MentorDetailPage = () => {
     const [errorMessage, setErrorMessage] = useState("");
     const [followed, setFollowed] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const [analysisLoading, setAnalysisLoading] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<MentorRecentDirectionAnalysisResponse | undefined>(undefined);
 
     useEffect(() => {
         if (typeof id !== "string") {
@@ -30,6 +36,7 @@ const MentorDetailPage = () => {
         const fetchMentor = async () => {
             setLoading(true);
             setErrorMessage("");
+            setAnalysisResult(undefined);
 
             try {
                 const res = await request<{ mentor?: MentorDetail }>(
@@ -98,6 +105,30 @@ const MentorDetailPage = () => {
         }
     };
 
+    const analyzeRecentDirection = async () => {
+        if (typeof id !== "string") {
+            return;
+        }
+
+        setAnalysisLoading(true);
+        setErrorMessage("");
+
+        try {
+            const res = await request<MentorRecentDirectionAnalysisResponse>(
+                `/api/dataset/mentors/${id}/recent-direction-analysis`,
+                "POST",
+                isLoggedIn,
+            );
+            setAnalysisResult(res);
+        }
+        catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setAnalysisLoading(false);
+        }
+    };
+
     if (loading) {
         return <p>加载中...</p>;
     }
@@ -154,6 +185,7 @@ const MentorDetailPage = () => {
                     />
                 )}
 
+
                 {mentor.English_name && (
                     <p style={{ margin: "4px 0" }}>英文名：{mentor.English_name}</p>
                 )}
@@ -182,6 +214,44 @@ const MentorDetailPage = () => {
                     </ul>
                 ) : (
                     <p style={{ margin: "4px 0" }}>暂无关联论文</p>
+                )}
+                
+                <div style={{ marginTop: 8 }}>
+                    <button onClick={() => void analyzeRecentDirection()} disabled={analysisLoading}>
+                        {analysisLoading ? "AI正在分析近一年论文，请稍候..." : "AI分析最近研究方向"}
+                    </button>
+                </div>
+
+                {(analysisLoading || analysisResult !== undefined) && (
+                    <div style={{ marginTop: 16, padding: 12, border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#fafafa" }}>
+                        <h3 style={{ margin: "0 0 8px" }}>最近研究方向分析</h3>
+                        {analysisLoading && (
+                            <p style={{ margin: 0 }}>正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...</p>
+                        )}
+                        {!analysisLoading && analysisResult !== undefined && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <p style={{ margin: 0, color: "#666" }}>
+                                    近一年论文数：{analysisResult.paperCount} ｜ 生成方式：{analysisResult.generatedBy}
+                                </p>
+                                <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                                    {analysisResult.analysis}
+                                </p>
+                                {analysisResult.papers.length > 0 && (
+                                    <div>
+                                        <p style={{ margin: "4px 0" }}>本次分析使用的论文：</p>
+                                        <ul style={{ margin: 0, paddingLeft: 20 }}>
+                                            {analysisResult.papers.map((paper) => (
+                                                <li key={paper.id}>
+                                                    {paper.title}
+                                                    {paper.publish_date ? `（${paper.publish_date}）` : ""}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
