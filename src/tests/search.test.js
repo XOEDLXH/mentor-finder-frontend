@@ -55,7 +55,7 @@ describe("SearchScreen", () => {
             },
         });
 
-        render(
+        return render(
             <Provider store={store}>
                 <SearchScreen />
             </Provider>,
@@ -541,8 +541,98 @@ describe("SearchScreen", () => {
         expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
         expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
         expect(screen.getByText("导师：李四、张三")).toBeInTheDocument();
-        expect(screen.getByText("摘要：本文介绍大语言模型在智能问答中的实践。")).toBeInTheDocument();
+        expect(screen.getByText("摘要：")).toBeInTheDocument();
+        expect(screen.getByText("本文介绍大语言模型在智能问答中的实践。").closest(".searchPaperAbstractContent")).not.toBeNull();
         expect(screen.queryByText("作者：李四,张三")).not.toBeInTheDocument();
+    });
+
+    it("renders inline LaTeX in paper search result abstracts", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "Compression Paper",
+                        abstract: "sequence length, but performing semantic-level compression through a specific ratio $k$}. This $O(n/k)$ path remains effective.",
+                        publish_date: "2026-05-01",
+                        subjects: "cs.LG",
+                        arxiv_id: "2501.00001",
+                        arxiv_url: "https://arxiv.org/abs/2501.00001",
+                        mentorNames: ["李四"],
+                    }],
+                };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+            target: { value: "压缩" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "Compression Paper" });
+
+        expect(screen.getByText(/sequence length, but performing semantic-level compression through a specific ratio/i)).toBeInTheDocument();
+        expect(screen.getByText(/This/i)).toBeInTheDocument();
+        expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
+        expect(screen.queryByText(/\$k\$/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
+    });
+
+    it("renders block LaTeX in paper search result abstracts", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return {
+                    papers: [{
+                        id: 3,
+                        title: "Block Formula Paper",
+                        abstract: "核心结论如下：$$E=mc^2$$并且后续仍成立。",
+                        publish_date: "2026-05-02",
+                        subjects: "cs.AI",
+                        arxiv_id: "2501.00002",
+                        arxiv_url: "https://arxiv.org/abs/2501.00002",
+                        mentorNames: ["张三"],
+                    }],
+                };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+            target: { value: "块公式" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        await screen.findByRole("heading", { name: "Block Formula Paper" });
+
+        expect(container.querySelector(".searchPaperAbstractContent .latexTextDisplay")).not.toBeNull();
+        expect(container.querySelector(".katex-display")).not.toBeNull();
     });
 
     it("opens a centered delete paper dialog with paper details for admins", async () => {

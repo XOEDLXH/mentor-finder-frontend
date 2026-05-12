@@ -385,6 +385,34 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   text-align: center;
 }
 
+.searchPaperAbstractRow {
+  margin: 4px 0;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.searchPaperAbstractLabel {
+  display: inline;
+}
+
+.searchPaperAbstractContent {
+  display: inline-block;
+  vertical-align: top;
+  max-width: calc(100% - 3em);
+  white-space: normal;
+}
+
+.searchPaperAbstractContent .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.searchPaperAbstractContent .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
+}
+
 .loginAuthPage {
   min-height: 100vh;
   display: flex;

@@ -2,6 +2,7 @@ import { KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
+import LatexText from "../components/LatexText";
 import { FAILURE_PREFIX } from "../constants/string";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { RootState } from "../redux/store";
@@ -1242,7 +1243,12 @@ const SearchScreen = () => {
                             <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
                             <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
                             <p style={{ margin: "4px 0" }}>导师：{paper.mentorNames.join("、") || "未知"}</p>
-                            <p style={{ margin: "4px 0" }}>摘要：{paper.abstract || "暂无摘要"}</p>
+                            <div className="searchPaperAbstractRow">
+                                <span className="searchPaperAbstractLabel">摘要：</span>
+                                <div className="searchPaperAbstractContent">
+                                    <LatexText text={paper.abstract || "暂无摘要"} />
+                                </div>
+                            </div>
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditPaper(paper)} disabled={adminSaving}>修改论文</button>
