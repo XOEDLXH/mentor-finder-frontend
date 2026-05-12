@@ -1,4 +1,4 @@
-import { RefCallback, useRef, useState } from "react";
+import { RefCallback, useEffect, useRef, useState } from "react";
 import {
     FAILURE_PREFIX,
     REGISTER_EMAIL_INVALID,
@@ -15,6 +15,7 @@ import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect"
 
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+const FEATURE_LIST_CLOSE_ANIMATION_MS = 500;
 
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
@@ -57,10 +58,12 @@ const RegisterScreen = () => {
     const [registerErrorMessage, setRegisterErrorMessage] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [featureListOpen, setFeatureListOpen] = useState(false);
+    const [featureListClosing, setFeatureListClosing] = useState(false);
     const emailInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const confirmPasswordInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const featureListCloseTimerRef = useRef<number | undefined>(undefined);
 
     const router = useRouter();
     const dispatch = useDispatch();
@@ -77,6 +80,14 @@ const RegisterScreen = () => {
     const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
         userNameInputRef.current = node ?? undefined;
     };
+
+    useEffect(() => {
+        return () => {
+            if (featureListCloseTimerRef.current !== undefined) {
+                window.clearTimeout(featureListCloseTimerRef.current);
+            }
+        };
+    }, []);
 
     const featureItems = [
         {
@@ -203,6 +214,42 @@ const RegisterScreen = () => {
             .finally(() => setSubmitting(false));
     };
 
+    const toggleFeatureList = () => {
+        if (featureListCloseTimerRef.current !== undefined) {
+            window.clearTimeout(featureListCloseTimerRef.current);
+            featureListCloseTimerRef.current = undefined;
+        }
+
+        if (featureListClosing) {
+            setFeatureListClosing(false);
+            setFeatureListOpen(true);
+            return;
+        }
+
+        if (featureListOpen) {
+            setFeatureListOpen(false);
+            setFeatureListClosing(true);
+            featureListCloseTimerRef.current = window.setTimeout(() => {
+                setFeatureListClosing(false);
+                featureListCloseTimerRef.current = undefined;
+            }, FEATURE_LIST_CLOSE_ANIMATION_MS);
+            return;
+        }
+
+        setFeatureListClosing(false);
+        setFeatureListOpen(true);
+    };
+
+    const shouldRenderFeatureList = featureListOpen || featureListClosing;
+    const detailsClassName = featureListClosing
+        ? "registerAuthDetails registerAuthDetailsClosing"
+        : featureListOpen
+            ? "registerAuthDetails registerAuthDetailsOpen"
+            : "registerAuthDetails";
+    const chevronClassName = featureListOpen && !featureListClosing
+        ? "registerAuthChevron registerAuthChevronOpen"
+        : "registerAuthChevron";
+
     return (
         <section className="registerAuthPage" aria-label="Sign up page">
             <aside className="registerAuthMarketing" aria-label="MentorFinder feature overview">
@@ -211,17 +258,17 @@ const RegisterScreen = () => {
                     <p className="registerAuthMarketingCopy">
                         Explore MentorFinder's unique features for both students and teachers
                     </p>
-                    <details className="registerAuthDetails" open={featureListOpen}>
+                    <details className={detailsClassName} open={shouldRenderFeatureList}>
                         <summary
                             className="registerAuthMarketingToggle"
-                            aria-expanded={featureListOpen}
+                            aria-expanded={featureListOpen && !featureListClosing}
                             onClick={(event) => {
                                 event.preventDefault();
-                                setFeatureListOpen((open) => !open);
+                                toggleFeatureList();
                             }}
                         >
                             <span>See what&apos;s included</span>
-                            <span className={featureListOpen ? "registerAuthChevron registerAuthChevronOpen" : "registerAuthChevron"}>
+                            <span className={chevronClassName}>
                                 <svg
                                     aria-hidden="true"
                                     height="16"
@@ -234,7 +281,7 @@ const RegisterScreen = () => {
                             </span>
                         </summary>
 
-                        {featureListOpen && (
+                        {shouldRenderFeatureList && (
                             <div className="registerAuthDetailsContent">
                                 <ul className="registerAuthFeatureList">
                                     {featureItems.map((item) => (
@@ -262,13 +309,7 @@ const RegisterScreen = () => {
                     </details>
                 </div>
                 <div className="registerAuthVisual" aria-hidden="true">
-                    <span className="registerAuthStar registerAuthStarA" />
-                    <span className="registerAuthStar registerAuthStarB" />
-                    <span className="registerAuthStar registerAuthStarC" />
-                    <span className="registerAuthOrb registerAuthOrbA" />
-                    <span className="registerAuthOrb registerAuthOrbB" />
-                    <span className="registerAuthOrb registerAuthOrbC" />
-                    <span className="registerAuthGlow" />
+                    <img src="/signupbg.png" alt="" className="registerAuthVisualImage" />
                 </div>
             </aside>
 

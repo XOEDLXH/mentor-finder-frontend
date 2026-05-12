@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useRouter } from "next/router";
 import { useDispatch } from "react-redux";
 import {
@@ -559,20 +559,31 @@ describe("RegisterScreen", () => {
     });
 
     it("toggles the marketing feature list", () => {
-        render(<RegisterScreen />);
+        jest.useFakeTimers();
+        try {
+            render(<RegisterScreen />);
 
-        const toggleButton = screen.getByText("See what's included").closest("summary");
-        expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
-        expect(toggleButton).not.toBeNull();
+            const toggleButton = screen.getByText("See what's included").closest("summary");
+            expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+            expect(toggleButton).not.toBeNull();
 
-        fireEvent.click(toggleButton);
-        expect(toggleButton).toHaveAttribute("aria-expanded", "true");
-        expect(screen.getByText("Discover mentors by research interests")).toBeInTheDocument();
-        expect(screen.getByText("Track papers on a living timeline")).toBeInTheDocument();
+            fireEvent.click(toggleButton);
+            expect(toggleButton).toHaveAttribute("aria-expanded", "true");
+            expect(screen.getByText("Discover mentors by research interests")).toBeInTheDocument();
+            expect(screen.getByText("Track papers on a living timeline")).toBeInTheDocument();
 
-        fireEvent.click(toggleButton);
-        expect(toggleButton).toHaveAttribute("aria-expanded", "false");
-        expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+            fireEvent.click(toggleButton);
+            expect(toggleButton).toHaveAttribute("aria-expanded", "false");
+            expect(screen.getByText("Discover mentors by research interests")).toBeInTheDocument();
+
+            act(() => {
+                jest.advanceTimersByTime(500);
+            });
+            expect(screen.queryByText("Discover mentors by research interests")).not.toBeInTheDocument();
+        }
+        finally {
+            jest.useRealTimers();
+        }
     });
 
     it("navigates to login page when clicking sign-in link", () => {
