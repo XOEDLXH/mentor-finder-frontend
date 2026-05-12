@@ -511,10 +511,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   flex-direction: column;
   min-height: 100vh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 100%, rgba(114, 74, 255, 0.58), rgba(114, 74, 255, 0) 34%),
-    radial-gradient(circle at 24% 82%, rgba(118, 104, 255, 0.28), rgba(118, 104, 255, 0) 24%),
-    linear-gradient(180deg, #050608 0%, #050608 64%, #110b2c 100%);
+  background: #000000;
   color: #ffffff;
 }
 
@@ -703,21 +700,23 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 .registerAuthVisual {
   position: relative;
   z-index: 1;
-  width: min(100%, 760px);
+  width: 100%;
+  flex: 1;
   min-height: clamp(420px, 52vh, 680px);
-  margin: auto auto 0;
+  margin: auto 0 0;
   overflow: hidden;
   pointer-events: none;
   display: flex;
   align-items: flex-end;
-  justify-content: center;
+  justify-content: stretch;
 }
 
 .registerAuthVisualImage {
   display: block;
-  width: min(100%, 860px);
+  width: 100%;
+  max-width: none;
   height: auto;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center bottom;
 }
 
