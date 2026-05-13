@@ -326,7 +326,7 @@ const TimelinePage = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        <h4 style={{ margin: "0 0 8px" }}>
+                                        <h4 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
                                             <LatexText text={paper.title} forceInlineMath />
                                         </h4>
                                         <div className="timelineMetaRow">
