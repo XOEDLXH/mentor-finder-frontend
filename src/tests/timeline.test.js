@@ -54,6 +54,7 @@ describe("TimelinePage LaTeX rendering", () => {
                             arxiv_url: "https://arxiv.org/abs/1234.5678",
                             publish_date: "2026-05-01",
                             author_names: "Alice, Bob",
+                            subjects: "cs.LG",
                         },
                     ],
                 };
@@ -94,6 +95,7 @@ describe("TimelinePage LaTeX rendering", () => {
                             arxiv_url: "https://arxiv.org/abs/1234.5678",
                             publish_date: "2026-05-01",
                             author_names: "Alice, Bob",
+                            subjects: "cs.LG",
                             ...paperOverrides,
                         },
                     ],
@@ -142,6 +144,22 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
     });
 
+    it("renders split subject tags in the timeline header row", async () => {
+        mockTimelinePaperApi({
+            subjects: "cs.CR, cs.DB",
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        const headerRow = container.querySelector(".timelinePaperHeaderRow");
+        const subjectTags = container.querySelector(".timelineSubjectTags");
+        expect(headerRow?.contains(subjectTags)).toBe(true);
+        expect(screen.getByText("cs.CR")).toBeInTheDocument();
+        expect(screen.getByText("cs.DB")).toBeInTheDocument();
+    });
+
     it("renders block-delimited LaTeX inline in timeline titles", async () => {
         mockTimelinePaperApi({
             title: "Compression $$E=mc^2$$ Paper",
@@ -177,6 +195,18 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByLabelText("论文外部链接")).toBeNull();
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\\\(x\^2\\\)/)).not.toBeInTheDocument();
+    });
+
+    it("does not render subject tags when timeline paper subjects are missing", async () => {
+        mockTimelinePaperApi({
+            subjects: "",
+        });
+
+        render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        expect(screen.queryByLabelText("论文学科分类")).toBeNull();
     });
 
     it("renders author and abstract rows with the shared aligned layout", async () => {

@@ -122,6 +122,17 @@ const TimelinePage = () => {
         return arxivUrl.replace("/abs/", "/pdf/");
     };
 
+    const parseTimelineSubjects = (subjects?: string) => {
+        if (typeof subjects !== "string" || subjects.trim() === "") {
+            return [];
+        }
+
+        return subjects
+            .split(",")
+            .map((subject) => subject.trim())
+            .filter((subject) => subject !== "");
+    };
+
     const panelHeight = "calc(100vh - 220px)";
 
     return (
@@ -211,17 +222,20 @@ const TimelinePage = () => {
 
                         {!loadingPapers && papers.length > 0 ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                {papers.map((paper) => (
-                                    <article
-                                        key={paper.id}
-                                        style={{
-                                            position: "relative",
-                                            padding: 16,
-                                            border: "1px solid #ccc",
-                                            borderRadius: 8,
-                                            backgroundColor: "#fff",
-                                        }}
-                                    >
+                                {papers.map((paper) => {
+                                    const subjectTags = parseTimelineSubjects(paper.subjects);
+
+                                    return (
+                                        <article
+                                            key={paper.id}
+                                            style={{
+                                                position: "relative",
+                                                padding: 16,
+                                                border: "1px solid #ccc",
+                                                borderRadius: 8,
+                                                backgroundColor: "#fff",
+                                            }}
+                                        >
                                         <div
                                             style={{
                                                 position: "absolute",
@@ -250,6 +264,15 @@ const TimelinePage = () => {
                                                     <span>]</span>
                                                 </div>
                                             )}
+                                            {subjectTags.length > 0 && (
+                                                <div className="timelineSubjectTags" aria-label="论文学科分类">
+                                                    {subjectTags.map((subject) => (
+                                                        <span key={subject} className="timelineSubjectTag">
+                                                            {subject}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <h4 style={{ margin: "0 0 8px" }}>
                                             <LatexText text={paper.title} forceInlineMath />
@@ -266,8 +289,9 @@ const TimelinePage = () => {
                                                 <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
                                             </div>
                                         </div>
-                                    </article>
-                                ))}
+                                        </article>
+                                    );
+                                })}
 
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                                     <button
@@ -332,6 +356,30 @@ const TimelinePage = () => {
                     color: rgb(45, 45, 45);
                     border-bottom-color: rgb(45, 45, 45);
                     outline: none;
+                }
+
+                .timelineSubjectTags {
+                    display: inline-flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+
+                .timelineSubjectTag {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-sizing: border-box;
+                    min-height: 17.5px;
+                    padding: 0 8.925px;
+                    border-radius: 4px;
+                    background-color: rgb(8, 109, 177);
+                    color: rgb(255, 255, 255);
+                    font-size: 11.9px;
+                    font-style: normal;
+                    font-weight: 400;
+                    line-height: 17.85px;
+                    text-rendering: optimizelegibility;
+                    white-space: nowrap;
                 }
             `}</style>
         </div>

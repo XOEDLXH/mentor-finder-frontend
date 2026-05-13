@@ -77,6 +77,7 @@ export interface TimelinePaper {
     arxiv_url?: string;
     publish_date?: string;
     author_names: string;
+    subjects?: string;
 }
 
 export interface TimelineGroup {
