@@ -28,6 +28,8 @@ const PrivateMentorScreen = () => {
     const [privateMentorCategory, setPrivateMentorCategory] = useState<PrivateMentorCategory>("all");
     const [privateMentorSort, setPrivateMentorSort] = useState<PrivateMentorSort>("latest");
     const [privateMentorDeletingId, setPrivateMentorDeletingId] = useState<number | undefined>(undefined);
+    const [deleteDialogTarget, setDeleteDialogTarget] = useState<PrivateMentorResult | undefined>(undefined);
+    const [deleteDialogSubmitting, setDeleteDialogSubmitting] = useState(false);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
 
     const [customMentorDraft, setCustomMentorDraft] = useState({
@@ -168,16 +170,29 @@ const PrivateMentorScreen = () => {
         }
     };
 
-    const removePrivateMentor = async (mentorId: number) => {
-        if (!globalThis.confirm("确认删除这个私有导师？")) {
+    const openDeleteDialog = (mentor: PrivateMentorResult) => {
+        setDeleteDialogTarget(mentor);
+    };
+
+    const closeDeleteDialog = () => {
+        if (deleteDialogSubmitting) {
+            return;
+        }
+        setDeleteDialogTarget(undefined);
+    };
+
+    const confirmDeleteDialog = async () => {
+        if (deleteDialogTarget === undefined) {
             return;
         }
 
-        setPrivateMentorDeletingId(mentorId);
+        setDeleteDialogSubmitting(true);
+        setPrivateMentorDeletingId(deleteDialogTarget.id);
         setPrivateMentorMessage("");
 
         try {
-            await request(`/api/dataset/mentors/${mentorId}`, "DELETE", true);
+            await request(`/api/dataset/mentors/${deleteDialogTarget.id}`, "DELETE", true);
+            setDeleteDialogTarget(undefined);
             await fetchMyPrivateMentors();
             setPrivateMentorMessage("私有导师删除成功");
         }
@@ -185,6 +200,7 @@ const PrivateMentorScreen = () => {
             setPrivateMentorMessage(formatPrivateMentorError(err));
         }
         finally {
+            setDeleteDialogSubmitting(false);
             setPrivateMentorDeletingId(undefined);
         }
     };
@@ -204,13 +220,130 @@ const PrivateMentorScreen = () => {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760 }}>
+            {deleteDialogTarget !== undefined && (
+                <div
+                    aria-label="删除私有导师确认弹窗遮罩"
+                    role="presentation"
+                    onClick={closeDeleteDialog}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 1100,
+                        background: "rgba(15, 23, 42, 0.42)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 20,
+                    }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-private-mentor-dialog-title"
+                        onClick={(event) => event.stopPropagation()}
+                        style={{
+                            width: "min(100%, 480px)",
+                            borderRadius: 20,
+                            background: "#ffffff",
+                            border: "1px solid #d0d7de",
+                            boxShadow: "0 24px 64px rgba(15, 23, 42, 0.24)",
+                            padding: 24,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 14,
+                        }}
+                    >
+                        <h3 id="delete-private-mentor-dialog-title" style={{ margin: 0, color: "#1f2328" }}>
+                            确认删除私有导师
+                        </h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, color: "#1f2328" }}>
+                            <p style={{ margin: 0 }}>
+                                中文名：{deleteDialogTarget.Chinese_name}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                英文名：{deleteDialogTarget.English_name?.trim() || "暂无英文名"}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                研究方向：{deleteDialogTarget.research_direction?.trim() || "暂无研究方向"}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                                邮箱：{deleteDialogTarget.email?.trim() || "暂无邮箱"}
+                            </p>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <button
+                                type="button"
+                                onClick={() => void confirmDeleteDialog()}
+                                disabled={deleteDialogSubmitting}
+                                style={{
+                                    position: "relative",
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    border: deleteDialogSubmitting ? "none" : "1px solid #cf222e",
+                                    background: deleteDialogSubmitting ? "#cf222e" : "#ffffff",
+                                    color: deleteDialogSubmitting ? "#ffffff" : "#cf222e",
+                                    fontWeight: 700,
+                                    overflow: "hidden",
+                                    transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
+                                }}
+                                onMouseEnter={(event) => {
+                                    if (deleteDialogSubmitting) {
+                                        return;
+                                    }
+                                    event.currentTarget.style.background = "#cf222e";
+                                    event.currentTarget.style.color = "#ffffff";
+                                    event.currentTarget.style.border = "none";
+                                }}
+                                onMouseLeave={(event) => {
+                                    if (deleteDialogSubmitting) {
+                                        return;
+                                    }
+                                    event.currentTarget.style.background = "#ffffff";
+                                    event.currentTarget.style.color = "#cf222e";
+                                    event.currentTarget.style.border = "1px solid #cf222e";
+                                }}
+                            >
+                                <span>确认删除</span>
+                                {deleteDialogSubmitting && (
+                                    <span
+                                        aria-hidden="true"
+                                        style={{
+                                            position: "absolute",
+                                            inset: 0,
+                                            background: "rgba(255, 255, 255, 0.55)",
+                                        }}
+                                    />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeDeleteDialog}
+                                disabled={deleteDialogSubmitting}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    border: "1px solid rgb(209, 217, 224)",
+                                    background: "rgb(246, 248, 250)",
+                                    color: "rgb(37, 41, 46)",
+                                    fontWeight: 600,
+                                    boxShadow: "none",
+                                }}
+                            >
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <h2>添加个人导师</h2>
             <p>输入中文名或英文名后，系统将自动调用爬虫抓取导师信息并保存到你的私有库。</p>
             <p style={{ margin: 0 }}>
                 私有导师上限 {PRIVATE_MENTOR_LIMIT} 位，当前已添加 {privateMentors.length} 位。
             </p>
             {isPrivateMentorLimitReached && (
-                <p style={{ margin: 0, color: "#c62828" }}>
+                <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>
                     已达到上限，请先删除部分私有导师后再添加。
                 </p>
             )}
@@ -291,6 +424,10 @@ const PrivateMentorScreen = () => {
                     </button>
                 </div>
 
+                {isPrivateMentorLimitReached && (
+                    <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>私有导师数量已达上限（{PRIVATE_MENTOR_LIMIT}位），请先删除部分私有导师后再添加。</p>
+                )}
+
                 {privateMentorMessage !== "" && <p style={{ margin: 0 }}>{privateMentorMessage}</p>}
 
                 <p style={{ margin: 0 }}>
@@ -325,10 +462,10 @@ const PrivateMentorScreen = () => {
                                 <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button
-                                        onClick={() => void removePrivateMentor(mentor.id)}
+                                        onClick={() => openDeleteDialog(mentor)}
                                         disabled={privateMentorSaving || privateMentorLoading || privateMentorDeletingId !== undefined}
                                     >
-                                        {privateMentorDeletingId === mentor.id ? "删除中..." : "删除私有导师"}
+                                        删除私有导师
                                     </button>
                                 </div>
 
