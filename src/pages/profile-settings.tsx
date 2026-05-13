@@ -40,6 +40,7 @@ const normalizeSettings = (profile?: Partial<ProfileSettings>): ProfileSettings 
 const ProfileSettingsPage = () => {
     const router = useRouter();
     const token = useSelector((state: RootState) => state.auth.token);
+    const userId = useSelector((state: RootState) => state.auth.userId);
     const [settings, setSettings] = useState<ProfileSettings>(EMPTY_SETTINGS);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -87,6 +88,8 @@ const ProfileSettingsPage = () => {
         }
     };
 
+    const profileHref = userId === undefined ? "/follows" : `/users/${userId}`;
+
     if (token.trim() === "") {
         return (
             <main className="settingsPage">
@@ -104,7 +107,7 @@ const ProfileSettingsPage = () => {
                     <h2>个人设置</h2>
                     <p>管理头像、个性签名和个人主页展示内容。</p>
                 </div>
-                <button type="button" onClick={() => void router.push("/user-home")}>返回个人主页</button>
+                <button type="button" onClick={() => void router.push(profileHref)}>返回个人主页</button>
             </div>
 
             {loading ? (
