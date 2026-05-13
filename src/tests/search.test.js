@@ -1282,7 +1282,7 @@ describe("SearchScreen", () => {
         );
     });
 
-    it("clears keyword when clicking clear button", async () => {
+    it("clears keyword and auto searches when clicking clear button", async () => {
         renderWithStore();
         await waitForMineRequest();
 
@@ -1290,8 +1290,18 @@ describe("SearchScreen", () => {
         fireEvent.change(input, { target: { value: "张三" } });
         expect(input).toHaveValue("张三");
 
+        request.mockClear();
+
         fireEvent.click(screen.getByRole("button", { name: "清空" }));
 
         expect(input).toHaveValue("");
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=&search_mode=exact",
+                "GET",
+                true,
+            );
+        });
     });
 });

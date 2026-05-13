@@ -455,6 +455,11 @@ const SearchScreen = () => {
 
     const clearKeyword = () => {
         setKeyword("");
+        void search({
+            keyword: "",
+            page: 1,
+            shouldSyncUrl: true,
+        });
     };
 
     const searchPaperByTitle = (paperTitle: string) => {
