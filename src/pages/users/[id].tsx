@@ -151,11 +151,12 @@ const UserPublicProfilePage = () => {
 
                         {user.isSelf ? (
                             <button
-                                className="secondaryButton"
+                                className="settingsButton"
                                 type="button"
-                                onClick={() => void router.push("/user-home")}
+                                onClick={() => void router.push("/profile-settings")}
                             >
-                                查看我的主页
+                                <span className="settingsIcon" aria-hidden="true" />
+                                个人设置
                             </button>
                         ) : (
                             <FollowToggleButton
@@ -212,7 +213,7 @@ const UserPublicProfilePage = () => {
                 }
 
                 .backButton,
-                .secondaryButton {
+                .settingsButton {
                     align-self: flex-start;
                     border: 1px solid #222;
                     border-radius: 6px;
@@ -220,6 +221,41 @@ const UserPublicProfilePage = () => {
                     color: #1f2328;
                     padding: 9px 12px;
                     font-weight: 700;
+                }
+
+                .settingsButton {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .settingsIcon {
+                    position: relative;
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid currentColor;
+                    border-radius: 50%;
+                }
+
+                .settingsIcon::before,
+                .settingsIcon::after {
+                    position: absolute;
+                    content: "";
+                    background: currentColor;
+                }
+
+                .settingsIcon::before {
+                    inset: 4px;
+                    border-radius: 50%;
+                }
+
+                .settingsIcon::after {
+                    top: 5px;
+                    left: -4px;
+                    width: 20px;
+                    height: 2px;
+                    border-radius: 999px;
+                    box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor;
                 }
 
                 .profileHero {
