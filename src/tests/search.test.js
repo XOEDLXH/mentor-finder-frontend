@@ -337,6 +337,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2401.00001",
                         arxiv_url: "https://arxiv.org/abs/2401.00001",
                         mentorNames: ["李四", "张三"],
+                        mentor_ids: [5, 6],
                     }],
                 };
             }
@@ -569,6 +570,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2401.00001",
                         arxiv_url: "https://arxiv.org/abs/2401.00001",
                         mentorNames: ["李四", "张三"],
+                        mentor_ids: [5, 6],
                     }],
                 };
             }
@@ -1015,6 +1017,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2501.00009",
                         arxiv_url: "https://arxiv.org/abs/2501.00009",
                         mentorNames: ["李四"],
+                        mentor_ids: [5, 0],
                     }],
                 };
             }
@@ -1051,6 +1054,9 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "作者可点击测试" })).toBeInTheDocument();
         });
+
+        expect(screen.getByText("赵云")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "赵云" })).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "李四" }));
 
@@ -1278,7 +1284,7 @@ describe("SearchScreen", () => {
         );
     });
 
-    it("clears keyword when clicking clear button", async () => {
+    it("clears keyword and auto searches when clicking clear button", async () => {
         renderWithStore();
         await waitForMineRequest();
 
@@ -1286,8 +1292,18 @@ describe("SearchScreen", () => {
         fireEvent.change(input, { target: { value: "张三" } });
         expect(input).toHaveValue("张三");
 
+        request.mockClear();
+
         fireEvent.click(screen.getByRole("button", { name: "清空" }));
 
         expect(input).toHaveValue("");
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=&search_mode=exact",
+                "GET",
+                true,
+            );
+        });
     });
 });
