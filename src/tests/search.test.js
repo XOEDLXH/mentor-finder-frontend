@@ -940,33 +940,43 @@ describe("SearchScreen", () => {
     });
 
     it("filters mentor search results by mine and public categories", async () => {
+        const privateMentorData = {
+            id: 101,
+            Chinese_name: "王五",
+            English_name: "Wang Wu",
+            research_direction: "强化学习",
+            email: "wangwu@example.com",
+            profile: "私有导师测试数据",
+            paperTitles: ["RL Paper"],
+        };
+        const publicMentorData = {
+            id: 301,
+            Chinese_name: "李雷",
+            English_name: "Li Lei",
+            research_direction: "知识图谱",
+            email: "lilei@example.com",
+            profile: "公共导师测试数据",
+            paperTitles: ["KG Paper"],
+        };
+
         request.mockImplementation(async (url) => {
-            if (url === "/api/dataset/mentors/mine") {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
                 return { mentors: [mockPrivateMentor] };
             }
 
-            if (String(url).startsWith("/api/search/mentors")) {
+            if (urlStr.startsWith("/api/search/mentors")) {
+                if (urlStr.includes("visibility=mine")) {
+                    return { mentors: [privateMentorData], total: 1, total_pages: 1 };
+                }
+                if (urlStr.includes("visibility=public")) {
+                    return { mentors: [publicMentorData], total: 1, total_pages: 1 };
+                }
                 return {
-                    mentors: [
-                        {
-                            id: 101,
-                            Chinese_name: "王五",
-                            English_name: "Wang Wu",
-                            research_direction: "强化学习",
-                            email: "wangwu@example.com",
-                            profile: "私有导师测试数据",
-                            paperTitles: ["RL Paper"],
-                        },
-                        {
-                            id: 301,
-                            Chinese_name: "李雷",
-                            English_name: "Li Lei",
-                            research_direction: "知识图谱",
-                            email: "lilei@example.com",
-                            profile: "公共导师测试数据",
-                            paperTitles: ["KG Paper"],
-                        },
-                    ],
+                    mentors: [privateMentorData, publicMentorData],
+                    total: 2,
+                    total_pages: 1,
                 };
             }
 

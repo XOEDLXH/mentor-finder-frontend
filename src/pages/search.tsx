@@ -52,6 +52,7 @@ interface SearchOptions {
     sortMode?: SearchPaperSortMode;
     page?: number;
     shouldSyncUrl?: boolean;
+    visibility?: string;
 }
 
 interface MentorDeleteTarget {
@@ -97,6 +98,7 @@ const SearchScreen = () => {
     const [mentorDeleteSubmitting, setMentorDeleteSubmitting] = useState(false);
     const [paperDeleteTarget, setPaperDeleteTarget] = useState<PaperDeleteTarget | undefined>(undefined);
     const [paperDeleteSubmitting, setPaperDeleteSubmitting] = useState(false);
+    const [allMentorsTotal, setAllMentorsTotal] = useState(0);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
     const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
@@ -279,23 +281,22 @@ const SearchScreen = () => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
 
+    useEffect(() => {
+        if (!hasSearched || mode !== "mentor") {
+            return;
+        }
+        void search({
+            page: 1,
+            shouldSyncUrl: false,
+            visibility: mentorResultFilter,
+        });
+    }, [mentorResultFilter]);
+
     const privateMentorIdSet = useMemo(() => {
         return new Set(privateMentors.map((mentor) => mentor.id));
     }, [privateMentors]);
 
     const mentorResultTotalMineCount = privateMentors.length;
-
-    const visibleMentorResults = useMemo(() => {
-        if (mentorResultFilter === "mine") {
-            return mentors.filter((mentor) => privateMentorIdSet.has(mentor.id));
-        }
-
-        if (mentorResultFilter === "public") {
-            return mentors.filter((mentor) => !privateMentorIdSet.has(mentor.id));
-        }
-
-        return mentors;
-    }, [mentors, mentorResultFilter, privateMentorIdSet]);
 
     const search = async ({
         keyword: overrideKeyword,
@@ -304,12 +305,14 @@ const SearchScreen = () => {
         sortMode: overrideSortMode,
         page: overridePage,
         shouldSyncUrl = true,
+        visibility: overrideVisibility,
     }: SearchOptions = {}) => {
         const trimmedKeyword = (overrideKeyword ?? keyword).trim();
         const resolvedMode = overrideMode ?? mode;
         const resolvedSearchMode = overrideSearchMode ?? matchMode;
         const resolvedPaperSortMode = overrideSortMode ?? paperSortMode;
         const requestedPage = Math.max(1, overridePage ?? 1);
+        const resolvedVisibility = overrideVisibility ?? (resolvedMode === "mentor" ? mentorResultFilter : "all");
         const pageQuery = requestedPage > 1 ? `&page=${requestedPage}` : "";
 
         setKeyword(trimmedKeyword);
@@ -334,8 +337,9 @@ const SearchScreen = () => {
             const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${resolvedSearchMode}`;
 
             if (resolvedMode === "mentor") {
+                const visibilityQuery = resolvedVisibility !== "all" ? `&visibility=${resolvedVisibility}` : "";
                 const res = await request<SearchMentorsResponse>(
-                    `/api/search/mentors?${query}${pageQuery}`,
+                    `/api/search/mentors?${query}${pageQuery}${visibilityQuery}`,
                     "GET",
                     isLoggedIn,
                 );
@@ -343,6 +347,9 @@ const SearchScreen = () => {
                 setMentors(mentorItems);
                 setPapers([]);
                 applyPagination(res, mentorItems.length, requestedPage);
+                if (resolvedVisibility === "all") {
+                    setAllMentorsTotal(res.total ?? mentorItems.length);
+                }
             }
             else {
                 const res = await request<SearchPapersResponse>(
@@ -624,6 +631,7 @@ const SearchScreen = () => {
             await request(`/api/dataset/mentors/${mentorDeleteTarget.id}`, "DELETE", true);
             setAdminMessage("导师删除成功");
             setMentorDeleteTarget(undefined);
+            await fetchMyPrivateMentors();
 
             if (mode === "mentor" && hasSearched) {
                 await search();
@@ -1202,7 +1210,7 @@ const SearchScreen = () => {
                             onClick={() => setMentorResultFilter("all")}
                             disabled={mentorResultFilter === "all"}
                         >
-                            全部导师（{totalResults}）
+                            全部导师（{allMentorsTotal}）
                         </button>
                         <button
                             onClick={() => setMentorResultFilter("mine")}
@@ -1214,7 +1222,7 @@ const SearchScreen = () => {
                             onClick={() => setMentorResultFilter("public")}
                             disabled={mentorResultFilter === "public"}
                         >
-                            仅公共导师（{Math.max(0, totalResults - mentorResultTotalMineCount)}）
+                            仅公共导师（{Math.max(0, allMentorsTotal - mentorResultTotalMineCount)}）
                         </button>
                     </div>
 
@@ -1254,6 +1262,9 @@ const SearchScreen = () => {
                                             {privateMentorSaving ? "添加中..." : "添加私有导师"}
                                         </button>
                                     </div>
+                                    {privateMentors.length >= 10 && (
+                                        <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>私有导师数量已达上限（10位），请先删除部分私有导师后再添加。</p>
+                                    )}
                                     {privateMentorMsg !== "" && <span>{privateMentorMsg}</span>}
                                 </>
                             )}
@@ -1281,13 +1292,13 @@ const SearchScreen = () => {
                         />
                     </div>
 
-                    {visibleMentorResults.length === 0 && (
+                    {mentors.length === 0 && (
                         <div style={{ padding: 12, border: "1px dashed #ccc" }}>
                             当前筛选条件下没有导师结果。
                         </div>
                     )}
 
-                    {visibleMentorResults.map((mentor) => {
+                    {mentors.map((mentor) => {
                         const isExpanded = expandedMentorIds.has(mentor.id);
                         const profileText = mentor.profile || "暂无导师画像";
                         const profilePreview = profileText.length > PROFILE_PREVIEW_LENGTH
@@ -1301,8 +1312,27 @@ const SearchScreen = () => {
                         return (
                         <div
                             key={mentor.id}
-                            style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
+                            style={{ position: "relative", padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
+                            {isLoggedIn && privateMentorIdSet.has(mentor.id) && (
+                                <button
+                                    onClick={() => openDeleteMentorDialog(mentor)}
+                                    disabled={adminSaving}
+                                    style={{
+                                        position: "absolute",
+                                        top: 8,
+                                        right: 8,
+                                        border: "1px solid #cf222e",
+                                        borderRadius: 8,
+                                        background: "#ffffff",
+                                        color: "#cf222e",
+                                        fontWeight: 600,
+                                        padding: "4px 12px",
+                                    }}
+                                >
+                                    删除
+                                </button>
+                            )}
                             <h3 style={{ margin: "0 0 8px" }}>
                                 {mentor.Chinese_name}
                                 {privateMentorIdSet.has(mentor.id) && (
