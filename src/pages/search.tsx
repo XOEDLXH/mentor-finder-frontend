@@ -283,26 +283,7 @@ const SearchScreen = () => {
         return new Set(privateMentors.map((mentor) => mentor.id));
     }, [privateMentors]);
 
-    const mentorResultTotalMineCount = useMemo(() => {
-        const kw = keyword.trim().toLowerCase();
-        if (kw === "") {
-            return privateMentors.length;
-        }
-        if (matchMode === "exact") {
-            return privateMentors.filter((m) =>
-                m.Chinese_name.toLowerCase() === kw ||
-                (m.English_name || "").toLowerCase() === kw ||
-                (m.research_direction || "").toLowerCase() === kw ||
-                (m.profile || "").toLowerCase() === kw
-            ).length;
-        }
-        return privateMentors.filter((m) =>
-            m.Chinese_name.toLowerCase().includes(kw) ||
-            (m.English_name || "").toLowerCase().includes(kw) ||
-            (m.research_direction || "").toLowerCase().includes(kw) ||
-            (m.profile || "").toLowerCase().includes(kw)
-        ).length;
-    }, [privateMentors, keyword, matchMode]);
+    const mentorResultTotalMineCount = privateMentors.length;
 
     const visibleMentorResults = useMemo(() => {
         if (mentorResultFilter === "mine") {
