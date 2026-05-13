@@ -393,7 +393,7 @@ const TimelinePage = () => {
                     display: inline-flex;
                     align-items: center;
                     gap: 4px;
-                    height: 22px;
+                    height: 20px;
                     color: rgb(8, 109, 177);
                     text-decoration: none;
                     transition: color 0.16s ease, border-color 0.16s ease;
@@ -436,11 +436,21 @@ const TimelinePage = () => {
                 }
 
                 :global(img.timelineMentorIcon) {
-                    width: 16px;
-                    height: 16px;
+                    width: 14px;
+                    height: 14px;
                     object-fit: contain;
                     display: block;
                     flex: 0 0 auto;
+                }
+
+                .timelineMetaRow {
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+
+                .timelineMetaLabel,
+                .timelineMetaContent {
+                    font-size: 14px;
                 }
             `}</style>
         </div>
