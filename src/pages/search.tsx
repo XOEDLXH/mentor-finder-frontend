@@ -300,6 +300,7 @@ const SearchScreen = () => {
             setCustomMentorChineseName("");
             setCustomMentorEnglishName("");
             await fetchMyPrivateMentors();
+            void search({ page: 1, shouldSyncUrl: true });
             setPrivateMentorMsg("私有导师添加成功");
         }
         catch (err) {
@@ -313,7 +314,7 @@ const SearchScreen = () => {
         finally {
             setPrivateMentorSaving(false);
         }
-    }, [customMentorChineseName, customMentorEnglishName, privateMentors.length, fetchMyPrivateMentors]);
+    }, [customMentorChineseName, customMentorEnglishName, privateMentors.length, fetchMyPrivateMentors, search]);
 
     useEffect(() => {
         void fetchMyPrivateMentors();
