@@ -16,7 +16,7 @@
     "@reduxjs/toolkit": "^2.5.1",
     "jest-sonar-reporter": "^2.0.0",
     "katex": "^0.16.45",
-    "next": "15.1.7",
+    "next": "16.2.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-redux": "^9.2.0"
