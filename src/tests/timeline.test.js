@@ -120,7 +120,7 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
     });
 
-    it("renders inline LaTeX in timeline titles and exposes arXiv/pdf links below the title", async () => {
+    it("renders inline LaTeX in timeline titles and exposes arXiv/pdf links next to the date", async () => {
         mockTimelinePaperApi({
             title: "Compression $x^2$ Paper",
         });
@@ -132,9 +132,12 @@ describe("TimelinePage LaTeX rendering", () => {
         const titleHeading = container.querySelector("h4");
         const arxivLink = screen.getByRole("link", { name: "arxiv" });
         const pdfLink = screen.getByRole("link", { name: "pdf" });
+        const headerRow = container.querySelector(".timelinePaperHeaderRow");
+        const paperLinks = container.querySelector(".timelinePaperLinks");
         expect(titleHeading?.querySelector("a[href]")).toBeNull();
         expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
         expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
+        expect(headerRow?.contains(paperLinks)).toBe(true);
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
     });

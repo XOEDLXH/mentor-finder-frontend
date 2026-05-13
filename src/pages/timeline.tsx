@@ -233,25 +233,27 @@ const TimelinePage = () => {
                                                 backgroundColor: "#0d6efd",
                                             }}
                                         />
-                                        <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-                                            {paper.publish_date || "未知日期"}
+                                        <div className="timelinePaperHeaderRow">
+                                            <div className="timelinePaperDate">
+                                                {paper.publish_date || "未知日期"}
+                                            </div>
+                                            {paper.arxiv_url && (
+                                                <div className="timelinePaperLinks" aria-label="论文外部链接">
+                                                    <span>[</span>
+                                                    <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
+                                                        arxiv
+                                                    </a>
+                                                    <span>, </span>
+                                                    <a href={buildTimelinePdfUrl(paper.arxiv_url)} target="_blank" rel="noreferrer">
+                                                        pdf
+                                                    </a>
+                                                    <span>]</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <h4 style={{ margin: "0 0 8px" }}>
                                             <LatexText text={paper.title} forceInlineMath />
                                         </h4>
-                                        {paper.arxiv_url && (
-                                            <div className="timelinePaperLinks" aria-label="论文外部链接">
-                                                <span>[</span>
-                                                <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
-                                                    arxiv
-                                                </a>
-                                                <span>, </span>
-                                                <a href={buildTimelinePdfUrl(paper.arxiv_url)} target="_blank" rel="noreferrer">
-                                                    pdf
-                                                </a>
-                                                <span>]</span>
-                                            </div>
-                                        )}
                                         <div className="timelineMetaRow">
                                             <span className="timelineMetaLabel">作者：</span>
                                             <div className="timelineMetaContent">
@@ -298,9 +300,22 @@ const TimelinePage = () => {
             )}
 
             <style jsx>{`
+                .timelinePaperHeaderRow {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-bottom: 8px;
+                    font-size: 13px;
+                    color: #666;
+                }
+
+                .timelinePaperDate {
+                    color: #666;
+                }
+
                 .timelinePaperLinks {
-                    margin: -2px 0 10px;
-                    color: rgb(8, 109, 177);
+                    color: rgb(45, 45, 45);
                     font-size: 14px;
                     line-height: 1.4;
                 }
