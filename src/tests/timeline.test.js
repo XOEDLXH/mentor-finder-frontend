@@ -54,6 +54,7 @@ describe("TimelinePage LaTeX rendering", () => {
                             arxiv_url: "https://arxiv.org/abs/1234.5678",
                             publish_date: "2026-05-01",
                             author_names: "Alice, Bob",
+                            subjects: "cs.LG",
                         },
                     ],
                 };
@@ -94,6 +95,7 @@ describe("TimelinePage LaTeX rendering", () => {
                             arxiv_url: "https://arxiv.org/abs/1234.5678",
                             publish_date: "2026-05-01",
                             author_names: "Alice, Bob",
+                            subjects: "cs.LG",
                             ...paperOverrides,
                         },
                     ],
@@ -120,7 +122,7 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
     });
 
-    it("renders inline LaTeX in timeline titles while keeping the arXiv link", async () => {
+    it("renders inline LaTeX in timeline titles and exposes arXiv/pdf links next to the date", async () => {
         mockTimelinePaperApi({
             title: "Compression $x^2$ Paper",
         });
@@ -129,11 +131,33 @@ describe("TimelinePage LaTeX rendering", () => {
 
         await screen.findByText(/Compression/i);
 
-        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/1234.5678']");
         const titleHeading = container.querySelector("h4");
-        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        const arxivLink = screen.getByRole("link", { name: "arxiv" });
+        const pdfLink = screen.getByRole("link", { name: "pdf" });
+        const headerRow = container.querySelector(".timelinePaperHeaderRow");
+        const paperLinks = container.querySelector(".timelinePaperLinks");
+        expect(titleHeading?.querySelector("a[href]")).toBeNull();
+        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
+        expect(headerRow?.contains(paperLinks)).toBe(true);
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
+    });
+
+    it("renders split subject tags in the timeline header row", async () => {
+        mockTimelinePaperApi({
+            subjects: "cs.CR, cs.DB",
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        const headerRow = container.querySelector(".timelinePaperHeaderRow");
+        const subjectTags = container.querySelector(".timelineSubjectTags");
+        expect(headerRow?.contains(subjectTags)).toBe(true);
+        expect(screen.getByText("cs.CR")).toBeInTheDocument();
+        expect(screen.getByText("cs.DB")).toBeInTheDocument();
     });
 
     it("renders block-delimited LaTeX inline in timeline titles", async () => {
@@ -145,15 +169,18 @@ describe("TimelinePage LaTeX rendering", () => {
 
         await screen.findByText(/Compression/i);
 
-        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/1234.5678']");
         const titleHeading = container.querySelector("h4");
-        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        const arxivLink = screen.getByRole("link", { name: "arxiv" });
+        const pdfLink = screen.getByRole("link", { name: "pdf" });
+        expect(titleHeading?.querySelector("a[href]")).toBeNull();
+        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(titleHeading?.querySelector(".latexTextDisplay")).toBeNull();
         expect(screen.queryByText(/\$\$E=mc\^2\$\$/)).not.toBeInTheDocument();
     });
 
-    it("renders LaTeX in timeline titles without arXiv links", async () => {
+    it("renders LaTeX in timeline titles without external link row when arXiv is missing", async () => {
         mockTimelinePaperApi({
             title: "Compression \\(x^2\\) Paper",
             arxiv_url: undefined,
@@ -165,8 +192,21 @@ describe("TimelinePage LaTeX rendering", () => {
 
         const titleHeading = container.querySelector("h4");
         expect(container.querySelector("a[href]")).toBeNull();
+        expect(screen.queryByLabelText("论文外部链接")).toBeNull();
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\\\(x\^2\\\)/)).not.toBeInTheDocument();
+    });
+
+    it("does not render subject tags when timeline paper subjects are missing", async () => {
+        mockTimelinePaperApi({
+            subjects: "",
+        });
+
+        render(<TimelinePage />);
+
+        await screen.findByText(/Compression/i);
+
+        expect(screen.queryByLabelText("论文学科分类")).toBeNull();
     });
 
     it("renders author and abstract rows with the shared aligned layout", async () => {

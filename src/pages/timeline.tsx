@@ -115,6 +115,25 @@ const TimelinePage = () => {
         [activeDirection, directions],
     );
 
+    const buildTimelinePdfUrl = (arxivUrl?: string) => {
+        if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
+            return "";
+        }
+
+        return arxivUrl.replace("/abs/", "/pdf/");
+    };
+
+    const parseTimelineSubjects = (subjects?: string) => {
+        if (typeof subjects !== "string" || subjects.trim() === "") {
+            return [];
+        }
+
+        return subjects
+            .split(",")
+            .map((subject) => subject.trim())
+            .filter((subject) => subject !== "");
+    };
+
     const panelHeight = "calc(100vh - 220px)";
 
     return (
@@ -212,17 +231,20 @@ const TimelinePage = () => {
 
                         {!loadingPapers && papers.length > 0 ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                {papers.map((paper) => (
-                                    <article
-                                        key={paper.id}
-                                        style={{
-                                            position: "relative",
-                                            padding: 16,
-                                            border: "1px solid #ccc",
-                                            borderRadius: 8,
-                                            backgroundColor: "#fff",
-                                        }}
-                                    >
+                                {papers.map((paper) => {
+                                    const subjectTags = parseTimelineSubjects(paper.subjects);
+
+                                    return (
+                                        <article
+                                            key={paper.id}
+                                            style={{
+                                                position: "relative",
+                                                padding: 16,
+                                                border: "1px solid #ccc",
+                                                borderRadius: 8,
+                                                backgroundColor: "#fff",
+                                            }}
+                                        >
                                         <div
                                             style={{
                                                 position: "absolute",
@@ -234,20 +256,35 @@ const TimelinePage = () => {
                                                 backgroundColor: "#0d6efd",
                                             }}
                                         />
-                                        <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>
-                                            {paper.publish_date || "未知日期"}
+                                        <div className="timelinePaperHeaderRow">
+                                            <div className="timelinePaperDate">
+                                                {paper.publish_date || "未知日期"}
+                                            </div>
+                                            {paper.arxiv_url && (
+                                                <div className="timelinePaperLinks" aria-label="论文外部链接">
+                                                    <span>[</span>
+                                                    <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
+                                                        arxiv
+                                                    </a>
+                                                    <span>, </span>
+                                                    <a href={buildTimelinePdfUrl(paper.arxiv_url)} target="_blank" rel="noreferrer">
+                                                        pdf
+                                                    </a>
+                                                    <span>]</span>
+                                                </div>
+                                            )}
+                                            {subjectTags.length > 0 && (
+                                                <div className="timelineSubjectTags" aria-label="论文学科分类">
+                                                    {subjectTags.map((subject) => (
+                                                        <span key={subject} className="timelineSubjectTag">
+                                                            {subject}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <h4 style={{ margin: "0 0 8px" }}>
-                                            {paper.arxiv_url ? (
-                                                <a
-                                                    href={paper.arxiv_url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    style={{ color: "inherit", textDecoration: "none" }}
-                                                >
-                                                    <LatexText text={paper.title} forceInlineMath />
-                                                </a>
-                                            ) : <LatexText text={paper.title} forceInlineMath />}
+                                            <LatexText text={paper.title} forceInlineMath />
                                         </h4>
                                         <div className="timelineMetaRow">
                                             <span className="timelineMetaLabel">作者：</span>
@@ -261,8 +298,9 @@ const TimelinePage = () => {
                                                 <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
                                             </div>
                                         </div>
-                                    </article>
-                                ))}
+                                        </article>
+                                    );
+                                })}
 
                                 <Pagination
                                     currentPage={page}
@@ -285,6 +323,66 @@ const TimelinePage = () => {
                     暂无时间线数据。
                 </div>
             )}
+
+            <style jsx>{`
+                .timelinePaperHeaderRow {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-bottom: 8px;
+                    font-size: 13px;
+                    color: #666;
+                }
+
+                .timelinePaperDate {
+                    color: #666;
+                }
+
+                .timelinePaperLinks {
+                    color: rgb(45, 45, 45);
+                    font-size: 14px;
+                    line-height: 1.4;
+                }
+
+                .timelinePaperLinks a {
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    transition: color 0.16s ease, border-color 0.16s ease;
+                    border-bottom: 1px dashed transparent;
+                }
+
+                .timelinePaperLinks a:hover,
+                .timelinePaperLinks a:focus-visible {
+                    color: rgb(45, 45, 45);
+                    border-bottom-color: rgb(45, 45, 45);
+                    outline: none;
+                }
+
+                .timelineSubjectTags {
+                    display: inline-flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+
+                .timelineSubjectTag {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-sizing: border-box;
+                    min-height: 17.5px;
+                    padding: 0 8.925px;
+                    border-radius: 4px;
+                    background-color: rgb(8, 109, 177);
+                    color: rgb(255, 255, 255);
+                    font-size: 11.9px;
+                    font-style: normal;
+                    font-weight: 400;
+                    line-height: 17.85px;
+                    text-rendering: optimizelegibility;
+                    white-space: nowrap;
+                }
+            `}</style>
         </div>
     );
 };
