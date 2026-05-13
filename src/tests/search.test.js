@@ -1015,6 +1015,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2501.00009",
                         arxiv_url: "https://arxiv.org/abs/2501.00009",
                         mentorNames: ["李四"],
+                        mentor_ids: [5, null],
                     }],
                 };
             }
@@ -1051,6 +1052,9 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "作者可点击测试" })).toBeInTheDocument();
         });
+
+        expect(screen.getByText("赵云")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "赵云" })).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "李四" }));
 

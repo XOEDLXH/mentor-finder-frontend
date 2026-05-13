@@ -1294,16 +1294,18 @@ const SearchScreen = () => {
                                 作者：{
                                     (() => {
                                         const names = (paper.author_names || "").split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+                                        const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
                                         if (names.length === 0) {
                                             return "未知";
                                         }
 
                                         return names.map((name, idx) => {
-                                            const isMentor = Array.isArray(paper.mentorNames) && paper.mentorNames.includes(name);
+                                            const mentorId = mentorIds[idx];
+                                            const isMentor = mentorId != null || (!Array.isArray(paper.mentor_ids) && Array.isArray(paper.mentorNames) && paper.mentorNames.includes(name));
                                             const separator = idx === names.length - 1 ? "" : "、";
                                             if (isMentor) {
                                                 return (
-                                                    <span key={name}>
+                                                    <span key={`${name}-${idx}`}>
                                                         <button
                                                             type="button"
                                                             onClick={() => searchMentorByName(name)}
@@ -1325,7 +1327,7 @@ const SearchScreen = () => {
                                             }
 
                                             return (
-                                                <span key={name}>
+                                                <span key={`${name}-${idx}`}>
                                                     {name}
                                                     {separator}
                                                 </span>
