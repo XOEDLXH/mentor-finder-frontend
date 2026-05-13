@@ -275,47 +275,6 @@ const SearchScreen = () => {
         }
     }, [isLoggedIn]);
 
-    const addPrivateMentorInSearch = useCallback(async () => {
-        const chineseName = customMentorChineseName.trim();
-        const englishName = customMentorEnglishName.trim();
-
-        if (chineseName === "" && englishName === "") {
-            setPrivateMentorMsg("中文名和英文名至少填写一个");
-            return;
-        }
-
-        if (privateMentors.length >= 10) {
-            setPrivateMentorMsg("私有导师最多添加 10 位，请先删除后再添加");
-            return;
-        }
-
-        setPrivateMentorSaving(true);
-        setPrivateMentorMsg("");
-
-        try {
-            await request("/api/dataset/mentors/custom", "POST", true, {
-                Chinese_name: chineseName,
-                English_name: englishName,
-            });
-            setCustomMentorChineseName("");
-            setCustomMentorEnglishName("");
-            await fetchMyPrivateMentors();
-            void search({ page: 1, shouldSyncUrl: true });
-            setPrivateMentorMsg("私有导师添加成功");
-        }
-        catch (err) {
-            if (isNetworkErrorInstance(err)) {
-                setPrivateMentorMsg(String(err));
-            }
-            else {
-                setPrivateMentorMsg(FAILURE_PREFIX + String(err));
-            }
-        }
-        finally {
-            setPrivateMentorSaving(false);
-        }
-    }, [customMentorChineseName, customMentorEnglishName, privateMentors.length, fetchMyPrivateMentors, search]);
-
     useEffect(() => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
@@ -422,6 +381,47 @@ const SearchScreen = () => {
             setLoading(false);
         }
     };
+
+    const addPrivateMentorInSearch = useCallback(async () => {
+        const chineseName = customMentorChineseName.trim();
+        const englishName = customMentorEnglishName.trim();
+
+        if (chineseName === "" && englishName === "") {
+            setPrivateMentorMsg("中文名和英文名至少填写一个");
+            return;
+        }
+
+        if (privateMentors.length >= 10) {
+            setPrivateMentorMsg("私有导师最多添加 10 位，请先删除后再添加");
+            return;
+        }
+
+        setPrivateMentorSaving(true);
+        setPrivateMentorMsg("");
+
+        try {
+            await request("/api/dataset/mentors/custom", "POST", true, {
+                Chinese_name: chineseName,
+                English_name: englishName,
+            });
+            setCustomMentorChineseName("");
+            setCustomMentorEnglishName("");
+            await fetchMyPrivateMentors();
+            void search({ page: 1, shouldSyncUrl: true });
+            setPrivateMentorMsg("私有导师添加成功");
+        }
+        catch (err) {
+            if (isNetworkErrorInstance(err)) {
+                setPrivateMentorMsg(String(err));
+            }
+            else {
+                setPrivateMentorMsg(FAILURE_PREFIX + String(err));
+            }
+        }
+        finally {
+            setPrivateMentorSaving(false);
+        }
+    }, [customMentorChineseName, customMentorEnglishName, privateMentors.length, fetchMyPrivateMentors, search]);
 
     useEffect(() => {
         if (!router.isReady || didInitFromQuery) {
