@@ -225,23 +225,28 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(metaRows.length).toBeGreaterThanOrEqual(2);
         expect(screen.getByText("作者：").closest(".timelineMetaRow")).not.toBeNull();
         expect(screen.getByText("摘要：").closest(".timelineMetaRow")).not.toBeNull();
-        expect(screen.getByRole("link", { name: "Alice" }).closest(".timelineMetaContent")).not.toBeNull();
+        expect(screen.getByRole("link", { name: /Alice/ }).closest(".timelineMetaContent")).not.toBeNull();
         expect(screen.getByText("Bob").closest(".timelineMetaContent")).not.toBeNull();
         expect(container.querySelector(".timelineAbstractContent")).not.toBeNull();
     });
 
-    it("renders mentor authors as links to mentor detail and keeps unmatched authors plain", async () => {
+    it("renders mentor authors as external-style Tsinghua links and keeps unmatched authors plain", async () => {
         mockTimelinePaperApi({
             author_names: "李四,赵云",
             mentor_ids: [5, 0],
         });
 
-        render(<TimelinePage />);
+        const { container } = render(<TimelinePage />);
 
         await screen.findByRole("heading", { name: "Compression Paper" });
 
-        const mentorLink = screen.getByRole("link", { name: "李四" });
+        const mentorLink = screen.getByRole("link", { name: /李四/ });
         expect(mentorLink).toHaveAttribute("href", "/mentors/5");
+        expect(mentorLink).toHaveAttribute("target", "_blank");
+        expect(mentorLink).toHaveAttribute("rel", "noreferrer");
+        const mentorIcon = within(mentorLink).getByAltText("清华导师");
+        expect(mentorIcon).toHaveAttribute("src", "/favicon_tsinghua.ico");
+        expect(container.querySelectorAll(".timelineMentorIcon").length).toBe(1);
         expect(screen.getByText("赵云")).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
     });
@@ -262,6 +267,7 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(authorRow?.textContent).toContain("赵云");
         expect(screen.queryByRole("link", { name: "李四" })).toBeNull();
         expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
+        expect(screen.queryByAltText("清华导师")).toBeNull();
     });
 
     it("renders block LaTeX in timeline abstracts", async () => {

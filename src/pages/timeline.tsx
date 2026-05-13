@@ -152,11 +152,15 @@ const TimelinePage = () => {
                     <span key={`${paper.id}-${name}-${idx}`}>
                         <a
                             href={`/mentors/${mentorId}`}
-                            style={{
-                                color: "#0070f3",
-                                textDecoration: "underline",
-                            }}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="timelineMentorLink"
                         >
+                            <img
+                                src="/favicon_tsinghua.ico"
+                                alt="清华导师"
+                                className="timelineMentorIcon"
+                            />
                             {name}
                         </a>
                         {separator}
@@ -384,15 +388,24 @@ const TimelinePage = () => {
                     line-height: 1.4;
                 }
 
-                .timelinePaperLinks a {
+                .timelinePaperLinks a,
+                :global(a.timelineMentorLink) {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    height: 22px;
                     color: rgb(8, 109, 177);
                     text-decoration: none;
                     transition: color 0.16s ease, border-color 0.16s ease;
                     border-bottom: 1px dashed transparent;
+                    line-height: 1;
+                    vertical-align: middle;
                 }
 
                 .timelinePaperLinks a:hover,
-                .timelinePaperLinks a:focus-visible {
+                .timelinePaperLinks a:focus-visible,
+                :global(a.timelineMentorLink:hover),
+                :global(a.timelineMentorLink:focus-visible) {
                     color: rgb(45, 45, 45);
                     border-bottom-color: rgb(45, 45, 45);
                     outline: none;
@@ -420,6 +433,14 @@ const TimelinePage = () => {
                     line-height: 17.85px;
                     text-rendering: optimizelegibility;
                     white-space: nowrap;
+                }
+
+                :global(img.timelineMentorIcon) {
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
                 }
             `}</style>
         </div>
