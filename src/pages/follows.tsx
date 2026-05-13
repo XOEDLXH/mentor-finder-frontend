@@ -259,113 +259,121 @@ const FollowsPage = () => {
 
                     {activeCategory === "user" && (
                     <section className="userFollowSection" aria-label="关注用户">
-                        <div className="sectionHeader">
-                            <h3>关注用户</h3>
-                            <span>{users.filter((user) => user.followed).length}</span>
-                        </div>
-
-                        <div className="userSearch">
-                            <input
-                                type="text"
-                                value={userSearchKeyword}
-                                placeholder="搜索用户名、姓名或邮箱"
-                                onChange={(event) => setUserSearchKeyword(event.target.value)}
-                                onKeyDown={(event) => {
-                                    if (event.key === "Enter") {
-                                        void searchUsers();
-                                    }
-                                }}
-                            />
-                            <button type="button" onClick={() => void searchUsers()} disabled={userSearchLoading}>
-                                {userSearchLoading ? "搜索中..." : "搜索用户"}
-                            </button>
-                        </div>
-
-                        {visibleUserSearchResults.length > 0 && (
-                            <div className="userList" aria-label="用户搜索结果">
-                                {visibleUserSearchResults.map((user) => (
-                                    <div
-                                        className="userCard"
-                                        key={`search-${user.id}`}
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-label={`进入${user.realName || user.username}用户主页`}
-                                        onClick={() => openUserProfile(user.id)}
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter" || event.key === " ") {
-                                                event.preventDefault();
-                                                openUserProfile(user.id);
-                                            }
-                                        }}
-                                    >
-                                        <div className="userAvatar" aria-hidden="true">
-                                            {user.avatarUrl ? (
-                                                <img src={user.avatarUrl} alt="" />
-                                            ) : (
-                                                <span>{user.username.slice(0, 1).toUpperCase()}</span>
-                                            )}
-                                        </div>
-                                        <div className="userText">
-                                            <h4>{user.realName || user.username}</h4>
-                                            <p>{user.username} · {user.role}</p>
-                                            <p>{user.signature || "暂无签名"}</p>
-                                        </div>
-                                        <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
-                                            <FollowToggleButton
-                                                className="followToggleButton"
-                                                followed={user.followed}
-                                                loading={actionUserId === user.id}
-                                                onClick={() => void toggleUserFollow(user)}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
+                        <section className="userSearchSection" aria-label="搜索关注用户">
+                            <div className="sectionHeader">
+                                <h3>关注用户</h3>
                             </div>
-                        )}
 
-                        {!loading && users.length === 0 ? (
-                            <p>暂无关注用户</p>
-                        ) : (
-                            <div className="userList" aria-label="已关注用户">
-                                {users.map((user) => (
-                                    <div
-                                        className="userCard"
-                                        key={`followed-${user.id}`}
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-label={`进入${user.realName || user.username}用户主页`}
-                                        onClick={() => openUserProfile(user.id)}
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter" || event.key === " ") {
-                                                event.preventDefault();
-                                                openUserProfile(user.id);
-                                            }
-                                        }}
-                                    >
-                                        <div className="userAvatar" aria-hidden="true">
-                                            {user.avatarUrl ? (
-                                                <img src={user.avatarUrl} alt="" />
-                                            ) : (
-                                                <span>{user.username.slice(0, 1).toUpperCase()}</span>
-                                            )}
-                                        </div>
-                                        <div className="userText">
-                                            <h4>{user.realName || user.username}</h4>
-                                            <p>{user.username} · {user.role}</p>
-                                            <p>{user.signature || "暂无签名"}</p>
-                                        </div>
-                                        <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
-                                            <FollowToggleButton
-                                                className="followToggleButton"
-                                                followed={user.followed}
-                                                loading={actionUserId === user.id}
-                                                onClick={() => void toggleUserFollow(user)}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="userSearch">
+                                <input
+                                    type="text"
+                                    value={userSearchKeyword}
+                                    placeholder="搜索用户名、姓名或邮箱"
+                                    onChange={(event) => setUserSearchKeyword(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            void searchUsers();
+                                        }
+                                    }}
+                                />
+                                <button type="button" onClick={() => void searchUsers()} disabled={userSearchLoading}>
+                                    {userSearchLoading ? "搜索中..." : "搜索用户"}
+                                </button>
                             </div>
-                        )}
+
+                            {visibleUserSearchResults.length > 0 && (
+                                <div className="userList" aria-label="用户搜索结果">
+                                    {visibleUserSearchResults.map((user) => (
+                                        <div
+                                            className="userCard"
+                                            key={`search-${user.id}`}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`进入${user.realName || user.username}用户主页`}
+                                            onClick={() => openUserProfile(user.id)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    openUserProfile(user.id);
+                                                }
+                                            }}
+                                        >
+                                            <div className="userAvatar" aria-hidden="true">
+                                                {user.avatarUrl ? (
+                                                    <img src={user.avatarUrl} alt="" />
+                                                ) : (
+                                                    <span>{user.username.slice(0, 1).toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <div className="userText">
+                                                <h4>{user.realName || user.username}</h4>
+                                                <p>{user.username} · {user.role}</p>
+                                                <p>{user.signature || "暂无签名"}</p>
+                                            </div>
+                                            <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
+                                                <FollowToggleButton
+                                                    className="followToggleButton"
+                                                    followed={user.followed}
+                                                    loading={actionUserId === user.id}
+                                                    onClick={() => void toggleUserFollow(user)}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="followedUserSection" aria-label="已关注用户区块">
+                            <div className="sectionHeader">
+                                <h3>已关注用户</h3>
+                                <span>{users.filter((user) => user.followed).length}</span>
+                            </div>
+
+                            {!loading && users.length === 0 ? (
+                                <p>暂无关注用户</p>
+                            ) : (
+                                <div className="userList" aria-label="已关注用户">
+                                    {users.map((user) => (
+                                        <div
+                                            className="userCard"
+                                            key={`followed-${user.id}`}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`进入${user.realName || user.username}用户主页`}
+                                            onClick={() => openUserProfile(user.id)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    openUserProfile(user.id);
+                                                }
+                                            }}
+                                        >
+                                            <div className="userAvatar" aria-hidden="true">
+                                                {user.avatarUrl ? (
+                                                    <img src={user.avatarUrl} alt="" />
+                                                ) : (
+                                                    <span>{user.username.slice(0, 1).toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                            <div className="userText">
+                                                <h4>{user.realName || user.username}</h4>
+                                                <p>{user.username} · {user.role}</p>
+                                                <p>{user.signature || "暂无签名"}</p>
+                                            </div>
+                                            <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
+                                                <FollowToggleButton
+                                                    className="followToggleButton"
+                                                    followed={user.followed}
+                                                    loading={actionUserId === user.id}
+                                                    onClick={() => void toggleUserFollow(user)}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
                     </section>
                     )}
                 </main>
@@ -428,8 +436,19 @@ const FollowsPage = () => {
                 .userFollowSection {
                     display: flex;
                     flex-direction: column;
+                    gap: 18px;
+                }
+
+                .userSearchSection,
+                .followedUserSection {
+                    display: flex;
+                    flex-direction: column;
                     gap: 12px;
-                    margin-top: 24px;
+                }
+
+                .followedUserSection {
+                    border-top: 1px solid #d0d7de;
+                    padding-top: 16px;
                 }
 
                 .sectionHeader {
