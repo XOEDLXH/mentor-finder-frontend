@@ -54,6 +54,7 @@ describe("TimelinePage LaTeX rendering", () => {
                             arxiv_url: "https://arxiv.org/abs/1234.5678",
                             publish_date: "2026-05-01",
                             author_names: "Alice, Bob",
+                            mentor_ids: [1, 0],
                             subjects: "cs.LG",
                         },
                     ],
@@ -95,6 +96,7 @@ describe("TimelinePage LaTeX rendering", () => {
                             arxiv_url: "https://arxiv.org/abs/1234.5678",
                             publish_date: "2026-05-01",
                             author_names: "Alice, Bob",
+                            mentor_ids: [1, 0],
                             subjects: "cs.LG",
                             ...paperOverrides,
                         },
@@ -191,7 +193,8 @@ describe("TimelinePage LaTeX rendering", () => {
         await screen.findByText(/Compression/i);
 
         const titleHeading = container.querySelector("h4");
-        expect(container.querySelector("a[href]")).toBeNull();
+        expect(screen.queryByRole("link", { name: "arxiv" })).toBeNull();
+        expect(screen.queryByRole("link", { name: "pdf" })).toBeNull();
         expect(screen.queryByLabelText("论文外部链接")).toBeNull();
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\\\(x\^2\\\)/)).not.toBeInTheDocument();
@@ -222,8 +225,43 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(metaRows.length).toBeGreaterThanOrEqual(2);
         expect(screen.getByText("作者：").closest(".timelineMetaRow")).not.toBeNull();
         expect(screen.getByText("摘要：").closest(".timelineMetaRow")).not.toBeNull();
-        expect(screen.getByText("Alice, Bob").closest(".timelineMetaContent")).not.toBeNull();
+        expect(screen.getByRole("link", { name: "Alice" }).closest(".timelineMetaContent")).not.toBeNull();
+        expect(screen.getByText("Bob").closest(".timelineMetaContent")).not.toBeNull();
         expect(container.querySelector(".timelineAbstractContent")).not.toBeNull();
+    });
+
+    it("renders mentor authors as links to mentor detail and keeps unmatched authors plain", async () => {
+        mockTimelinePaperApi({
+            author_names: "李四,赵云",
+            mentor_ids: [5, 0],
+        });
+
+        render(<TimelinePage />);
+
+        await screen.findByRole("heading", { name: "Compression Paper" });
+
+        const mentorLink = screen.getByRole("link", { name: "李四" });
+        expect(mentorLink).toHaveAttribute("href", "/mentors/5");
+        expect(screen.getByText("赵云")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
+    });
+
+    it("falls back to plain text authors when mentor_ids are missing", async () => {
+        mockTimelinePaperApi({
+            author_names: "李四,赵云",
+            mentor_ids: undefined,
+        });
+
+        const { container } = render(<TimelinePage />);
+
+        await screen.findByRole("heading", { name: "Compression Paper" });
+
+        const authorRow = container.querySelector(".timelineMetaContent");
+        expect(authorRow).not.toBeNull();
+        expect(authorRow?.textContent).toContain("李四");
+        expect(authorRow?.textContent).toContain("赵云");
+        expect(screen.queryByRole("link", { name: "李四" })).toBeNull();
+        expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
     });
 
     it("renders block LaTeX in timeline abstracts", async () => {

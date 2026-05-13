@@ -134,6 +134,45 @@ const TimelinePage = () => {
             .filter((subject) => subject !== "");
     };
 
+    const renderPaperAuthors = (paper: TimelinePaper) => {
+        const names = (paper.author_names || "").split(/[,，、]/).map((name) => name.trim()).filter(Boolean);
+        const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
+
+        if (names.length === 0) {
+            return "未知";
+        }
+
+        return names.map((name, idx) => {
+            const mentorId = mentorIds[idx];
+            const isMentor = typeof mentorId === "number" && mentorId > 0;
+            const separator = idx === names.length - 1 ? "" : "、";
+
+            if (isMentor) {
+                return (
+                    <span key={`${paper.id}-${name}-${idx}`}>
+                        <a
+                            href={`/mentors/${mentorId}`}
+                            style={{
+                                color: "#0070f3",
+                                textDecoration: "underline",
+                            }}
+                        >
+                            {name}
+                        </a>
+                        {separator}
+                    </span>
+                );
+            }
+
+            return (
+                <span key={`${paper.id}-${name}-${idx}`}>
+                    {name}
+                    {separator}
+                </span>
+            );
+        });
+    };
+
     const panelHeight = "calc(100vh - 220px)";
 
     return (
@@ -289,7 +328,7 @@ const TimelinePage = () => {
                                         <div className="timelineMetaRow">
                                             <span className="timelineMetaLabel">作者：</span>
                                             <div className="timelineMetaContent">
-                                                {paper.author_names || "未知"}
+                                                {renderPaperAuthors(paper)}
                                             </div>
                                         </div>
                                         <div className="timelineMetaRow">
