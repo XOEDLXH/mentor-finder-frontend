@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 
 import LatexText from "../components/LatexText";
+import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { request } from "../utils/network";
 import {
@@ -190,9 +191,17 @@ const TimelinePage = () => {
                     >
                         <h3 style={{ marginTop: 0 }}>{activeDirection || "未选择研究方向"}</h3>
                         {activeDirectionSummary && (
-                            <p style={{ marginTop: 0, color: "#666" }}>
-                                共 {totalPapers} 篇，第 {page} / {Math.max(totalPages, 1)} 页
-                            </p>
+                            <>
+                                <p style={{ marginTop: 0, color: "#666" }}>
+                                    共 {totalPapers} 篇，第 {page} / {Math.max(totalPages, 1)} 页
+                                </p>
+                                <Pagination
+                                    currentPage={page}
+                                    totalPages={totalPages}
+                                    loading={loadingPapers}
+                                    onPageChange={setPage}
+                                />
+                            </>
                         )}
 
                         {loadingPapers && (
@@ -255,20 +264,12 @@ const TimelinePage = () => {
                                     </article>
                                 ))}
 
-                                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                                    <button
-                                        onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
-                                        disabled={loadingPapers || page <= 1}
-                                    >
-                                        上一页
-                                    </button>
-                                    <button
-                                        onClick={() => setPage((currentPage) => currentPage + 1)}
-                                        disabled={loadingPapers || totalPages === 0 || page >= totalPages}
-                                    >
-                                        下一页
-                                    </button>
-                                </div>
+                                <Pagination
+                                    currentPage={page}
+                                    totalPages={totalPages}
+                                    loading={loadingPapers}
+                                    onPageChange={setPage}
+                                />
                             </div>
                         ) : (
                             <div style={{ padding: 12, border: "1px dashed #ccc" }}>
