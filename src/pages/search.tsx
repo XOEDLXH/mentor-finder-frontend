@@ -1306,7 +1306,7 @@ const SearchScreen = () => {
 
                                         return names.map((name, idx) => {
                                             const mentorId = mentorIds[idx];
-                                            const isMentor = mentorId != null || (!Array.isArray(paper.mentor_ids) && Array.isArray(paper.mentorNames) && paper.mentorNames.includes(name));
+                                            const isMentor = typeof mentorId === "number" && mentorId > 0;
                                             const separator = idx === names.length - 1 ? "" : "、";
                                             if (isMentor) {
                                                 return (

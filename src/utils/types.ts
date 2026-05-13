@@ -66,7 +66,7 @@ export interface SearchPaperResult {
     arxiv_id?: string;
     arxiv_url?: string;
     mentorNames: string[];
-    mentor_ids?: Array<number | null>;
+    mentor_ids?: number[];
     publishDate?: string;
 }
 

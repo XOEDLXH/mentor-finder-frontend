@@ -337,6 +337,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2401.00001",
                         arxiv_url: "https://arxiv.org/abs/2401.00001",
                         mentorNames: ["李四", "张三"],
+                        mentor_ids: [5, 6],
                     }],
                 };
             }
@@ -569,6 +570,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2401.00001",
                         arxiv_url: "https://arxiv.org/abs/2401.00001",
                         mentorNames: ["李四", "张三"],
+                        mentor_ids: [5, 6],
                     }],
                 };
             }
@@ -1015,7 +1017,7 @@ describe("SearchScreen", () => {
                         arxiv_id: "2501.00009",
                         arxiv_url: "https://arxiv.org/abs/2501.00009",
                         mentorNames: ["李四"],
-                        mentor_ids: [5, null],
+                        mentor_ids: [5, 0],
                     }],
                 };
             }
