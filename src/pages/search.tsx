@@ -100,6 +100,10 @@ const SearchScreen = () => {
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
     const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
+    const [privateMentorSaving, setPrivateMentorSaving] = useState(false);
+    const [privateMentorMsg, setPrivateMentorMsg] = useState("");
+    const [customMentorChineseName, setCustomMentorChineseName] = useState("");
+    const [customMentorEnglishName, setCustomMentorEnglishName] = useState("");
 
     const [mentorEditingId, setMentorEditingId] = useState<number | undefined>(undefined);
     const [mentorDraft, setMentorDraft] = useState({
@@ -279,9 +283,7 @@ const SearchScreen = () => {
         return new Set(privateMentors.map((mentor) => mentor.id));
     }, [privateMentors]);
 
-    const mentorResultMineCount = useMemo(() => {
-        return mentors.filter((mentor) => privateMentorIdSet.has(mentor.id)).length;
-    }, [mentors, privateMentorIdSet]);
+    const mentorResultTotalMineCount = privateMentors.length;
 
     const visibleMentorResults = useMemo(() => {
         if (mentorResultFilter === "mine") {
@@ -362,6 +364,47 @@ const SearchScreen = () => {
             setLoading(false);
         }
     };
+
+    const addPrivateMentorInSearch = useCallback(async () => {
+        const chineseName = customMentorChineseName.trim();
+        const englishName = customMentorEnglishName.trim();
+
+        if (chineseName === "" && englishName === "") {
+            setPrivateMentorMsg("中文名和英文名至少填写一个");
+            return;
+        }
+
+        if (privateMentors.length >= 10) {
+            setPrivateMentorMsg("私有导师最多添加 10 位，请先删除后再添加");
+            return;
+        }
+
+        setPrivateMentorSaving(true);
+        setPrivateMentorMsg("");
+
+        try {
+            await request("/api/dataset/mentors/custom", "POST", true, {
+                Chinese_name: chineseName,
+                English_name: englishName,
+            });
+            setCustomMentorChineseName("");
+            setCustomMentorEnglishName("");
+            await fetchMyPrivateMentors();
+            void search({ page: 1, shouldSyncUrl: true });
+            setPrivateMentorMsg("私有导师添加成功");
+        }
+        catch (err) {
+            if (isNetworkErrorInstance(err)) {
+                setPrivateMentorMsg(String(err));
+            }
+            else {
+                setPrivateMentorMsg(FAILURE_PREFIX + String(err));
+            }
+        }
+        finally {
+            setPrivateMentorSaving(false);
+        }
+    }, [customMentorChineseName, customMentorEnglishName, privateMentors.length, fetchMyPrivateMentors, search]);
 
     useEffect(() => {
         if (!router.isReady || didInitFromQuery) {
@@ -1152,29 +1195,6 @@ const SearchScreen = () => {
                 </div>
             )}
 
-            {hasSearched && !loading && errorMessage === "" && totalResults > 0 && (
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 8,
-                        padding: 12,
-                        border: "1px solid #ccc",
-                        borderRadius: 6,
-                        flexWrap: "wrap",
-                    }}
-                >
-                    <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        loading={loading}
-                        onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
-                    />
-                </div>
-            )}
-
             {mode === "mentor" && mentors.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1182,20 +1202,83 @@ const SearchScreen = () => {
                             onClick={() => setMentorResultFilter("all")}
                             disabled={mentorResultFilter === "all"}
                         >
-                            全部导师（{mentors.length}）
+                            全部导师（{totalResults}）
                         </button>
                         <button
                             onClick={() => setMentorResultFilter("mine")}
                             disabled={mentorResultFilter === "mine"}
                         >
-                            仅我的私有导师（{mentorResultMineCount}）
+                            仅我的私有导师（{mentorResultTotalMineCount}）
                         </button>
                         <button
                             onClick={() => setMentorResultFilter("public")}
                             disabled={mentorResultFilter === "public"}
                         >
-                            仅公共导师（{mentors.length - mentorResultMineCount}）
+                            仅公共导师（{Math.max(0, totalResults - mentorResultTotalMineCount)}）
                         </button>
+                    </div>
+
+                    {mentorResultFilter === "mine" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
+                            {!isLoggedIn ? (
+                                <span>仅登录用户才能添加私有导师</span>
+                            ) : (
+                                <>
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                        <input
+                                            type="text"
+                                            placeholder="导师中文名（可选）"
+                                            value={customMentorChineseName}
+                                            onChange={(e) => setCustomMentorChineseName(e.target.value)}
+                                            disabled={privateMentorSaving}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="导师英文名（可选）"
+                                            value={customMentorEnglishName}
+                                            onChange={(e) => setCustomMentorEnglishName(e.target.value)}
+                                            disabled={privateMentorSaving}
+                                            style={{ flex: 1 }}
+                                        />
+                                    </div>
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                        <button
+                                            onClick={() => void addPrivateMentorInSearch()}
+                                            disabled={
+                                                privateMentorSaving ||
+                                                privateMentors.length >= 10 ||
+                                                (customMentorChineseName.trim() === "" && customMentorEnglishName.trim() === "")
+                                            }
+                                        >
+                                            {privateMentorSaving ? "添加中..." : "添加私有导师"}
+                                        </button>
+                                    </div>
+                                    {privateMentorMsg !== "" && <span>{privateMentorMsg}</span>}
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            padding: 12,
+                            border: "1px solid #ccc",
+                            borderRadius: 6,
+                            flexWrap: "wrap",
+                        }}
+                    >
+                        <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            loading={loading}
+                            onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                        />
                     </div>
 
                     {visibleMentorResults.length === 0 && (
@@ -1288,6 +1371,27 @@ const SearchScreen = () => {
 
             {mode === "paper" && papers.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            padding: 12,
+                            border: "1px solid #ccc",
+                            borderRadius: 6,
+                            flexWrap: "wrap",
+                        }}
+                    >
+                        <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            loading={loading}
+                            onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                        />
+                    </div>
+
                     {papers.map((paper) => (
                         <div
                             key={paper.id}
