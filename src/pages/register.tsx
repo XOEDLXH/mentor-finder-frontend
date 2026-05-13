@@ -10,7 +10,7 @@ import {
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
 import { useRouter } from "next/router";
-import { setName, setRole, setToken } from "../redux/auth";
+import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { buildRedirectHref } from "../utils/authRedirect";
 
@@ -225,6 +225,7 @@ const RegisterScreen = () => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
+                    dispatch(setUserId(typeof res.userId === "number" ? res.userId : undefined));
                     dispatch(setName(normalizedUserName));
                     router.push("/");
                 }
