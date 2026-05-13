@@ -120,7 +120,7 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
     });
 
-    it("renders inline LaTeX in timeline titles while keeping the arXiv link", async () => {
+    it("renders inline LaTeX in timeline titles and exposes arXiv/pdf links below the title", async () => {
         mockTimelinePaperApi({
             title: "Compression $x^2$ Paper",
         });
@@ -129,9 +129,12 @@ describe("TimelinePage LaTeX rendering", () => {
 
         await screen.findByText(/Compression/i);
 
-        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/1234.5678']");
         const titleHeading = container.querySelector("h4");
-        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        const arxivLink = screen.getByRole("link", { name: "arxiv" });
+        const pdfLink = screen.getByRole("link", { name: "pdf" });
+        expect(titleHeading?.querySelector("a[href]")).toBeNull();
+        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
     });
@@ -145,15 +148,18 @@ describe("TimelinePage LaTeX rendering", () => {
 
         await screen.findByText(/Compression/i);
 
-        const titleLink = container.querySelector("a[href='https://arxiv.org/abs/1234.5678']");
         const titleHeading = container.querySelector("h4");
-        expect(titleLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        const arxivLink = screen.getByRole("link", { name: "arxiv" });
+        const pdfLink = screen.getByRole("link", { name: "pdf" });
+        expect(titleHeading?.querySelector("a[href]")).toBeNull();
+        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(titleHeading?.querySelector(".latexTextDisplay")).toBeNull();
         expect(screen.queryByText(/\$\$E=mc\^2\$\$/)).not.toBeInTheDocument();
     });
 
-    it("renders LaTeX in timeline titles without arXiv links", async () => {
+    it("renders LaTeX in timeline titles without external link row when arXiv is missing", async () => {
         mockTimelinePaperApi({
             title: "Compression \\(x^2\\) Paper",
             arxiv_url: undefined,
@@ -165,6 +171,7 @@ describe("TimelinePage LaTeX rendering", () => {
 
         const titleHeading = container.querySelector("h4");
         expect(container.querySelector("a[href]")).toBeNull();
+        expect(screen.queryByLabelText("论文外部链接")).toBeNull();
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(screen.queryByText(/\\\(x\^2\\\)/)).not.toBeInTheDocument();
     });
