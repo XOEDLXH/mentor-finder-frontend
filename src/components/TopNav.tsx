@@ -34,9 +34,9 @@ const NAV_ITEMS: NavItem[] = [
     },
     {
         label: "Profile",
-        href: "/user-home",
+        href: "/profile-settings",
         requiresAuth: true,
-        activeMatch: (pathname) => pathname === "/user-home" || pathname === "/profile" || pathname === "/profile-settings" || pathname === "/private-mentor",
+        activeMatch: (pathname) => pathname.startsWith("/users/") || pathname === "/profile" || pathname === "/profile-settings" || pathname === "/private-mentor",
     },
     {
         label: "Admin",
@@ -58,6 +58,7 @@ const TopNav = () => {
 
     const isLoggedIn = auth.token.trim() !== "";
     const isAdmin = auth.role === "admin";
+    const profileHref = auth.userId === undefined ? "/profile-settings" : `/users/${auth.userId}`;
     const currentPath = typeof router.asPath === "string" && router.asPath !== "" ? router.asPath : "/";
     const currentRedirect = typeof router.query.redirect === "string" ? router.query.redirect : "";
 
@@ -154,7 +155,7 @@ const TopNav = () => {
                                 key={item.href}
                                 type="button"
                                 className={item.activeMatch(router.pathname) ? "topNavLink topNavLinkActive" : "topNavLink"}
-                                onClick={() => goto(item.href, Boolean(item.requiresAuth))}
+                                onClick={() => goto(item.label === "Profile" ? profileHref : item.href, Boolean(item.requiresAuth))}
                             >
                                 {item.label}
                             </button>
@@ -215,7 +216,7 @@ const TopNav = () => {
 
                             {avatarMenuOpen && (
                                 <div className="topNavAvatarMenu" role="menu" aria-label="Account menu">
-                                    <button type="button" className="topNavMenuItem" onClick={() => goto("/user-home", true)}>
+                                    <button type="button" className="topNavMenuItem" onClick={() => goto(profileHref, true)}>
                                         Profile
                                     </button>
                                     <button type="button" className="topNavMenuItem" onClick={() => goto("/follows", true)}>
@@ -256,7 +257,7 @@ const TopNav = () => {
                                 key={`mobile-${item.href}`}
                                 type="button"
                                 className={item.activeMatch(router.pathname) ? "topNavMobileLink topNavMobileLinkActive" : "topNavMobileLink"}
-                                onClick={() => goto(item.href, Boolean(item.requiresAuth))}
+                                onClick={() => goto(item.label === "Profile" ? profileHref : item.href, Boolean(item.requiresAuth))}
                             >
                                 {item.label}
                             </button>
@@ -277,7 +278,7 @@ const TopNav = () => {
                             <div className="topNavMobileAccountLabel">
                                 Signed in as <strong>{auth.name || "Account"}</strong>
                             </div>
-                            <button type="button" className="topNavMobileLink" onClick={() => goto("/user-home", true)}>
+                            <button type="button" className="topNavMobileLink" onClick={() => goto(profileHref, true)}>
                                 Profile
                             </button>
                             <button type="button" className="topNavMobileLink" onClick={() => goto("/follows", true)}>
