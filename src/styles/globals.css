@@ -1093,6 +1093,20 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   }
 }
 
+.paginationJumpInput {
+  width: 60px;
+}
+
+.paginationJumpInput::-webkit-outer-spin-button,
+.paginationJumpInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.paginationJumpInput[type="number"] {
+  -moz-appearance: textfield;
+}
+
 @media (max-width: 720px) {
   .appMain {
     width: calc(100% - 24px);
