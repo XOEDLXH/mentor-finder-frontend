@@ -6,10 +6,18 @@ import FollowToggleButton from "../components/FollowToggleButton";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
-import { SearchMentorResult } from "../utils/types";
+import { FollowUserResult, SearchMentorResult } from "../utils/types";
 
 interface FollowedMentorsResponse {
     mentors?: SearchMentorResult[];
+}
+
+interface FollowedUsersResponse {
+    users?: FollowUserResult[];
+}
+
+interface SearchUsersResponse {
+    users?: FollowUserResult[];
 }
 
 interface FollowedMentorCardState extends SearchMentorResult {
@@ -22,13 +30,19 @@ const FollowsPage = () => {
     const isLoggedIn = authToken.trim() !== "";
 
     const [mentors, setMentors] = useState<FollowedMentorCardState[]>([]);
+    const [users, setUsers] = useState<FollowUserResult[]>([]);
+    const [userSearchKeyword, setUserSearchKeyword] = useState("");
+    const [userSearchResults, setUserSearchResults] = useState<FollowUserResult[]>([]);
+    const [userSearchLoading, setUserSearchLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
+    const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
     const [errorMessage, setErrorMessage] = useState("");
 
     const fetchFollows = useCallback(async () => {
         if (!isLoggedIn) {
             setMentors([]);
+            setUsers([]);
             return;
         }
 
@@ -36,15 +50,19 @@ const FollowsPage = () => {
         setErrorMessage("");
 
         try {
-            const res = await request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true);
+            const [mentorRes, userRes] = await Promise.all([
+                request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true),
+                request<FollowedUsersResponse>("/api/follow/users", "GET", true),
+            ]);
             setMentors(
-                Array.isArray(res.mentors)
-                    ? res.mentors.map((mentor) => ({
+                Array.isArray(mentorRes.mentors)
+                    ? mentorRes.mentors.map((mentor) => ({
                         ...mentor,
                         followed: true,
                     }))
                     : [],
             );
+            setUsers(Array.isArray(userRes.users) ? userRes.users : []);
         }
         catch (err) {
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -80,6 +98,69 @@ const FollowsPage = () => {
         finally {
             setActionMentorId(undefined);
         }
+    };
+
+    const toggleUserFollow = async (targetUser: FollowUserResult) => {
+        const targetUserId = targetUser.id;
+        setActionUserId(targetUserId);
+        setErrorMessage("");
+
+        try {
+            const res = await request<{ followed?: boolean }>(
+                `/api/follow/users/${targetUserId}`,
+                targetUser.followed ? "DELETE" : "POST",
+                true,
+            );
+            const followed = Boolean(res.followed);
+            const updateUser = (item: FollowUserResult) => (
+                item.id === targetUserId ? { ...item, followed } : item
+            );
+            setUsers((currentUsers) => {
+                const updatedUsers = currentUsers.map(updateUser);
+                if (updatedUsers.some((item) => item.id === targetUserId)) {
+                    return updatedUsers;
+                }
+                return followed ? [{ ...targetUser, followed }, ...updatedUsers] : updatedUsers;
+            });
+            setUserSearchResults((currentUsers) => currentUsers.map(updateUser));
+        }
+        catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setActionUserId(undefined);
+        }
+    };
+
+    const searchUsers = async () => {
+        const keyword = userSearchKeyword.trim();
+        if (keyword === "") {
+            setUserSearchResults([]);
+            return;
+        }
+
+        setUserSearchLoading(true);
+        setErrorMessage("");
+
+        try {
+            const res = await request<SearchUsersResponse>(
+                `/api/search/users?keyword=${encodeURIComponent(keyword)}`,
+                "GET",
+                true,
+            );
+            setUserSearchResults(Array.isArray(res.users) ? res.users : []);
+        }
+        catch (err) {
+            setUserSearchResults([]);
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setUserSearchLoading(false);
+        }
+    };
+
+    const openUserProfile = (userId: number) => {
+        void router.push(`/users/${userId}`);
     };
 
     useEffect(() => {
@@ -152,6 +233,116 @@ const FollowsPage = () => {
                             </div>
                         ))}
                     </div>
+
+                    <section className="userFollowSection" aria-label="关注用户">
+                        <div className="sectionHeader">
+                            <h3>关注用户</h3>
+                            <span>{users.filter((user) => user.followed).length}</span>
+                        </div>
+
+                        <div className="userSearch">
+                            <input
+                                type="text"
+                                value={userSearchKeyword}
+                                placeholder="搜索用户名、姓名或邮箱"
+                                onChange={(event) => setUserSearchKeyword(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        void searchUsers();
+                                    }
+                                }}
+                            />
+                            <button type="button" onClick={() => void searchUsers()} disabled={userSearchLoading}>
+                                {userSearchLoading ? "搜索中..." : "搜索用户"}
+                            </button>
+                        </div>
+
+                        {userSearchResults.length > 0 && (
+                            <div className="userList" aria-label="用户搜索结果">
+                                {userSearchResults.map((user) => (
+                                    <div
+                                        className="userCard"
+                                        key={`search-${user.id}`}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`进入${user.realName || user.username}用户主页`}
+                                        onClick={() => openUserProfile(user.id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                openUserProfile(user.id);
+                                            }
+                                        }}
+                                    >
+                                        <div className="userAvatar" aria-hidden="true">
+                                            {user.avatarUrl ? (
+                                                <img src={user.avatarUrl} alt="" />
+                                            ) : (
+                                                <span>{user.username.slice(0, 1).toUpperCase()}</span>
+                                            )}
+                                        </div>
+                                        <div className="userText">
+                                            <h4>{user.realName || user.username}</h4>
+                                            <p>{user.username} · {user.role}</p>
+                                            <p>{user.signature || "暂无签名"}</p>
+                                        </div>
+                                        <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
+                                            <FollowToggleButton
+                                                className="followToggleButton"
+                                                followed={user.followed}
+                                                loading={actionUserId === user.id}
+                                                onClick={() => void toggleUserFollow(user)}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {!loading && users.length === 0 ? (
+                            <p>暂无关注用户</p>
+                        ) : (
+                            <div className="userList" aria-label="已关注用户">
+                                {users.map((user) => (
+                                    <div
+                                        className="userCard"
+                                        key={`followed-${user.id}`}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`进入${user.realName || user.username}用户主页`}
+                                        onClick={() => openUserProfile(user.id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                openUserProfile(user.id);
+                                            }
+                                        }}
+                                    >
+                                        <div className="userAvatar" aria-hidden="true">
+                                            {user.avatarUrl ? (
+                                                <img src={user.avatarUrl} alt="" />
+                                            ) : (
+                                                <span>{user.username.slice(0, 1).toUpperCase()}</span>
+                                            )}
+                                        </div>
+                                        <div className="userText">
+                                            <h4>{user.realName || user.username}</h4>
+                                            <p>{user.username} · {user.role}</p>
+                                            <p>{user.signature || "暂无签名"}</p>
+                                        </div>
+                                        <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
+                                            <FollowToggleButton
+                                                className="followToggleButton"
+                                                followed={user.followed}
+                                                loading={actionUserId === user.id}
+                                                onClick={() => void toggleUserFollow(user)}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 </main>
             </div>
 
@@ -198,6 +389,129 @@ const FollowsPage = () => {
                     display: grid;
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                     gap: 12px;
+                }
+
+                .userFollowSection {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    margin-top: 24px;
+                }
+
+                .sectionHeader {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .sectionHeader h3 {
+                    margin: 0;
+                    font-size: 18px;
+                }
+
+                .sectionHeader span {
+                    border: 1px solid #d0d7de;
+                    border-radius: 999px;
+                    padding: 4px 10px;
+                    color: #57606a;
+                    font-size: 13px;
+                    font-weight: 700;
+                }
+
+                .userSearch {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .userSearch input {
+                    min-width: 0;
+                    flex: 1;
+                    border: 1px solid #d0d7de;
+                    border-radius: 6px;
+                    padding: 10px 12px;
+                }
+
+                .userSearch button {
+                    border: 1px solid #222;
+                    border-radius: 6px;
+                    background: #fff;
+                    padding: 10px 14px;
+                    font-weight: 700;
+                }
+
+                .userList {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .userCard {
+                    display: grid;
+                    grid-template-columns: 44px minmax(0, 1fr) auto;
+                    gap: 12px;
+                    align-items: center;
+                    border: 1px solid #d0d7de;
+                    border-radius: 8px;
+                    padding: 12px;
+                    background: #fff;
+                    cursor: pointer;
+                    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+                }
+
+                .userCard:hover,
+                .userCard:focus {
+                    border-color: #8c959f;
+                    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+                    outline: none;
+                    transform: translateY(-1px);
+                }
+
+                .userAvatar,
+                .userAvatar img {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 50%;
+                }
+
+                .userAvatar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                    background: #eef6ff;
+                    color: #0969da;
+                    font-weight: 800;
+                }
+
+                .userAvatar img {
+                    display: block;
+                    object-fit: cover;
+                }
+
+                .userText {
+                    min-width: 0;
+                }
+
+                .userText h4,
+                .userText p {
+                    overflow: hidden;
+                    margin: 0;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .userText h4 {
+                    font-size: 16px;
+                }
+
+                .userText p {
+                    color: #57606a;
+                    font-size: 13px;
+                }
+
+                .userFollowButtonShell {
+                    justify-self: end;
                 }
 
                 .mentorCard {
@@ -278,6 +592,15 @@ const FollowsPage = () => {
 
                     .mentorGrid {
                         grid-template-columns: 1fr;
+                    }
+
+                    .userCard {
+                        grid-template-columns: 40px minmax(0, 1fr);
+                    }
+
+                    .userFollowButtonShell {
+                        grid-column: 1 / -1;
+                        justify-self: start;
                     }
                 }
             `}</style>
