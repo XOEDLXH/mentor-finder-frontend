@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import LatexText from "../components/LatexText";
+import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { RootState } from "../redux/store";
@@ -1161,13 +1162,16 @@ const SearchScreen = () => {
                         padding: 12,
                         border: "1px solid #ccc",
                         borderRadius: 6,
+                        flexWrap: "wrap",
                     }}
                 >
                     <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={gotoPreviousPage} disabled={loading || !hasPreviousPage}>上一页</button>
-                        <button onClick={gotoNextPage} disabled={loading || !hasNextPage}>下一页</button>
-                    </div>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        loading={loading}
+                        onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                    />
                 </div>
             )}
 
@@ -1272,6 +1276,13 @@ const SearchScreen = () => {
                         </div>
                         );
                     })}
+
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        loading={loading}
+                        onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                    />
                 </div>
             )}
 
@@ -1355,6 +1366,13 @@ const SearchScreen = () => {
                             )}
                         </div>
                     ))}
+
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        loading={loading}
+                        onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                    />
                 </div>
             )}
 
