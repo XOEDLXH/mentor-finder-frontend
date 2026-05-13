@@ -292,13 +292,15 @@ const SearchScreen = () => {
             return privateMentors.filter((m) =>
                 m.Chinese_name.toLowerCase() === kw ||
                 (m.English_name || "").toLowerCase() === kw ||
-                (m.research_direction || "").toLowerCase() === kw
+                (m.research_direction || "").toLowerCase() === kw ||
+                (m.profile || "").toLowerCase() === kw
             ).length;
         }
         return privateMentors.filter((m) =>
             m.Chinese_name.toLowerCase().includes(kw) ||
             (m.English_name || "").toLowerCase().includes(kw) ||
-            (m.research_direction || "").toLowerCase().includes(kw)
+            (m.research_direction || "").toLowerCase().includes(kw) ||
+            (m.profile || "").toLowerCase().includes(kw)
         ).length;
     }, [privateMentors, keyword, matchMode]);
 
