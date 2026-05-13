@@ -24,6 +24,8 @@ interface FollowedMentorCardState extends SearchMentorResult {
     followed: boolean;
 }
 
+type FollowCategory = "mentor" | "user";
+
 const FollowsPage = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -34,6 +36,7 @@ const FollowsPage = () => {
     const [userSearchKeyword, setUserSearchKeyword] = useState("");
     const [userSearchResults, setUserSearchResults] = useState<FollowUserResult[]>([]);
     const [userSearchLoading, setUserSearchLoading] = useState(false);
+    const [activeCategory, setActiveCategory] = useState<FollowCategory>("mentor");
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
@@ -163,6 +166,13 @@ const FollowsPage = () => {
         void router.push(`/users/${userId}`);
     };
 
+    const followedUserIds = new Set(
+        users.filter((user) => user.followed).map((user) => user.id),
+    );
+    const visibleUserSearchResults = userSearchResults.filter((user) => (
+        !user.followed && !followedUserIds.has(user.id)
+    ));
+
     useEffect(() => {
         void fetchFollows();
     }, [fetchFollows]);
@@ -181,8 +191,19 @@ const FollowsPage = () => {
 
             <div className="content">
                 <aside className="sidebar" aria-label="关注筛选">
-                    <button className="filterButton" type="button">
-                        全部（{mentors.filter((mentor) => mentor.followed).length}）
+                    <button
+                        className={activeCategory === "mentor" ? "filterButton filterButtonActive" : "filterButton"}
+                        type="button"
+                        onClick={() => setActiveCategory("mentor")}
+                    >
+                        导师（{mentors.filter((mentor) => mentor.followed).length}）
+                    </button>
+                    <button
+                        className={activeCategory === "user" ? "filterButton filterButtonActive" : "filterButton"}
+                        type="button"
+                        onClick={() => setActiveCategory("user")}
+                    >
+                        用户（{users.filter((user) => user.followed).length}）
                     </button>
                 </aside>
 
@@ -190,50 +211,53 @@ const FollowsPage = () => {
                     {loading && <p>加载中...</p>}
                     {errorMessage !== "" && <p style={{ color: "#c62828" }}>{errorMessage}</p>}
 
-                    {!loading && mentors.length === 0 && errorMessage === "" && (
+                    {activeCategory === "mentor" && !loading && mentors.length === 0 && errorMessage === "" && (
                         <p>暂无关注导师</p>
                     )}
 
-                    <div className="mentorGrid">
-                        {mentors.map((mentor) => (
-                            <div
-                                key={mentor.id}
-                                className="mentorCard"
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`进入${mentor.Chinese_name}导师主页`}
-                                onClick={() => router.push(`/mentors/${mentor.id}`)}
-                                onKeyDown={(event) => {
-                                    if (event.key === "Enter" || event.key === " ") {
-                                        event.preventDefault();
-                                        void router.push(`/mentors/${mentor.id}`);
-                                    }
-                                }}
-                            >
-                                <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
-                                    <FollowToggleButton
-                                        className="followToggleButton"
-                                        followed={mentor.followed}
-                                        loading={actionMentorId === mentor.id}
-                                        onClick={() => void toggleFollow(mentor)}
-                                    />
-                                </div>
+                    {activeCategory === "mentor" && (
+                        <div className="mentorGrid">
+                            {mentors.map((mentor) => (
+                                <div
+                                    key={mentor.id}
+                                    className="mentorCard"
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`进入${mentor.Chinese_name}导师主页`}
+                                    onClick={() => router.push(`/mentors/${mentor.id}`)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            void router.push(`/mentors/${mentor.id}`);
+                                        }
+                                    }}
+                                >
+                                    <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
+                                        <FollowToggleButton
+                                            className="followToggleButton"
+                                            followed={mentor.followed}
+                                            loading={actionMentorId === mentor.id}
+                                            onClick={() => void toggleFollow(mentor)}
+                                        />
+                                    </div>
 
-                                <h3 className="mentorName">
-                                    {mentor.Chinese_name}
-                                    {mentor.is_private && (
-                                        <span className="privateBadge">我的私有导师</span>
+                                    <h3 className="mentorName">
+                                        {mentor.Chinese_name}
+                                        {mentor.is_private && (
+                                            <span className="privateBadge">我的私有导师</span>
+                                        )}
+                                    </h3>
+                                    {mentor.English_name && (
+                                        <p className="mentorMeta">英文名：{mentor.English_name}</p>
                                     )}
-                                </h3>
-                                {mentor.English_name && (
-                                    <p className="mentorMeta">英文名：{mentor.English_name}</p>
-                                )}
-                                <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
-                                <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
-                            </div>
-                        ))}
-                    </div>
+                                    <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
+                                    <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
+                    {activeCategory === "user" && (
                     <section className="userFollowSection" aria-label="关注用户">
                         <div className="sectionHeader">
                             <h3>关注用户</h3>
@@ -257,9 +281,9 @@ const FollowsPage = () => {
                             </button>
                         </div>
 
-                        {userSearchResults.length > 0 && (
+                        {visibleUserSearchResults.length > 0 && (
                             <div className="userList" aria-label="用户搜索结果">
-                                {userSearchResults.map((user) => (
+                                {visibleUserSearchResults.map((user) => (
                                     <div
                                         className="userCard"
                                         key={`search-${user.id}`}
@@ -343,6 +367,7 @@ const FollowsPage = () => {
                             </div>
                         )}
                     </section>
+                    )}
                 </main>
             </div>
 
@@ -366,6 +391,9 @@ const FollowsPage = () => {
                 }
 
                 .sidebar {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
                     border: 1px solid #ddd;
                     border-radius: 8px;
                     padding: 8px;
@@ -379,6 +407,12 @@ const FollowsPage = () => {
                     padding: 10px 12px;
                     font-weight: 600;
                     text-align: left;
+                }
+
+                .filterButtonActive {
+                    border-color: #0969da;
+                    background: #eef6ff;
+                    color: #0969da;
                 }
 
                 .main {
