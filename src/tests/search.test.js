@@ -17,10 +17,14 @@ jest.mock("../utils/network", () => ({
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
     const mockReplace = jest.fn();
+    let beforePopStateHandler = () => true;
     let historyKeyCounter = 0;
     const mockRouter = {
         push: mockPush,
         replace: mockReplace,
+        beforePopState: jest.fn((handler) => {
+            beforePopStateHandler = handler;
+        }),
         query: {},
         isReady: true,
     };
@@ -92,8 +96,10 @@ describe("SearchScreen", () => {
     beforeEach(() => {
         mockPush.mockReset();
         mockReplace.mockReset();
+        mockRouter.beforePopState.mockClear();
         request.mockReset();
         historyKeyCounter = 0;
+        beforePopStateHandler = () => true;
 
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
@@ -1366,6 +1372,11 @@ describe("SearchScreen", () => {
                 search_mode: "fuzzy",
             };
             window.history.replaceState({ key: "test-history-0" }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
+            beforePopStateHandler({
+                key: "test-history-0",
+                as: "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy",
+                url: "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy",
+            });
             window.dispatchEvent(new PopStateEvent("popstate"));
             view.rerender(
                 <Provider store={configureStore({
@@ -1389,14 +1400,237 @@ describe("SearchScreen", () => {
                 "GET",
                 true,
             );
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
-            expect(screen.getByText("论文12")).toBeInTheDocument();
         });
 
+        expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         await waitFor(() => {
             expect(window.scrollTo).toHaveBeenCalled();
         });
         expect(window.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 460, behavior: "auto" });
+    });
+
+    it("stores push target scroll state under the new history key without overwriting the mentor result entry", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            if (urlStr === "/api/search/papers?keyword=%E8%AE%BA%E6%96%8712&search_mode=exact&sort_mode=default") {
+                return {
+                    papers: [{
+                        id: 12,
+                        title: "论文12",
+                        abstract: "跳转后的论文结果。",
+                        publish_date: "2026-05-01",
+                        author_names: "测试导师",
+                        subjects: "cs.AI",
+                        mentorNames: ["测试导师"],
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        await waitFor(() => {
+            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+        });
+
+        const expandedSourceEntryKey = window.history.state.key;
+        const expandedSourceViewState = JSON.parse(
+            window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
+        );
+        expect(expandedSourceViewState.expandedMentorIds).toEqual([88]);
+
+        Object.defineProperty(window, "scrollY", {
+            value: 460,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+
+        const sourceEntryKey = window.history.state.key;
+        fireEvent.click(screen.getByRole("button", { name: "论文12" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        const targetEntryKey = window.history.state.key;
+        expect(targetEntryKey).not.toBe(sourceEntryKey);
+
+        const sourceViewState = JSON.parse(window.sessionStorage.getItem(`search-view-state:${sourceEntryKey}`));
+        const targetViewState = JSON.parse(window.sessionStorage.getItem(`search-view-state:${targetEntryKey}`));
+
+        expect(sourceViewState.scrollY).toBe(460);
+        expect(targetViewState.scrollY).toBe(0);
+        expect(targetViewState.expandedMentorIds).toEqual([]);
+    });
+
+    it("does not overwrite the saved mentor scroll state when the browser resets scroll before pop restore", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            if (urlStr === "/api/search/papers?keyword=%E8%AE%BA%E6%96%8712&search_mode=exact&sort_mode=default") {
+                return {
+                    papers: [{
+                        id: 12,
+                        title: "论文12",
+                        abstract: "跳转后的论文结果。",
+                        publish_date: "2026-05-01",
+                        author_names: "测试导师",
+                        subjects: "cs.AI",
+                        mentorNames: ["测试导师"],
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        const view = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        Object.defineProperty(window, "scrollY", {
+            value: 13,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+        const mentorEntryKey = window.history.state.key;
+
+        fireEvent.click(screen.getByRole("button", { name: "论文12" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        Object.defineProperty(window, "scrollY", {
+            value: 0,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+
+        act(() => {
+            mockRouter.query = {
+                keyword: "测试",
+                mode: "mentor",
+                search_mode: "fuzzy",
+            };
+            window.history.replaceState({ key: mentorEntryKey }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
+            beforePopStateHandler({
+                key: mentorEntryKey,
+                as: "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy",
+                url: "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy",
+            });
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            fireEvent.scroll(window);
+            view.rerender(
+                <Provider store={configureStore({
+                    reducer: { auth: authReducer },
+                    preloadedState: {
+                        auth: {
+                            name: "student",
+                            token: "mock-token",
+                            role: "student",
+                        },
+                    },
+                })}>
+                    <SearchScreen />
+                </Provider>,
+            );
+        });
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+
+        const savedMentorViewState = JSON.parse(window.sessionStorage.getItem(`search-view-state:${mentorEntryKey}`));
+        expect(savedMentorViewState.scrollY).toBe(13);
+
+        await waitFor(() => {
+            expect(window.scrollTo).toHaveBeenCalledWith({ left: 0, top: 13, behavior: "auto" });
+        });
     });
 
     it("clicking a mentor author in paper result triggers exact mentor search", async () => {

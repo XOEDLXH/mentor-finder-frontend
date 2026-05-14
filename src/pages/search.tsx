@@ -86,6 +86,12 @@ interface SearchHistoryViewState {
 
 type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 
+let pendingSearchPopRestore:
+    | {
+        entryKey: string;
+    }
+    | undefined;
+
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
         return "";
@@ -185,6 +191,8 @@ const SearchScreen = () => {
     const expandedMentorIdsRef = useRef<Set<number>>(new Set());
     const navigationIntentRef = useRef<SearchNavigationIntent>("init");
     const hasLoadedRouteStateRef = useRef(false);
+    const pendingPushRestoreRef = useRef<{ targetEntryKey?: string }>({});
+    const blockAutoPersistRef = useRef(false);
 
     const resetResults = (clearExpandedMentors = true) => {
         setErrorMessage("");
@@ -296,14 +304,22 @@ const SearchScreen = () => {
         }
     };
 
-    const persistCurrentViewState = useCallback((entryKey = getHistoryEntryKey()) => {
+    const persistCurrentViewState = useCallback((entryKey = getHistoryEntryKey(), force = false) => {
         if (typeof window === "undefined") {
             return;
         }
 
-        writeHistoryViewState(entryKey, {
+        if (!force && blockAutoPersistRef.current) {
+            return;
+        }
+
+        const nextViewState = {
             scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
             expandedMentorIds: Array.from(expandedMentorIdsRef.current),
+        };
+        writeHistoryViewState(entryKey, {
+            scrollY: nextViewState.scrollY,
+            expandedMentorIds: nextViewState.expandedMentorIds,
         });
     }, []);
 
@@ -417,33 +433,46 @@ const SearchScreen = () => {
 
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
+            const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
             setExpandedMentorIds(new Set());
             scheduleAfterPaint(() => {
                 scrollWindowTo(0);
-                writeHistoryViewState(getHistoryEntryKey(), {
+                writeHistoryViewState(targetEntryKey, {
                     scrollY: 0,
                     expandedMentorIds: [],
                 });
+                scheduleAfterPaint(() => {
+                    blockAutoPersistRef.current = false;
+                    persistCurrentViewState(targetEntryKey, true);
+                });
             });
+            pendingPushRestoreRef.current = {};
             return;
         }
 
         if (intent === "pop") {
-            const savedViewState = readHistoryViewState(getHistoryEntryKey());
+            const entryKey = pendingSearchPopRestore?.entryKey ?? getHistoryEntryKey();
+            const savedViewState = readHistoryViewState(entryKey);
             const restoredExpandedIds = state.mode === "mentor"
                 ? new Set(savedViewState?.expandedMentorIds ?? [])
                 : new Set<number>();
             setExpandedMentorIds(restoredExpandedIds);
             scheduleAfterPaint(() => {
                 scrollWindowTo(savedViewState?.scrollY ?? 0);
+                scheduleAfterPaint(() => {
+                    blockAutoPersistRef.current = false;
+                    persistCurrentViewState(entryKey, true);
+                    pendingSearchPopRestore = undefined;
+                });
             });
             return;
         }
 
+        blockAutoPersistRef.current = false;
         if (state.mode !== "mentor" && expandedMentorIdsRef.current.size > 0) {
             setExpandedMentorIds(new Set());
         }
-    }, [scheduleAfterPaint, scrollWindowTo]);
+    }, [persistCurrentViewState, scheduleAfterPaint, scrollWindowTo]);
 
     const loadSearchState = useCallback(async (
         state: SearchQueryState,
@@ -514,18 +543,26 @@ const SearchScreen = () => {
             return;
         }
 
-        persistCurrentViewState();
+        pendingSearchPopRestore = undefined;
+        expandedMentorIdsRef.current = new Set(expandedMentorIds);
+        const sourceEntryKey = getHistoryEntryKey();
+        persistCurrentViewState(sourceEntryKey, true);
+        blockAutoPersistRef.current = true;
         navigationIntentRef.current = "push";
+        const targetUrl = buildSearchUrl(nextState);
         await router.push(
-            buildSearchUrl(nextState),
+            targetUrl,
             undefined,
             { shallow: true, scroll: false },
         );
+        pendingPushRestoreRef.current = {
+            targetEntryKey: getHistoryEntryKey(),
+        };
 
         if (!areSearchStatesEqual(activeSearchStateRef.current, nextState)) {
             await loadSearchState(nextState, "push");
         }
-    }, [areSearchStatesEqual, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
+    }, [areSearchStatesEqual, expandedMentorIds, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
 
     const switchMode = (nextMode: SearchMode) => {
         if (nextMode === mode) {
@@ -591,15 +628,42 @@ const SearchScreen = () => {
             return;
         }
 
-        const handlePopState = () => {
+        const markPendingPopRestore = (entryKey: string) => {
+            blockAutoPersistRef.current = true;
+            pendingSearchPopRestore = {
+                entryKey,
+            };
             navigationIntentRef.current = "pop";
         };
 
+        const handlePopState = () => {
+            if (pendingSearchPopRestore !== undefined) {
+                return;
+            }
+
+            markPendingPopRestore(getHistoryEntryKey());
+        };
+
+        const hasBeforePopState = typeof router.beforePopState === "function";
+        if (hasBeforePopState) {
+            router.beforePopState((state) => {
+                const stateLike = state as { key?: unknown; as?: unknown; url?: unknown } | undefined;
+                const entryKey = typeof stateLike?.key === "string" && stateLike.key.trim() !== ""
+                    ? stateLike.key
+                    : getHistoryEntryKey();
+                markPendingPopRestore(entryKey);
+                return true;
+            });
+        }
+
         window.addEventListener("popstate", handlePopState);
         return () => {
+            if (hasBeforePopState) {
+                router.beforePopState(() => true);
+            }
             window.removeEventListener("popstate", handlePopState);
         };
-    }, []);
+    }, [router]);
 
     useEffect(() => {
         if (typeof window === "undefined") {
@@ -689,7 +753,9 @@ const SearchScreen = () => {
 
         const { hasAnySearchParam, state } = parseSearchQuery(router.query);
         const nextRouteState = hasAnySearchParam ? state : DEFAULT_SEARCH_QUERY_STATE;
-        const nextIntent = hasLoadedRouteStateRef.current ? navigationIntentRef.current : "init";
+        const nextIntent = pendingSearchPopRestore !== undefined
+            ? "pop"
+            : (hasLoadedRouteStateRef.current ? navigationIntentRef.current : "init");
 
         if (hasLoadedRouteStateRef.current && areSearchStatesEqual(nextRouteState, activeSearchStateRef.current)) {
             navigationIntentRef.current = "init";
@@ -788,6 +854,11 @@ const SearchScreen = () => {
             else {
                 next.add(mentorId);
             }
+            expandedMentorIdsRef.current = next;
+            writeHistoryViewState(getHistoryEntryKey(), {
+                scrollY: typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
+                expandedMentorIds: Array.from(next),
+            });
             return next;
         });
     };
