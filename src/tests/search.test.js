@@ -1400,10 +1400,9 @@ describe("SearchScreen", () => {
                 "GET",
                 true,
             );
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
-            expect(screen.getByText("论文12")).toBeInTheDocument();
         });
 
+        expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         await waitFor(() => {
             expect(window.scrollTo).toHaveBeenCalled();
         });
@@ -1555,6 +1554,11 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
 
         Object.defineProperty(window, "scrollY", {

@@ -853,6 +853,7 @@ const SearchScreen = () => {
             else {
                 next.add(mentorId);
             }
+            expandedMentorIdsRef.current = next;
             return next;
         });
     };
