@@ -1229,8 +1229,8 @@ describe("SearchScreen", () => {
             if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy") {
                 return {
                     page: 1,
-                    total: 2,
-                    total_pages: 2,
+                    total: 6,
+                    total_pages: 6,
                     has_previous: false,
                     has_next: true,
                     mentors: [
@@ -1250,10 +1250,10 @@ describe("SearchScreen", () => {
             if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy&page=2") {
                 return {
                     page: 2,
-                    total: 2,
-                    total_pages: 2,
+                    total: 6,
+                    total_pages: 6,
                     has_previous: true,
-                    has_next: false,
+                    has_next: true,
                     mentors: [
                         {
                             id: 2,
@@ -1280,8 +1280,12 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
 
         await waitFor(() => {
-            expect(screen.getByRole("heading", { name: "Showing 2 results for all: 张" })).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
+        });
+
+        ["1", "2", "3", "4", "5"].forEach((pageLabel) => {
+            expect(screen.getAllByRole("button", { name: pageLabel }).length).toBeGreaterThan(0);
         });
 
         fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
@@ -1295,7 +1299,7 @@ describe("SearchScreen", () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByRole("heading", { name: "Showing 2 results for all: 张" })).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
 

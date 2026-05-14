@@ -42,8 +42,10 @@ const Pagination = ({
 
     const pageNumbers = useMemo(() => {
         const pages: number[] = [];
-        const start = Math.max(1, currentPage - 2);
-        const end = Math.min(safeTotal, currentPage + 2);
+        const windowSize = Math.min(5, safeTotal);
+        const halfWindow = Math.floor(windowSize / 2);
+        const start = Math.max(1, Math.min(currentPage - halfWindow, safeTotal - windowSize + 1));
+        const end = start + windowSize - 1;
         for (let i = start; i <= end; i++) {
             pages.push(i);
         }
