@@ -127,6 +127,8 @@ const MENTOR_FILTER_OPTIONS: SegmentedOption<MentorResultFilter>[] = [
     { label: "公共", value: "public" },
 ];
 
+const SEARCH_LOGIC_HELP_TEXT = "注意：AND 的优先级高于 OR；若括号不匹配则会将括号理解为关键词的一部分。";
+
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -162,6 +164,7 @@ const SearchScreen = () => {
     const [privateMentorMsg, setPrivateMentorMsg] = useState("");
     const [customMentorChineseName, setCustomMentorChineseName] = useState("");
     const [customMentorEnglishName, setCustomMentorEnglishName] = useState("");
+    const [showSearchLogicHelp, setShowSearchLogicHelp] = useState(false);
 
     const [mentorEditingId, setMentorEditingId] = useState<number | undefined>(undefined);
     const [mentorDraft, setMentorDraft] = useState({
@@ -1088,7 +1091,7 @@ const SearchScreen = () => {
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto", padding: "0 12px", boxSizing: "border-box" }}>
             {mentorDeleteTarget !== undefined && (
                 <div
                     aria-label="删除导师确认弹窗遮罩"
@@ -1339,16 +1342,144 @@ const SearchScreen = () => {
                 {searchHeadingText}
             </h2>
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ position: "relative", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div
+                    style={{ position: "relative", flexShrink: 0 }}
+                    onMouseEnter={() => setShowSearchLogicHelp(true)}
+                    onMouseLeave={() => setShowSearchLogicHelp(false)}
+                    onFocus={() => setShowSearchLogicHelp(true)}
+                    onBlur={() => setShowSearchLogicHelp(false)}
+                >
+                    <span
+                        aria-label="搜索逻辑说明"
+                        tabIndex={0}
+                        style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            border: "1px solid #8c959f",
+                            color: "#57606a",
+                            background: "#ffffff",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 15,
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            flexShrink: 0,
+                            cursor: "help",
+                            userSelect: "none",
+                            outline: "none",
+                        }}
+                    >
+                        ?
+                    </span>
+                    {showSearchLogicHelp && (
+                        <div
+                            aria-hidden="true"
+                            style={{
+                                position: "absolute",
+                                left: -20,
+                                top: "100%",
+                                width: "clamp(280px, 58vw, 380px)",
+                                height: 12,
+                                background: "transparent",
+                                pointerEvents: "auto",
+                                zIndex: 19,
+                            }}
+                        />
+                    )}
+                    <div
+                        role="tooltip"
+                        aria-hidden={!showSearchLogicHelp}
+                        onMouseEnter={() => setShowSearchLogicHelp(true)}
+                        onMouseLeave={() => setShowSearchLogicHelp(false)}
+                        style={{
+                            position: "absolute",
+                            left: -20,
+                            top: "calc(100% + 12px)",
+                            width: "clamp(280px, 58vw, 380px)",
+                            maxWidth: "calc(100vw - 24px)",
+                            padding: 14,
+                            borderRadius: 14,
+                            border: "1px solid #d0d7de",
+                            background: "#ffffff",
+                            color: "#24292f",
+                            boxShadow: "0 18px 42px rgba(15, 23, 42, 0.18)",
+                            fontSize: 13,
+                            lineHeight: 1.55,
+                            zIndex: 20,
+                            pointerEvents: showSearchLogicHelp ? "auto" : "none",
+                            opacity: showSearchLogicHelp ? 1 : 0,
+                            transform: showSearchLogicHelp ? "translateY(0)" : "translateY(4px)",
+                            transition: "opacity 160ms ease, transform 160ms ease",
+                            whiteSpace: "normal",
+                        }}
+                    >
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#1f2328" }}>搜索语法提示</span>
+                                <span style={{ fontSize: 12, color: "#57606a" }}>支持逻辑运算和括号组合，适合做更精确的检索。</span>
+                            </div>
+
+                            <div style={{ display: "grid", gap: 8 }}>
+                                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                    <span style={{ minWidth: 54, fontWeight: 700, color: "#0969da" }}>AND</span>
+                                    <span style={{ color: "#24292f" }}>使用 <strong>&amp;&amp;</strong>、<strong>&amp;</strong> 或 <strong>且</strong>，表示“同时满足”。</span>
+                                </div>
+                                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                    <span style={{ minWidth: 54, fontWeight: 700, color: "#0969da" }}>OR</span>
+                                    <span style={{ color: "#24292f" }}>使用 <strong>||</strong>、<strong>|</strong> 或 <strong>或</strong>，表示“满足其一”。</span>
+                                </div>
+                                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                    <span style={{ minWidth: 54, fontWeight: 700, color: "#0969da" }}>括号</span>
+                                    <span style={{ color: "#24292f" }}>例如 <strong>(A || B) &amp;&amp; C</strong>，可调整优先级。</span>
+                                </div>
+                            </div>
+
+                            <div style={{ padding: "10px 12px", borderRadius: 12, background: "#f6f8fa", border: "1px solid #d0d7de" }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "#1f2328", marginBottom: 8 }}>注意</div>
+                                <div style={{ display: "grid", gap: 8, color: "#57606a", fontSize: 12, lineHeight: 1.5 }}>
+                                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                        <span style={{ color: "#0969da", fontWeight: 700, minWidth: 14 }}>1.</span>
+                                        <span>AND 的优先级高于 OR</span>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                        <span style={{ color: "#0969da", fontWeight: 700, minWidth: 14 }}>2.</span>
+                                        <span>若括号不匹配，系统会将括号视作关键词的一部分处理</span>
+                                    </div>
+                                </div>
+                                {/* <div style={{ marginTop: 8, color: "#57606a", fontSize: 12 }}>
+                                    {SEARCH_LOGIC_HELP_TEXT}
+                                </div> */}
+                            </div>
+                        </div>
+                        <span
+                            aria-hidden="true"
+                            style={{
+                                position: "absolute",
+                                left: 23,
+                                top: -6,
+                                width: 12,
+                                height: 12,
+                                background: "#ffffff",
+                                borderLeft: "1px solid #d0d7de",
+                                borderTop: "1px solid #d0d7de",
+                                transform: "rotate(45deg)",
+                                boxShadow: "-3px -3px 8px rgba(15, 23, 42, 0.04)",
+                            }}
+                        />
+                    </div>
+                </div>
                 <input
                     type="text"
                     value={keyword}
                     placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
                     onChange={(e) => setKeyword(e.target.value)}
                     onKeyDown={handleEnter}
-                    style={{ flex: 1 }}
+                    style={{ flex: "1 1 260px", minWidth: 0 }}
                 />
-                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading}>
+                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading} style={{ flexShrink: 0 }}>
                     清空
                 </button>
                 <button
@@ -1359,12 +1490,13 @@ const SearchScreen = () => {
                         }));
                     }}
                     disabled={keyword.trim() === "" || loading}
+                    style={{ flexShrink: 0 }}
                 >
                     搜索
                 </button>
             </div>
 
-            <div className="searchSegmentRow" aria-label="搜索选项分段控件">
+            <div className="searchSegmentRow" aria-label="搜索选项分段控件" style={{ flexWrap: "wrap" }}>
                 {renderSegmentedControl("搜索类型", SEARCH_MODE_OPTIONS, mode, switchMode)}
                 {renderSegmentedControl("匹配方式", MATCH_MODE_OPTIONS, matchMode, changeMatchMode)}
                 {renderSegmentedControl(
