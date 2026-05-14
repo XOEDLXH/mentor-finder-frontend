@@ -1435,25 +1435,25 @@ const SearchScreen = () => {
                                     删除
                                 </button>
                             )}
-                            <h3 style={{ margin: "0 0 8px" }}>
+                            <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
                                 {mentor.Chinese_name}
                                 {privateMentorIdSet.has(mentor.id) && (
                                     <span style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
                                 )}
                             </h3>
                             {mentor.English_name && (
-                                <p style={{ margin: "4px 0" }}>英文名：{mentor.English_name}</p>
+                                <p style={{ margin: "4px 0", fontSize: "14px" }}>英文名：{mentor.English_name}</p>
                             )}
-                            <p style={{ margin: "4px 0" }}>
+                            <p style={{ margin: "4px 0", fontSize: "14px" }}>
                                 研究方向：{mentor.research_direction || "暂无研究方向"}
                             </p>
-                            <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
-                            <p style={{ margin: "4px 0" }}>导师画像：{isExpanded ? profileText : profilePreview}</p>
-                            <button onClick={() => router.push(`/mentors/${mentor.id}`)}>
+                            <p style={{ margin: "4px 0", fontSize: "14px" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
+                            <p style={{ margin: "4px 0", fontSize: "14px" }}>导师画像：{isExpanded ? profileText : profilePreview}</p>
+                            <button onClick={() => router.push(`/mentors/${mentor.id}`)} style={{ fontSize: "14px" }}>
                                 查看导师主页
                             </button>
-                            <p style={{ margin: "8px 0 4px" }}>相关论文：</p>
-                            <ul style={{ margin: 0, paddingLeft: 20 }}>
+                            <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
+                            <ul style={{ margin: 0, paddingLeft: 20, fontSize: "14px" }}>
                                 {visiblePaperTitles.map((title) => (
                                     <li key={title}>
                                         <button
@@ -1467,6 +1467,7 @@ const SearchScreen = () => {
                                                 textDecoration: "underline",
                                                 cursor: "pointer",
                                                 font: "inherit",
+                                                textAlign: "left",
                                             }}
                                         >
                                             {title}
@@ -1477,7 +1478,7 @@ const SearchScreen = () => {
                             {hasMoreDetails && (
                                 <button
                                     onClick={() => toggleMentorExpand(mentor.id)}
-                                    style={{ marginTop: 8 }}
+                                    style={{ marginTop: 8, fontSize: "14px" }}
                                 >
                                     {isExpanded ? "收起" : "查看更多"}
                                 </button>
