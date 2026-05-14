@@ -10,6 +10,7 @@ interface PaginationProps {
     centered?: boolean;
     controlHeight?: number;
     jumpInputWidth?: number;
+    activePageHighlightColor?: string;
 }
 
 const Pagination = ({
@@ -22,6 +23,7 @@ const Pagination = ({
     centered = false,
     controlHeight,
     jumpInputWidth,
+    activePageHighlightColor,
 }: PaginationProps) => {
     const [jumpInput, setJumpInput] = useState("");
 
@@ -96,14 +98,28 @@ const Pagination = ({
             {pageNumbers.map((num) => (
                 <button
                     key={num}
-                    onClick={() => onPageChange(num)}
-                    disabled={loading || num === currentPage}
+                    onClick={() => {
+                        if (num !== currentPage) {
+                            onPageChange(num);
+                        }
+                    }}
+                    disabled={loading}
+                    aria-current={num === currentPage ? "page" : undefined}
                     style={{
                         ...buttonStyle,
                         fontWeight: num === currentPage ? 700 : 400,
                         width: controlHeight ?? 32,
                         minWidth: controlHeight ?? 32,
                         padding: 0,
+                        backgroundColor: num === currentPage && activePageHighlightColor !== undefined
+                            ? activePageHighlightColor
+                            : undefined,
+                        borderColor: num === currentPage && activePageHighlightColor !== undefined
+                            ? activePageHighlightColor
+                            : undefined,
+                        color: num === currentPage && activePageHighlightColor !== undefined
+                            ? "#ffffff"
+                            : undefined,
                     }}
                 >
                     {num}

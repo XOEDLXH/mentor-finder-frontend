@@ -1389,6 +1389,7 @@ const SearchScreen = () => {
                             centered
                             controlHeight={33.77}
                             jumpInputWidth={120}
+                            activePageHighlightColor="rgb(8, 109, 177)"
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1500,6 +1501,7 @@ const SearchScreen = () => {
                         centered
                         controlHeight={33.77}
                         jumpInputWidth={120}
+                        activePageHighlightColor="rgb(8, 109, 177)"
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
@@ -1526,6 +1528,7 @@ const SearchScreen = () => {
                             centered
                             controlHeight={33.77}
                             jumpInputWidth={120}
+                            activePageHighlightColor="rgb(8, 109, 177)"
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1643,6 +1646,7 @@ const SearchScreen = () => {
                         centered
                         controlHeight={33.77}
                         jumpInputWidth={120}
+                        activePageHighlightColor="rgb(8, 109, 177)"
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
