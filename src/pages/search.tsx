@@ -1467,7 +1467,7 @@ const SearchScreen = () => {
                                                 aria-hidden="true"
                                                 className="searchMentorPaperLinkIcon"
                                             />
-                                            {title}
+                                            <span className="searchMentorPaperLinkText">{title}</span>
                                         </button>
                                     </li>
                                 ))}
@@ -1795,9 +1795,7 @@ const SearchScreen = () => {
                     background: transparent;
                     padding: 0;
                     color: rgb(8, 109, 177);
-                    text-decoration: none;
-                    transition: color 0.16s ease, border-color 0.16s ease;
-                    border-bottom: 1px dashed transparent;
+                    transition: color 0.16s ease;
                     cursor: pointer;
                     font: inherit;
                     text-align: left;
@@ -1807,8 +1805,23 @@ const SearchScreen = () => {
                 :global(button.searchMentorPaperLinkButton:hover),
                 :global(button.searchMentorPaperLinkButton:focus-visible) {
                     color: rgb(45, 45, 45);
-                    border-bottom-color: rgb(45, 45, 45);
                     outline: none;
+                }
+
+                :global(span.searchMentorPaperLinkText) {
+                    color: inherit;
+                    text-decoration: none;
+                    text-decoration-thickness: 1px;
+                    text-underline-offset: 2px;
+                    text-decoration-color: transparent;
+                    transition: text-decoration-color 0.16s ease;
+                }
+
+                :global(button.searchMentorPaperLinkButton:hover span.searchMentorPaperLinkText),
+                :global(button.searchMentorPaperLinkButton:focus-visible span.searchMentorPaperLinkText) {
+                    text-decoration-line: underline;
+                    text-decoration-style: dashed;
+                    text-decoration-color: currentColor;
                 }
 
                 :global(img.searchTimelineMentorIcon) {
