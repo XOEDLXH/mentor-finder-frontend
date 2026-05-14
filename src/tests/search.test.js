@@ -512,6 +512,44 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("link", { name: "arxiv" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
     });
 
+    it("renders inline LaTeX in mentor related paper titles", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 3,
+                        Chinese_name: "李四",
+                        English_name: "Li Si",
+                        research_direction: "神经网络",
+                        email: "lisi@example.com",
+                        profile: "研究带有公式标题的论文。",
+                        paperTitles: ["GeS$^\\text{2}$mS-T: Multi-Dimensional Grouping for Ultra-High Energy Efficiency in Spiking Transformer"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "李四" },
+        });
+        fireEvent.click(screen.getByText("搜索"));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Multi-Dimensional Grouping for Ultra-High Energy Efficiency in Spiking Transformer/)).toBeInTheDocument();
+        });
+
+        expect(document.querySelector(".searchMentorPaperLinkText .katex")).not.toBeNull();
+    });
+
     it("shows collapsed mentor info by default and expands on demand", async () => {
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);

@@ -1467,7 +1467,9 @@ const SearchScreen = () => {
                                                 aria-hidden="true"
                                                 className="searchMentorPaperLinkIcon"
                                             />
-                                            <span className="searchMentorPaperLinkText">{title}</span>
+                                            <span className="searchMentorPaperLinkText">
+                                                <LatexText text={title} forceInlineMath />
+                                            </span>
                                         </button>
                                     </li>
                                 ))}
