@@ -16,6 +16,10 @@ interface FollowedUsersResponse {
     users?: FollowUserResult[];
 }
 
+interface FollowersResponse {
+    users?: FollowUserResult[];
+}
+
 interface SearchUsersResponse {
     users?: FollowUserResult[];
 }
@@ -25,6 +29,7 @@ interface FollowedMentorCardState extends SearchMentorResult {
 }
 
 type FollowCategory = "mentor" | "user";
+type FollowView = "following" | "followers";
 
 const FollowsPage = () => {
     const router = useRouter();
@@ -33,9 +38,11 @@ const FollowsPage = () => {
 
     const [mentors, setMentors] = useState<FollowedMentorCardState[]>([]);
     const [users, setUsers] = useState<FollowUserResult[]>([]);
+    const [followers, setFollowers] = useState<FollowUserResult[]>([]);
     const [userSearchKeyword, setUserSearchKeyword] = useState("");
     const [userSearchResults, setUserSearchResults] = useState<FollowUserResult[]>([]);
     const [userSearchLoading, setUserSearchLoading] = useState(false);
+    const [activeView, setActiveView] = useState<FollowView>("following");
     const [activeCategory, setActiveCategory] = useState<FollowCategory>("mentor");
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
@@ -46,6 +53,7 @@ const FollowsPage = () => {
         if (!isLoggedIn) {
             setMentors([]);
             setUsers([]);
+            setFollowers([]);
             return;
         }
 
@@ -53,9 +61,10 @@ const FollowsPage = () => {
         setErrorMessage("");
 
         try {
-            const [mentorRes, userRes] = await Promise.all([
+            const [mentorRes, userRes, followerRes] = await Promise.all([
                 request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true),
                 request<FollowedUsersResponse>("/api/follow/users", "GET", true),
+                request<FollowersResponse>("/api/follow/followers", "GET", true),
             ]);
             setMentors(
                 Array.isArray(mentorRes.mentors)
@@ -66,6 +75,7 @@ const FollowsPage = () => {
                     : [],
             );
             setUsers(Array.isArray(userRes.users) ? userRes.users : []);
+            setFollowers(Array.isArray(followerRes.users) ? followerRes.users : []);
         }
         catch (err) {
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -126,6 +136,7 @@ const FollowsPage = () => {
                 return followed ? [{ ...targetUser, followed }, ...updatedUsers] : updatedUsers;
             });
             setUserSearchResults((currentUsers) => currentUsers.map(updateUser));
+            setFollowers((currentUsers) => currentUsers.map(updateUser));
         }
         catch (err) {
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -166,6 +177,44 @@ const FollowsPage = () => {
         void router.push(`/users/${userId}`);
     };
 
+    const renderUserCard = (user: FollowUserResult, keyPrefix: string) => (
+        <div
+            className="userCard"
+            key={`${keyPrefix}-${user.id}`}
+            role="button"
+            tabIndex={0}
+            aria-label={`进入${user.realName || user.username}用户主页`}
+            onClick={() => openUserProfile(user.id)}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openUserProfile(user.id);
+                }
+            }}
+        >
+            <div className="userAvatar" aria-hidden="true">
+                {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="" />
+                ) : (
+                    <span>{user.username.slice(0, 1).toUpperCase()}</span>
+                )}
+            </div>
+            <div className="userText">
+                <h4>{user.realName || user.username}</h4>
+                <p>{user.username} · {user.role}</p>
+                <p>{user.signature || "暂无签名"}</p>
+            </div>
+            <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
+                <FollowToggleButton
+                    className="followToggleButton"
+                    followed={user.followed}
+                    loading={actionUserId === user.id}
+                    onClick={() => void toggleUserFollow(user)}
+                />
+            </div>
+        </div>
+    );
+
     const followedUserIds = new Set(
         users.filter((user) => user.followed).map((user) => user.id),
     );
@@ -187,8 +236,29 @@ const FollowsPage = () => {
 
         return (
             <div className="followsPage">
-                <h2 className="pageTitle">我的关注</h2>
+                <div className="pageHeader">
+                    <h2 className="pageTitle">{activeView === "following" ? "我的关注" : "我的粉丝"}</h2>
+                    <div className="viewSwitch" aria-label="关注页面切换">
+                        <button
+                            className={activeView === "following" ? "viewSwitchButton viewSwitchButtonActive" : "viewSwitchButton"}
+                            type="button"
+                            onClick={() => setActiveView("following")}
+                        >
+                            我的关注
+                            <span>{mentors.filter((mentor) => mentor.followed).length + users.filter((user) => user.followed).length}</span>
+                        </button>
+                        <button
+                            className={activeView === "followers" ? "viewSwitchButton viewSwitchButtonActive" : "viewSwitchButton"}
+                            type="button"
+                            onClick={() => setActiveView("followers")}
+                        >
+                            我的粉丝
+                            <span>{followers.length}</span>
+                        </button>
+                    </div>
+                </div>
 
+            {activeView === "following" ? (
             <div className="content">
                 <aside className="sidebar" aria-label="关注筛选">
                     <button
@@ -283,43 +353,7 @@ const FollowsPage = () => {
 
                             {visibleUserSearchResults.length > 0 && (
                                 <div className="userList" aria-label="用户搜索结果">
-                                    {visibleUserSearchResults.map((user) => (
-                                        <div
-                                            className="userCard"
-                                            key={`search-${user.id}`}
-                                            role="button"
-                                            tabIndex={0}
-                                            aria-label={`进入${user.realName || user.username}用户主页`}
-                                            onClick={() => openUserProfile(user.id)}
-                                            onKeyDown={(event) => {
-                                                if (event.key === "Enter" || event.key === " ") {
-                                                    event.preventDefault();
-                                                    openUserProfile(user.id);
-                                                }
-                                            }}
-                                        >
-                                            <div className="userAvatar" aria-hidden="true">
-                                                {user.avatarUrl ? (
-                                                    <img src={user.avatarUrl} alt="" />
-                                                ) : (
-                                                    <span>{user.username.slice(0, 1).toUpperCase()}</span>
-                                                )}
-                                            </div>
-                                            <div className="userText">
-                                                <h4>{user.realName || user.username}</h4>
-                                                <p>{user.username} · {user.role}</p>
-                                                <p>{user.signature || "暂无签名"}</p>
-                                            </div>
-                                            <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
-                                                <FollowToggleButton
-                                                    className="followToggleButton"
-                                                    followed={user.followed}
-                                                    loading={actionUserId === user.id}
-                                                    onClick={() => void toggleUserFollow(user)}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {visibleUserSearchResults.map((user) => renderUserCard(user, "search"))}
                                 </div>
                             )}
                         </section>
@@ -334,43 +368,7 @@ const FollowsPage = () => {
                                 <p>暂无关注用户</p>
                             ) : (
                                 <div className="userList" aria-label="已关注用户">
-                                    {users.map((user) => (
-                                        <div
-                                            className="userCard"
-                                            key={`followed-${user.id}`}
-                                            role="button"
-                                            tabIndex={0}
-                                            aria-label={`进入${user.realName || user.username}用户主页`}
-                                            onClick={() => openUserProfile(user.id)}
-                                            onKeyDown={(event) => {
-                                                if (event.key === "Enter" || event.key === " ") {
-                                                    event.preventDefault();
-                                                    openUserProfile(user.id);
-                                                }
-                                            }}
-                                        >
-                                            <div className="userAvatar" aria-hidden="true">
-                                                {user.avatarUrl ? (
-                                                    <img src={user.avatarUrl} alt="" />
-                                                ) : (
-                                                    <span>{user.username.slice(0, 1).toUpperCase()}</span>
-                                                )}
-                                            </div>
-                                            <div className="userText">
-                                                <h4>{user.realName || user.username}</h4>
-                                                <p>{user.username} · {user.role}</p>
-                                                <p>{user.signature || "暂无签名"}</p>
-                                            </div>
-                                            <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
-                                                <FollowToggleButton
-                                                    className="followToggleButton"
-                                                    followed={user.followed}
-                                                    loading={actionUserId === user.id}
-                                                    onClick={() => void toggleUserFollow(user)}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {users.map((user) => renderUserCard(user, "followed"))}
                                 </div>
                             )}
                         </section>
@@ -378,6 +376,20 @@ const FollowsPage = () => {
                     )}
                 </main>
             </div>
+            ) : (
+                <main className="followersMain" aria-label="我的粉丝">
+                    {loading && <p>加载中...</p>}
+                    {errorMessage !== "" && <p style={{ color: "#c62828" }}>{errorMessage}</p>}
+
+                    {!loading && followers.length === 0 && errorMessage === "" ? (
+                        <p>暂无粉丝</p>
+                    ) : (
+                        <div className="userList" aria-label="关注自己的用户">
+                            {followers.map((user) => renderUserCard(user, "follower"))}
+                        </div>
+                    )}
+                </main>
+            )}
 
             <style jsx>{`
                 .followsPage {
@@ -387,8 +399,52 @@ const FollowsPage = () => {
                     max-width: 1040px;
                 }
 
+                .pageHeader {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                }
+
                 .pageTitle {
                     margin: 0;
+                }
+
+                .viewSwitch {
+                    position: relative;
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 4px;
+                    min-width: 260px;
+                    border: 1px solid #d0d7de;
+                    border-radius: 999px;
+                    background: #f6f8fa;
+                    padding: 4px;
+                }
+
+                .viewSwitchButton {
+                    display: inline-flex;
+                    min-height: 36px;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    border: 0;
+                    border-radius: 999px;
+                    background: transparent;
+                    color: #57606a;
+                    padding: 0 12px;
+                    font-weight: 800;
+                }
+
+                .viewSwitchButton span {
+                    color: inherit;
+                    font-size: 12px;
+                }
+
+                .viewSwitchButtonActive {
+                    background: #0969da;
+                    color: #fff;
+                    box-shadow: 0 3px 10px rgba(9, 105, 218, 0.22);
                 }
 
                 .content {
@@ -424,6 +480,10 @@ const FollowsPage = () => {
                 }
 
                 .main {
+                    min-width: 0;
+                }
+
+                .followersMain {
                     min-width: 0;
                 }
 
@@ -639,6 +699,16 @@ const FollowsPage = () => {
                 }
 
                 @media (max-width: 720px) {
+                    .pageHeader {
+                        align-items: stretch;
+                        flex-direction: column;
+                    }
+
+                    .viewSwitch {
+                        width: 100%;
+                        min-width: 0;
+                    }
+
                     .content {
                         grid-template-columns: 1fr;
                     }
