@@ -662,7 +662,16 @@ const SearchScreen = () => {
         }
         catch (err) {
             if (isNetworkErrorInstance(err)) {
-                setPrivateMentorMsg(String(err));
+                const rawMsg = String(err);
+                if (rawMsg.includes("Mentor already exists")) {
+                    setPrivateMentorMsg("该导师已在你的私有导师列表中，请勿重复添加");
+                }
+                else if (rawMsg.includes("Private mentor limit reached")) {
+                    setPrivateMentorMsg("私有导师数量已达上限（10位），请先删除部分私有导师后再添加");
+                }
+                else {
+                    setPrivateMentorMsg(rawMsg);
+                }
             }
             else {
                 setPrivateMentorMsg(FAILURE_PREFIX + String(err));
@@ -1515,53 +1524,63 @@ const SearchScreen = () => {
                 </div>
             )}
 
+            {mode === "mentor" && mentorResultFilter === "mine" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
+                    {!isLoggedIn ? (
+                        <span>仅登录用户才能添加私有导师</span>
+                    ) : (
+                        <>
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <input
+                                    type="text"
+                                    placeholder="导师中文名（可选）"
+                                    value={customMentorChineseName}
+                                    onChange={(e) => setCustomMentorChineseName(e.target.value)}
+                                    disabled={privateMentorSaving}
+                                    style={{ flex: 1 }}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="导师英文名（可选）"
+                                    value={customMentorEnglishName}
+                                    onChange={(e) => setCustomMentorEnglishName(e.target.value)}
+                                    disabled={privateMentorSaving}
+                                    style={{ flex: 1 }}
+                                />
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                    onClick={() => void addPrivateMentorInSearch()}
+                                    disabled={
+                                        privateMentorSaving ||
+                                        privateMentors.length >= 10 ||
+                                        (customMentorChineseName.trim() === "" && customMentorEnglishName.trim() === "")
+                                    }
+                                >
+                                    {privateMentorSaving ? "添加中..." : "添加私有导师"}
+                                </button>
+                            </div>
+                            {privateMentors.length >= 10 && (
+                                <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>私有导师数量已达上限（10位），请先删除部分私有导师后再添加。</p>
+                            )}
+                            {privateMentorMsg !== "" && (
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        fontSize: 13,
+                                        color: privateMentorMsg === "私有导师添加成功" ? undefined : "#cf222e",
+                                    }}
+                                >
+                                    {privateMentorMsg}
+                                </p>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+
             {mode === "mentor" && mentors.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {mentorResultFilter === "mine" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
-                            {!isLoggedIn ? (
-                                <span>仅登录用户才能添加私有导师</span>
-                            ) : (
-                                <>
-                                    <div style={{ display: "flex", gap: 8 }}>
-                                        <input
-                                            type="text"
-                                            placeholder="导师中文名（可选）"
-                                            value={customMentorChineseName}
-                                            onChange={(e) => setCustomMentorChineseName(e.target.value)}
-                                            disabled={privateMentorSaving}
-                                            style={{ flex: 1 }}
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="导师英文名（可选）"
-                                            value={customMentorEnglishName}
-                                            onChange={(e) => setCustomMentorEnglishName(e.target.value)}
-                                            disabled={privateMentorSaving}
-                                            style={{ flex: 1 }}
-                                        />
-                                    </div>
-                                    <div style={{ display: "flex", gap: 8 }}>
-                                        <button
-                                            onClick={() => void addPrivateMentorInSearch()}
-                                            disabled={
-                                                privateMentorSaving ||
-                                                privateMentors.length >= 10 ||
-                                                (customMentorChineseName.trim() === "" && customMentorEnglishName.trim() === "")
-                                            }
-                                        >
-                                            {privateMentorSaving ? "添加中..." : "添加私有导师"}
-                                        </button>
-                                    </div>
-                                    {privateMentors.length >= 10 && (
-                                        <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>私有导师数量已达上限（10位），请先删除部分私有导师后再添加。</p>
-                                    )}
-                                    {privateMentorMsg !== "" && <span>{privateMentorMsg}</span>}
-                                </>
-                            )}
-                        </div>
-                    )}
-
                     <div
                         style={{
                             display: "flex",
