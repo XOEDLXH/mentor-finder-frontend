@@ -607,11 +607,12 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("link", { name: "arxiv" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
         expect(screen.getByRole("link", { name: "pdf" })).toHaveAttribute("href", "https://arxiv.org/pdf/2401.00001");
         expect(screen.getByText("cs.CL")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "李四" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "张三" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /李四/ })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /张三/ })).toBeInTheDocument();
         expect(screen.getByText("摘要：")).toBeInTheDocument();
         expect(screen.getByText("本文介绍大语言模型在智能问答中的实践。").closest(".searchPaperAbstractContent")).not.toBeNull();
-        expect(screen.getByText("作者：").closest(".searchTimelineMetaRow")).not.toBeNull();
+        expect(screen.getByText("作者：").closest(".timelineMetaRow")).not.toBeNull();
+        expect(screen.getAllByAltText("清华导师").length).toBe(2);
         // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
     });
 
@@ -1069,7 +1070,7 @@ describe("SearchScreen", () => {
         expect(screen.getByText("赵云")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "赵云" })).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", { name: "李四" }));
+        fireEvent.click(screen.getByRole("button", { name: /李四/ }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(

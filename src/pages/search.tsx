@@ -1485,9 +1485,9 @@ const SearchScreen = () => {
                                 <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
                                     <LatexText text={paper.title} forceInlineMath />
                                 </h3>
-                                <div className="searchTimelineMetaRow">
-                                    <span className="searchTimelineMetaLabel">作者：</span>
-                                    <div className="searchTimelineMetaContent">
+                                <div className="timelineMetaRow">
+                                    <span className="timelineMetaLabel">作者：</span>
+                                    <div className="timelineMetaContent">
                                         {(() => {
                                             const names = (paper.author_names || "").split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
                                             const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
@@ -1507,6 +1507,11 @@ const SearchScreen = () => {
                                                                 onClick={() => searchMentorByName(name)}
                                                                 className="searchTimelineMentorButton"
                                                             >
+                                                                <img
+                                                                    src="/favicon_tsinghua.ico"
+                                                                    alt="清华导师"
+                                                                    className="searchTimelineMentorIcon"
+                                                                />
                                                                 {name}
                                                             </button>
                                                             {separator}
@@ -1524,9 +1529,9 @@ const SearchScreen = () => {
                                         })()}
                                     </div>
                                 </div>
-                                <div className="searchTimelineMetaRow">
-                                    <span className="searchTimelineMetaLabel">摘要：</span>
-                                    <div className="searchTimelineMetaContent searchPaperAbstractContent">
+                                <div className="timelineMetaRow">
+                                    <span className="timelineMetaLabel">摘要：</span>
+                                    <div className="timelineMetaContent timelineAbstractContent searchPaperAbstractContent">
                                         <LatexText text={paper.abstract || "暂无摘要"} />
                                     </div>
                                 </div>
@@ -1597,8 +1602,8 @@ const SearchScreen = () => {
 
                 .searchTimelinePaperLinks a:hover,
                 .searchTimelinePaperLinks a:focus-visible,
-                .searchTimelineMentorButton:hover,
-                .searchTimelineMentorButton:focus-visible {
+                :global(button.searchTimelineMentorButton:hover),
+                :global(button.searchTimelineMentorButton:focus-visible) {
                     color: rgb(45, 45, 45);
                     border-bottom-color: rgb(45, 45, 45);
                     outline: none;
@@ -1628,17 +1633,16 @@ const SearchScreen = () => {
                     white-space: nowrap;
                 }
 
-                .searchTimelineMetaRow {
-                    font-size: 14px;
-                    line-height: 1.6;
-                }
-
-                .searchTimelineMetaLabel,
-                .searchTimelineMetaContent {
+                :global(.timelineMetaRow) {
                     font-size: 14px;
                 }
 
-                .searchTimelineMentorButton {
+                :global(.timelineMetaLabel),
+                :global(.timelineMetaContent) {
+                    font-size: 14px;
+                }
+
+                :global(button.searchTimelineMentorButton) {
                     display: inline-flex;
                     align-items: center;
                     gap: 4px;
@@ -1654,6 +1658,14 @@ const SearchScreen = () => {
                     vertical-align: middle;
                     cursor: pointer;
                     font: inherit;
+                }
+
+                :global(img.searchTimelineMentorIcon) {
+                    width: 14px;
+                    height: 14px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
                 }
             `}</style>
         </div>
