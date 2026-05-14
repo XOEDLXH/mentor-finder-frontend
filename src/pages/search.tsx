@@ -1023,6 +1023,23 @@ const SearchScreen = () => {
             <h2>信息检索</h2>
 
             <div style={{ display: "flex", gap: 8 }}>
+                <input
+                    type="text"
+                    value={keyword}
+                    placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyDown={handleEnter}
+                    style={{ flex: 1 }}
+                />
+                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading}>
+                    清空
+                </button>
+                <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
+                    {loading ? "搜索中..." : "搜索"}
+                </button>
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
                 <button
                     onClick={() => switchMode("mentor")}
                     disabled={mode === "mentor"}
@@ -1074,23 +1091,6 @@ const SearchScreen = () => {
                     </button>
                 </div>
             )}
-
-            <div style={{ display: "flex", gap: 8 }}>
-                <input
-                    type="text"
-                    value={keyword}
-                    placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    onKeyDown={handleEnter}
-                    style={{ flex: 1 }}
-                />
-                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading}>
-                    清空
-                </button>
-                <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
-                    {loading ? "搜索中..." : "搜索"}
-                </button>
-            </div>
 
             {isAdmin && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
