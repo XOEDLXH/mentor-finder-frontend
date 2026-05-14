@@ -24,7 +24,6 @@ const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
 const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量，超过后显示“查看更多”按钮展开完整列表
 const SEARCH_VIEW_STATE_STORAGE_PREFIX = "search-view-state:";
 const INITIAL_HISTORY_ENTRY_KEY = "search-entry-initial";
-const SEARCH_DEBUG_ENABLED = true;
 
 interface PrivateMentorsResponse {
     mentors?: PrivateMentorResult[];
@@ -90,17 +89,8 @@ type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 let pendingSearchPopRestore:
     | {
         entryKey: string;
-        url: string;
     }
     | undefined;
-
-const logSearchHistoryDebug = (event: string, payload: Record<string, unknown>) => {
-    if (!SEARCH_DEBUG_ENABLED || typeof window === "undefined") {
-        return;
-    }
-
-    console.info(`[search-history] ${event}`, payload);
-};
 
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
@@ -201,7 +191,7 @@ const SearchScreen = () => {
     const expandedMentorIdsRef = useRef<Set<number>>(new Set());
     const navigationIntentRef = useRef<SearchNavigationIntent>("init");
     const hasLoadedRouteStateRef = useRef(false);
-    const pendingPushRestoreRef = useRef<{ targetEntryKey?: string; targetUrl?: string }>({});
+    const pendingPushRestoreRef = useRef<{ targetEntryKey?: string }>({});
     const blockAutoPersistRef = useRef(false);
 
     const resetResults = (clearExpandedMentors = true) => {
@@ -320,11 +310,6 @@ const SearchScreen = () => {
         }
 
         if (!force && blockAutoPersistRef.current) {
-            logSearchHistoryDebug("persist-skipped", {
-                entryKey,
-                currentUrl: window.location.href,
-                reason: "blocked",
-            });
             return;
         }
 
@@ -332,11 +317,6 @@ const SearchScreen = () => {
             scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
             expandedMentorIds: Array.from(expandedMentorIdsRef.current),
         };
-        logSearchHistoryDebug("persist", {
-            entryKey,
-            viewState: nextViewState,
-            currentUrl: window.location.href,
-        });
         writeHistoryViewState(entryKey, {
             scrollY: nextViewState.scrollY,
             expandedMentorIds: nextViewState.expandedMentorIds,
@@ -454,11 +434,6 @@ const SearchScreen = () => {
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
             const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
-            logSearchHistoryDebug("apply-push", {
-                targetEntryKey,
-                targetUrl: pendingPushRestoreRef.current.targetUrl,
-                state,
-            });
             setExpandedMentorIds(new Set());
             scheduleAfterPaint(() => {
                 scrollWindowTo(0);
@@ -466,17 +441,9 @@ const SearchScreen = () => {
                     scrollY: 0,
                     expandedMentorIds: [],
                 });
-                logSearchHistoryDebug("apply-push-write", {
-                    targetEntryKey,
-                    writtenScrollY: 0,
-                    writtenExpandedMentorIds: [],
-                });
                 scheduleAfterPaint(() => {
                     blockAutoPersistRef.current = false;
                     persistCurrentViewState(targetEntryKey, true);
-                    logSearchHistoryDebug("apply-push-unblock", {
-                        targetEntryKey,
-                    });
                 });
             });
             pendingPushRestoreRef.current = {};
@@ -489,27 +456,12 @@ const SearchScreen = () => {
             const restoredExpandedIds = state.mode === "mentor"
                 ? new Set(savedViewState?.expandedMentorIds ?? [])
                 : new Set<number>();
-            logSearchHistoryDebug("apply-pop", {
-                entryKey,
-                pendingSearchPopRestore,
-                state,
-                savedViewState,
-            });
             setExpandedMentorIds(restoredExpandedIds);
             scheduleAfterPaint(() => {
                 scrollWindowTo(savedViewState?.scrollY ?? 0);
-                logSearchHistoryDebug("apply-pop-scroll", {
-                    entryKey,
-                    restoredScrollY: savedViewState?.scrollY ?? 0,
-                });
                 scheduleAfterPaint(() => {
                     blockAutoPersistRef.current = false;
                     persistCurrentViewState(entryKey, true);
-                    logSearchHistoryDebug("apply-pop-unblock", {
-                        entryKey,
-                        restoredScrollY: savedViewState?.scrollY ?? 0,
-                        restoredExpandedMentorIds: savedViewState?.expandedMentorIds ?? [],
-                    });
                     pendingSearchPopRestore = undefined;
                 });
             });
@@ -597,12 +549,6 @@ const SearchScreen = () => {
         blockAutoPersistRef.current = true;
         navigationIntentRef.current = "push";
         const targetUrl = buildSearchUrl(nextState);
-        logSearchHistoryDebug("push-before", {
-            sourceEntryKey,
-            targetUrl,
-            currentState,
-            nextState,
-        });
         await router.push(
             targetUrl,
             undefined,
@@ -610,14 +556,7 @@ const SearchScreen = () => {
         );
         pendingPushRestoreRef.current = {
             targetEntryKey: getHistoryEntryKey(),
-            targetUrl,
         };
-        logSearchHistoryDebug("push-after", {
-            sourceEntryKey,
-            targetEntryKey: pendingPushRestoreRef.current.targetEntryKey,
-            targetUrl,
-            currentUrl: typeof window === "undefined" ? undefined : window.location.href,
-        });
 
         if (!areSearchStatesEqual(activeSearchStateRef.current, nextState)) {
             await loadSearchState(nextState, "push");
@@ -688,18 +627,11 @@ const SearchScreen = () => {
             return;
         }
 
-        const markPendingPopRestore = (entryKey: string, source: "beforePopState" | "popstate", targetUrl?: string) => {
+        const markPendingPopRestore = (entryKey: string) => {
             blockAutoPersistRef.current = true;
             pendingSearchPopRestore = {
                 entryKey,
-                url: targetUrl ?? window.location.href,
             };
-            logSearchHistoryDebug(`${source}-event`, {
-                entryKey,
-                currentUrl: window.location.href,
-                historyState: window.history.state,
-                pendingSearchPopRestore,
-            });
             navigationIntentRef.current = "pop";
         };
 
@@ -708,7 +640,7 @@ const SearchScreen = () => {
                 return;
             }
 
-            markPendingPopRestore(getHistoryEntryKey(), "popstate");
+            markPendingPopRestore(getHistoryEntryKey());
         };
 
         const hasBeforePopState = typeof router.beforePopState === "function";
@@ -718,10 +650,7 @@ const SearchScreen = () => {
                 const entryKey = typeof stateLike?.key === "string" && stateLike.key.trim() !== ""
                     ? stateLike.key
                     : getHistoryEntryKey();
-                const targetUrl = typeof stateLike?.as === "string"
-                    ? stateLike.as
-                    : (typeof stateLike?.url === "string" ? stateLike.url : window.location.href);
-                markPendingPopRestore(entryKey, "beforePopState", targetUrl);
+                markPendingPopRestore(entryKey);
                 return true;
             });
         }
@@ -826,14 +755,6 @@ const SearchScreen = () => {
         const nextIntent = pendingSearchPopRestore !== undefined
             ? "pop"
             : (hasLoadedRouteStateRef.current ? navigationIntentRef.current : "init");
-        logSearchHistoryDebug("route-effect", {
-            hasAnySearchParam,
-            nextRouteState,
-            nextIntent,
-            currentState: activeSearchStateRef.current,
-            pendingSearchPopRestore,
-            currentUrl: typeof window === "undefined" ? undefined : window.location.href,
-        });
 
         if (hasLoadedRouteStateRef.current && areSearchStatesEqual(nextRouteState, activeSearchStateRef.current)) {
             navigationIntentRef.current = "init";
