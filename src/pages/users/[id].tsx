@@ -145,7 +145,12 @@ const UserPublicProfilePage = () => {
                             <div className="profileText">
                                 <h1>{user.realName || user.username}</h1>
                                 <p>{user.signature || DEFAULT_SIGNATURE}</p>
-                                <span>{user.username} · {user.role}</span>
+                                {user.role === "mentor" && (
+                                    <span className="verifiedProfessorBadge">
+                                        <span className="verifiedProfessorIcon" aria-hidden="true" />
+                                        已认证教授
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -366,8 +371,7 @@ const UserPublicProfilePage = () => {
                     line-height: 1.05;
                 }
 
-                .profileText p,
-                .profileText span {
+                .profileText p {
                     display: block;
                     margin: 0;
                     color: rgba(255, 255, 255, 0.88);
@@ -377,6 +381,43 @@ const UserPublicProfilePage = () => {
                 .profileText p {
                     font-size: 17px;
                     font-weight: 700;
+                }
+
+                .verifiedProfessorBadge {
+                    display: inline-flex;
+                    width: fit-content;
+                    align-items: center;
+                    gap: 6px;
+                    margin-top: 10px;
+                    border: 1px solid rgba(255, 255, 255, 0.78);
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.16);
+                    color: #fff;
+                    padding: 5px 10px;
+                    font-size: 13px;
+                    font-weight: 800;
+                    line-height: 1.2;
+                }
+
+                .verifiedProfessorIcon {
+                    position: relative;
+                    width: 15px;
+                    height: 15px;
+                    flex: 0 0 auto;
+                    border-radius: 50%;
+                    background: #2da44e;
+                }
+
+                .verifiedProfessorIcon::after {
+                    position: absolute;
+                    top: 3px;
+                    left: 5px;
+                    width: 4px;
+                    height: 7px;
+                    border-right: 2px solid #fff;
+                    border-bottom: 2px solid #fff;
+                    content: "";
+                    transform: rotate(45deg);
                 }
 
                 :global(.followToggleButton) {
