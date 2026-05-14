@@ -1178,7 +1178,7 @@ const SearchScreen = () => {
                     清空
                 </button>
                 <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
-                    {loading ? "搜索中..." : "搜索"}
+                    搜索
                 </button>
             </div>
 

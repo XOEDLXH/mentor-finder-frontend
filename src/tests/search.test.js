@@ -146,7 +146,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -189,7 +189,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -229,7 +229,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -281,7 +281,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -425,7 +425,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -489,7 +489,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
@@ -541,7 +541,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "测试" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
@@ -600,7 +600,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "李四" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -659,7 +659,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "压缩" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "Compression Paper" });
 
@@ -705,7 +705,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "标题公式" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByText(/Compression/i);
 
@@ -751,7 +751,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "块公式" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "Block Formula Paper" });
 
@@ -794,7 +794,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "块标题公式" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByText(/Block/i);
 
@@ -999,7 +999,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "导师" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
@@ -1193,7 +1193,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "机器学习" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -1277,7 +1277,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
@@ -1366,7 +1366,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: longKeyword },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         const expectedSummary = `Showing 1 results for all: ${longKeyword}`;
         await waitFor(() => {
