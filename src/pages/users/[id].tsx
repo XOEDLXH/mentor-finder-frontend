@@ -150,14 +150,24 @@ const UserPublicProfilePage = () => {
                         </div>
 
                         {user.isSelf ? (
-                            <button
-                                className="settingsButton"
-                                type="button"
-                                onClick={() => void router.push("/profile-settings")}
-                            >
-                                <span className="settingsIcon" aria-hidden="true" />
-                                个人设置
-                            </button>
+                            <div className="selfActionGroup" aria-label="个人主页操作">
+                                <button
+                                    className="profileActionButton"
+                                    type="button"
+                                    onClick={() => void router.push("/profile")}
+                                >
+                                    <span className="editIcon" aria-hidden="true" />
+                                    编辑主页
+                                </button>
+                                <button
+                                    className="profileActionButton"
+                                    type="button"
+                                    onClick={() => void router.push("/profile-settings")}
+                                >
+                                    <span className="settingsIcon" aria-hidden="true" />
+                                    个人设置
+                                </button>
+                            </div>
                         ) : (
                             <FollowToggleButton
                                 className="followToggleButton"
@@ -213,7 +223,7 @@ const UserPublicProfilePage = () => {
                 }
 
                 .backButton,
-                .settingsButton {
+                .profileActionButton {
                     align-self: flex-start;
                     border: 1px solid #222;
                     border-radius: 6px;
@@ -223,10 +233,51 @@ const UserPublicProfilePage = () => {
                     font-weight: 700;
                 }
 
-                .settingsButton {
+                .selfActionGroup {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
+                }
+
+                .profileActionButton {
                     display: inline-flex;
                     align-items: center;
                     gap: 8px;
+                }
+
+                .editIcon {
+                    position: relative;
+                    width: 16px;
+                    height: 16px;
+                    transform: rotate(-35deg);
+                }
+
+                .editIcon::before,
+                .editIcon::after {
+                    position: absolute;
+                    content: "";
+                    background: currentColor;
+                }
+
+                .editIcon::before {
+                    top: 2px;
+                    left: 6px;
+                    width: 4px;
+                    height: 13px;
+                    border-radius: 2px 2px 1px 1px;
+                }
+
+                .editIcon::after {
+                    top: 14px;
+                    left: 5px;
+                    width: 0;
+                    height: 0;
+                    border-right: 3px solid transparent;
+                    border-left: 3px solid transparent;
+                    border-top: 5px solid currentColor;
+                    background: transparent;
                 }
 
                 .settingsIcon {
@@ -411,6 +462,10 @@ const UserPublicProfilePage = () => {
                     .profileHero {
                         align-items: flex-start;
                         flex-direction: column;
+                    }
+
+                    .selfActionGroup {
+                        justify-content: flex-start;
                     }
 
                     .detailGrid {
