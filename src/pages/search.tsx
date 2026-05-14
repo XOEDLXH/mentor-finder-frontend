@@ -1386,6 +1386,8 @@ const SearchScreen = () => {
                             loading={loading}
                             showPrevious={false}
                             nextLabel="Next"
+                            centered
+                            controlHeight={33.77}
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1494,6 +1496,8 @@ const SearchScreen = () => {
                         loading={loading}
                         showPrevious={false}
                         nextLabel="Next"
+                        centered
+                        controlHeight={33.77}
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
@@ -1517,6 +1521,8 @@ const SearchScreen = () => {
                             loading={loading}
                             showPrevious={false}
                             nextLabel="Next"
+                            centered
+                            controlHeight={33.77}
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1631,6 +1637,8 @@ const SearchScreen = () => {
                         loading={loading}
                         showPrevious={false}
                         nextLabel="Next"
+                        centered
+                        controlHeight={33.77}
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>

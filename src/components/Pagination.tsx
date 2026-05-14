@@ -7,6 +7,8 @@ interface PaginationProps {
     onPageChange: (page: number) => void;
     showPrevious?: boolean;
     nextLabel?: string;
+    centered?: boolean;
+    controlHeight?: number;
 }
 
 const Pagination = ({
@@ -16,10 +18,27 @@ const Pagination = ({
     onPageChange,
     showPrevious = true,
     nextLabel = "下一页",
+    centered = false,
+    controlHeight,
 }: PaginationProps) => {
     const [jumpInput, setJumpInput] = useState("");
 
     const safeTotal = Math.max(totalPages, 1);
+    const controlStyle = controlHeight === undefined
+        ? undefined
+        : {
+            height: controlHeight,
+            boxSizing: "border-box" as const,
+        };
+    const buttonStyle = controlHeight === undefined
+        ? undefined
+        : {
+            ...controlStyle,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 12px",
+        };
 
     const pageNumbers = useMemo(() => {
         const pages: number[] = [];
@@ -46,11 +65,21 @@ const Pagination = ({
     };
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: centered ? "center" : undefined,
+                gap: 6,
+                flexWrap: "wrap",
+                width: centered ? "100%" : undefined,
+            }}
+        >
             {showPrevious && (
                 <button
                     onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                     disabled={loading || currentPage <= 1}
+                    style={buttonStyle}
                 >
                     上一页
                 </button>
@@ -62,8 +91,11 @@ const Pagination = ({
                     onClick={() => onPageChange(num)}
                     disabled={loading || num === currentPage}
                     style={{
+                        ...buttonStyle,
                         fontWeight: num === currentPage ? 700 : 400,
-                        minWidth: 32,
+                        width: controlHeight ?? 32,
+                        minWidth: controlHeight ?? 32,
+                        padding: 0,
                     }}
                 >
                     {num}
@@ -73,6 +105,7 @@ const Pagination = ({
             <button
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={loading || totalPages === 0 || currentPage >= safeTotal}
+                style={buttonStyle}
             >
                 {nextLabel}
             </button>
@@ -87,8 +120,13 @@ const Pagination = ({
                 className="paginationJumpInput"
                 min={1}
                 max={safeTotal}
+                style={controlStyle}
             />
-            <button onClick={handleJump} disabled={loading || jumpInput.trim() === ""}>
+            <button
+                onClick={handleJump}
+                disabled={loading || jumpInput.trim() === ""}
+                style={buttonStyle}
+            >
                 跳转
             </button>
         </div>
