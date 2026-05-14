@@ -841,7 +841,7 @@ const SearchScreen = () => {
                         height: 25,
                         border: "1px solid #d0d7de",
                         borderRadius: 10,
-                        background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
+                        background: "rgba(246, 248, 250, 0.96)",
                         boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 2px rgba(15, 23, 42, 0.04)",
                         overflow: "hidden",
                     }}
