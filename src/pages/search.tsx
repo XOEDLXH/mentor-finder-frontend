@@ -854,6 +854,10 @@ const SearchScreen = () => {
                 next.add(mentorId);
             }
             expandedMentorIdsRef.current = next;
+            writeHistoryViewState(getHistoryEntryKey(), {
+                scrollY: typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
+                expandedMentorIds: Array.from(next),
+            });
             return next;
         });
     };
