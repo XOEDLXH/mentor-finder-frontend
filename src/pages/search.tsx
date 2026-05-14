@@ -128,6 +128,7 @@ const SearchScreen = () => {
     const [matchMode, setMatchMode] = useState<SearchMatchMode>("fuzzy");
     const [paperSortMode, setPaperSortMode] = useState<SearchPaperSortMode>("default");
     const [keyword, setKeyword] = useState("");
+    const [appliedKeyword, setAppliedKeyword] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -345,11 +346,11 @@ const SearchScreen = () => {
     const mentorResultTotalMineCount = privateMentors.length;
     const thirdSegmentOptions = mode === "paper" ? PAPER_SORT_OPTIONS : MENTOR_FILTER_OPTIONS;
     const thirdSegmentValue = mode === "paper" ? paperSortMode : mentorResultFilter;
-    const trimmedKeyword = keyword.trim();
-    const isEmptySearch = trimmedKeyword === "";
+    const trimmedAppliedKeyword = appliedKeyword.trim();
+    const isEmptySearch = trimmedAppliedKeyword === "";
     const searchHeadingText = isEmptySearch
         ? `Search in ${totalResults} entrys:`
-        : `Showing ${totalResults} results for all: ${trimmedKeyword}`;
+        : `Showing ${totalResults} results for all: ${trimmedAppliedKeyword}`;
 
     const search = async ({
         keyword: overrideKeyword,
@@ -397,6 +398,7 @@ const SearchScreen = () => {
                     isLoggedIn,
                 );
                 const mentorItems = Array.isArray(res.mentors) ? res.mentors : [];
+                setAppliedKeyword(trimmedKeyword);
                 setMentors(mentorItems);
                 setPapers([]);
                 applyPagination(res, mentorItems.length, requestedPage);
@@ -411,12 +413,14 @@ const SearchScreen = () => {
                     isLoggedIn,
                 );
                 const paperItems = Array.isArray(res.papers) ? res.papers : [];
+                setAppliedKeyword(trimmedKeyword);
                 setPapers(paperItems);
                 setMentors([]);
                 applyPagination(res, paperItems.length, requestedPage);
             }
         }
         catch (err) {
+            setAppliedKeyword(trimmedKeyword);
             resetResults();
             setErrorMessage(FAILURE_PREFIX + String(err));
         }
