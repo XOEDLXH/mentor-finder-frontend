@@ -442,6 +442,7 @@ describe("SearchScreen", () => {
         expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+        expect(document.querySelectorAll('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).toHaveLength(2);
     });
 
     it("searches papers exactly when clicking mentor related paper title", async () => {
@@ -494,6 +495,8 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         });
+
+        expect(document.querySelector('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).not.toBeNull();
 
         fireEvent.click(screen.getByRole("button", { name: "机器学习方法研究" }));
 

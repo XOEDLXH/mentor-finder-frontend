@@ -1453,23 +1453,20 @@ const SearchScreen = () => {
                                 查看导师主页
                             </button>
                             <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
-                            <ul style={{ margin: 0, paddingLeft: 20, fontSize: "14px" }}>
+                            <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                                 {visiblePaperTitles.map((title) => (
                                     <li key={title}>
                                         <button
                                             type="button"
                                             onClick={() => searchPaperByTitle(title)}
-                                            style={{
-                                                border: "none",
-                                                background: "transparent",
-                                                padding: 0,
-                                                color: "#0070f3",
-                                                textDecoration: "underline",
-                                                cursor: "pointer",
-                                                font: "inherit",
-                                                textAlign: "left",
-                                            }}
+                                            className="searchMentorPaperLinkButton"
                                         >
+                                            <img
+                                                src="/arxiv.ico"
+                                                alt=""
+                                                aria-hidden="true"
+                                                className="searchMentorPaperLinkIcon"
+                                            />
                                             {title}
                                         </button>
                                     </li>
@@ -1790,12 +1787,45 @@ const SearchScreen = () => {
                     font: inherit;
                 }
 
+                :global(button.searchMentorPaperLinkButton) {
+                    display: inline-flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    border: none;
+                    background: transparent;
+                    padding: 0;
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    transition: color 0.16s ease, border-color 0.16s ease;
+                    border-bottom: 1px dashed transparent;
+                    cursor: pointer;
+                    font: inherit;
+                    text-align: left;
+                    white-space: normal;
+                }
+
+                :global(button.searchMentorPaperLinkButton:hover),
+                :global(button.searchMentorPaperLinkButton:focus-visible) {
+                    color: rgb(45, 45, 45);
+                    border-bottom-color: rgb(45, 45, 45);
+                    outline: none;
+                }
+
                 :global(img.searchTimelineMentorIcon) {
                     width: 14px;
                     height: 14px;
                     object-fit: contain;
                     display: block;
                     flex: 0 0 auto;
+                }
+
+                :global(img.searchMentorPaperLinkIcon) {
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
+                    margin-top: 1px;
                 }
 
                 @media (max-width: 820px) {
