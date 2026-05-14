@@ -381,7 +381,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         await waitFor(() => {
@@ -410,7 +410,7 @@ describe("SearchScreen", () => {
             page: "0",
         };
 
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         await waitFor(() => {
@@ -607,7 +607,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -658,7 +658,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
@@ -1065,7 +1065,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -1133,7 +1133,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -1166,7 +1166,22 @@ describe("SearchScreen", () => {
             };
         });
 
-        renderWithStore();
+        view.rerender(
+            <Provider store={configureStore({
+                reducer: {
+                    auth: authReducer,
+                },
+                preloadedState: {
+                    auth: {
+                        name: "student",
+                        token: "mock-token",
+                        role: "student",
+                    },
+                },
+            })}>
+                <SearchScreen />
+            </Provider>,
+        );
         await waitForMineRequest();
 
         await waitFor(() => {
@@ -1350,7 +1365,7 @@ describe("SearchScreen", () => {
                 mode: "mentor",
                 search_mode: "fuzzy",
             };
-            window.history.replaceState({ key: "test-history-1" }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
+            window.history.replaceState({ key: "test-history-0" }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
             window.dispatchEvent(new PopStateEvent("popstate"));
             view.rerender(
                 <Provider store={configureStore({

@@ -535,6 +535,7 @@ const SearchScreen = () => {
         resetAdminEditorState();
 
         void navigateToSearchState(resolveSearchState({
+            keyword,
             mode: nextMode,
             page: 1,
             visibility: "all",
@@ -701,6 +702,7 @@ const SearchScreen = () => {
         }
 
         void navigateToSearchState(resolveSearchState({
+            keyword,
             sortMode: nextSortMode,
             page: 1,
         }));
@@ -717,6 +719,7 @@ const SearchScreen = () => {
         }
 
         void navigateToSearchState(resolveSearchState({
+            keyword,
             searchMode: nextMatchMode,
             page: 1,
         }));
@@ -1381,6 +1384,7 @@ const SearchScreen = () => {
                         }
 
                         void navigateToSearchState(resolveSearchState({
+                            keyword,
                             visibility: nextVisibility,
                             page: 1,
                         }));
@@ -1628,7 +1632,7 @@ const SearchScreen = () => {
                             <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
                                 {mentor.Chinese_name}
                                 {privateMentorIdSet.has(mentor.id) && (
-                                    <span style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
+                                    <span aria-hidden="true" style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
                                 )}
                             </h3>
                             {mentor.English_name && (
