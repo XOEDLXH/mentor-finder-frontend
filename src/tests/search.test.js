@@ -1472,6 +1472,12 @@ describe("SearchScreen", () => {
             expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
         });
 
+        const expandedSourceEntryKey = window.history.state.key;
+        const expandedSourceViewState = JSON.parse(
+            window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
+        );
+        expect(expandedSourceViewState.expandedMentorIds).toEqual([88]);
+
         Object.defineProperty(window, "scrollY", {
             value: 460,
             writable: true,
@@ -1493,7 +1499,6 @@ describe("SearchScreen", () => {
         const targetViewState = JSON.parse(window.sessionStorage.getItem(`search-view-state:${targetEntryKey}`));
 
         expect(sourceViewState.scrollY).toBe(460);
-        expect(sourceViewState.expandedMentorIds).toEqual([88]);
         expect(targetViewState.scrollY).toBe(0);
         expect(targetViewState.expandedMentorIds).toEqual([]);
     });
