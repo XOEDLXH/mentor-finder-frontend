@@ -147,8 +147,8 @@ const SearchScreen = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalResults, setTotalResults] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
-    const [hasPreviousPage, setHasPreviousPage] = useState(false);
-    const [hasNextPage, setHasNextPage] = useState(false);
+    const [_hasPreviousPage, setHasPreviousPage] = useState(false);
+    const [_hasNextPage, setHasNextPage] = useState(false);
     const [adminSaving, setAdminSaving] = useState(false);
     const [adminMessage, setAdminMessage] = useState("");
     const [mentorDeleteTarget, setMentorDeleteTarget] = useState<MentorDeleteTarget | undefined>(undefined);
@@ -243,7 +243,7 @@ const SearchScreen = () => {
             return INITIAL_HISTORY_ENTRY_KEY;
         }
 
-        const historyState = window.history.state as { key?: unknown } | null;
+        const historyState = window.history.state as { key?: unknown } | undefined;
         const historyKey = historyState?.key;
         if (typeof historyKey === "string" && historyKey.trim() !== "") {
             return historyKey;
@@ -259,7 +259,7 @@ const SearchScreen = () => {
 
         try {
             const rawValue = window.sessionStorage.getItem(`${SEARCH_VIEW_STATE_STORAGE_PREFIX}${entryKey}`);
-            if (rawValue === null) {
+            if (typeof rawValue !== "string") {
                 return undefined;
             }
 
