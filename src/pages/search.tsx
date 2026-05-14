@@ -101,8 +101,8 @@ const SEARCH_MODE_OPTIONS: SegmentedOption<SearchMode>[] = [
 ];
 
 const MATCH_MODE_OPTIONS: SegmentedOption<SearchMatchMode>[] = [
-    { label: "精确", value: "exact" },
     { label: "模糊", value: "fuzzy" },
+    { label: "精确", value: "exact" },
 ];
 
 const PAPER_SORT_OPTIONS: SegmentedOption<SearchPaperSortMode>[] = [
@@ -125,7 +125,7 @@ const SearchScreen = () => {
     const isAdmin = authRole === "admin";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
-    const [matchMode, setMatchMode] = useState<SearchMatchMode>("exact");
+    const [matchMode, setMatchMode] = useState<SearchMatchMode>("fuzzy");
     const [paperSortMode, setPaperSortMode] = useState<SearchPaperSortMode>("default");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(false);
