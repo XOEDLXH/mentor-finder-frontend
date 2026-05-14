@@ -86,13 +86,22 @@ const Pagination = ({
             }}
         >
             {showPrevious && (
-                <button
-                    onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                    disabled={loading || currentPage <= 1}
-                    style={buttonStyle}
-                >
-                    上一页
-                </button>
+                <>
+                    <button
+                        onClick={() => onPageChange(1)}
+                        disabled={loading || currentPage <= 1}
+                        style={buttonStyle}
+                    >
+                        首页
+                    </button>
+                    <button
+                        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                        disabled={loading || currentPage <= 1}
+                        style={buttonStyle}
+                    >
+                        上一页
+                    </button>
+                </>
             )}
 
             {pageNumbers.map((num) => (
@@ -132,6 +141,14 @@ const Pagination = ({
                 style={buttonStyle}
             >
                 {nextLabel}
+            </button>
+
+            <button
+                onClick={() => onPageChange(safeTotal)}
+                disabled={loading || totalPages === 0 || currentPage >= safeTotal}
+                style={buttonStyle}
+            >
+                尾页
             </button>
 
             <input
