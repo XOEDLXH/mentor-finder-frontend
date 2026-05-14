@@ -5,9 +5,18 @@ interface PaginationProps {
     totalPages: number;
     loading: boolean;
     onPageChange: (page: number) => void;
+    showPrevious?: boolean;
+    nextLabel?: string;
 }
 
-const Pagination = ({ currentPage, totalPages, loading, onPageChange }: PaginationProps) => {
+const Pagination = ({
+    currentPage,
+    totalPages,
+    loading,
+    onPageChange,
+    showPrevious = true,
+    nextLabel = "下一页",
+}: PaginationProps) => {
     const [jumpInput, setJumpInput] = useState("");
 
     const safeTotal = Math.max(totalPages, 1);
@@ -38,12 +47,14 @@ const Pagination = ({ currentPage, totalPages, loading, onPageChange }: Paginati
 
     return (
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <button
-                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                disabled={loading || currentPage <= 1}
-            >
-                上一页
-            </button>
+            {showPrevious && (
+                <button
+                    onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                    disabled={loading || currentPage <= 1}
+                >
+                    上一页
+                </button>
+            )}
 
             {pageNumbers.map((num) => (
                 <button
@@ -63,7 +74,7 @@ const Pagination = ({ currentPage, totalPages, loading, onPageChange }: Paginati
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={loading || totalPages === 0 || currentPage >= safeTotal}
             >
-                下一页
+                {nextLabel}
             </button>
 
             <input

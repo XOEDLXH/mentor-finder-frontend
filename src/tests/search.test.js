@@ -1284,7 +1284,7 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "下一页" })[0]);
+        fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(

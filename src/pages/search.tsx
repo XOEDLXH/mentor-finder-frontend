@@ -1377,8 +1377,6 @@ const SearchScreen = () => {
                             justifyContent: "space-between",
                             gap: 8,
                             padding: 12,
-                            border: "1px solid #ccc",
-                            borderRadius: 6,
                             flexWrap: "wrap",
                         }}
                     >
@@ -1386,6 +1384,8 @@ const SearchScreen = () => {
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
+                            showPrevious={false}
+                            nextLabel="Next"
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1492,6 +1492,8 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
+                        showPrevious={false}
+                        nextLabel="Next"
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
@@ -1506,8 +1508,6 @@ const SearchScreen = () => {
                             justifyContent: "space-between",
                             gap: 8,
                             padding: 12,
-                            border: "1px solid #ccc",
-                            borderRadius: 6,
                             flexWrap: "wrap",
                         }}
                     >
@@ -1515,6 +1515,8 @@ const SearchScreen = () => {
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
+                            showPrevious={false}
+                            nextLabel="Next"
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1627,6 +1629,8 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
+                        showPrevious={false}
+                        nextLabel="Next"
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
