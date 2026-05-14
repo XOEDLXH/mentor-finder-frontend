@@ -71,6 +71,11 @@ interface PaperDeleteTarget {
     mentorNames: string[];
 }
 
+interface SegmentedOption<TValue extends string> {
+    label: string;
+    value: TValue;
+}
+
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
         return "";
@@ -90,6 +95,28 @@ const parseTimelineLikeSubjects = (subjects?: string) => {
         .filter((subject) => subject !== "");
 };
 
+const SEARCH_MODE_OPTIONS: SegmentedOption<SearchMode>[] = [
+    { label: "搜人", value: "mentor" },
+    { label: "搜论文", value: "paper" },
+];
+
+const MATCH_MODE_OPTIONS: SegmentedOption<SearchMatchMode>[] = [
+    { label: "模糊", value: "fuzzy" },
+    { label: "精确", value: "exact" },
+];
+
+const PAPER_SORT_OPTIONS: SegmentedOption<SearchPaperSortMode>[] = [
+    { label: "默认", value: "default" },
+    { label: "最早", value: "early" },
+    { label: "最晚", value: "late" },
+];
+
+const MENTOR_FILTER_OPTIONS: SegmentedOption<MentorResultFilter>[] = [
+    { label: "全部", value: "all" },
+    { label: "私有", value: "mine" },
+    { label: "公共", value: "public" },
+];
+
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -98,9 +125,10 @@ const SearchScreen = () => {
     const isAdmin = authRole === "admin";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
-    const [matchMode, setMatchMode] = useState<SearchMatchMode>("exact");
+    const [matchMode, setMatchMode] = useState<SearchMatchMode>("fuzzy");
     const [paperSortMode, setPaperSortMode] = useState<SearchPaperSortMode>("default");
     const [keyword, setKeyword] = useState("");
+    const [appliedKeyword, setAppliedKeyword] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -316,6 +344,13 @@ const SearchScreen = () => {
     }, [privateMentors]);
 
     const mentorResultTotalMineCount = privateMentors.length;
+    const thirdSegmentOptions = mode === "paper" ? PAPER_SORT_OPTIONS : MENTOR_FILTER_OPTIONS;
+    const thirdSegmentValue = mode === "paper" ? paperSortMode : mentorResultFilter;
+    const trimmedAppliedKeyword = appliedKeyword.trim();
+    const isEmptySearch = trimmedAppliedKeyword === "";
+    const searchHeadingText = isEmptySearch
+        ? `Search in ${totalResults} entrys:`
+        : `Showing ${totalResults} results for all: ${trimmedAppliedKeyword}`;
 
     const search = async ({
         keyword: overrideKeyword,
@@ -363,6 +398,7 @@ const SearchScreen = () => {
                     isLoggedIn,
                 );
                 const mentorItems = Array.isArray(res.mentors) ? res.mentors : [];
+                setAppliedKeyword(trimmedKeyword);
                 setMentors(mentorItems);
                 setPapers([]);
                 applyPagination(res, mentorItems.length, requestedPage);
@@ -377,12 +413,14 @@ const SearchScreen = () => {
                     isLoggedIn,
                 );
                 const paperItems = Array.isArray(res.papers) ? res.papers : [];
+                setAppliedKeyword(trimmedKeyword);
                 setPapers(paperItems);
                 setMentors([]);
                 applyPagination(res, paperItems.length, requestedPage);
             }
         }
         catch (err) {
+            setAppliedKeyword(trimmedKeyword);
             resetResults();
             setErrorMessage(FAILURE_PREFIX + String(err));
         }
@@ -780,8 +818,103 @@ const SearchScreen = () => {
         setAdminMessage("");
     };
 
+    const renderSegmentedControl = <TValue extends string>(
+        label: string,
+        options: SegmentedOption<TValue>[],
+        activeValue: TValue,
+        onSelect: (value: TValue) => void,
+    ) => {
+        const activeIndex = Math.max(0, options.findIndex((option) => option.value === activeValue));
+        const groupFlex = options.length;
+        const groupMinWidth = options.length === 2 ? 180 : 270;
+
+        return (
+            <div
+                className="searchSegmentGroup"
+                role="group"
+                aria-label={label}
+                style={{
+                    minWidth: groupMinWidth,
+                    flex: `${groupFlex} 0 0`,
+                    flexShrink: 0,
+                }}
+            >
+                <div
+                    className="searchSegmentTrack"
+                    style={{
+                        position: "relative",
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
+                        alignItems: "stretch",
+                        width: "100%",
+                        height: 25,
+                        border: "1px solid #d0d7de",
+                        borderRadius: 10,
+                        background: "rgba(246, 248, 250, 0.96)",
+                        boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 2px rgba(15, 23, 42, 0.04)",
+                        overflow: "hidden",
+                    }}
+                >
+                    <span
+                        className="searchSegmentThumb"
+                        aria-hidden="true"
+                        style={{
+                            position: "absolute",
+                            top: 1,
+                            bottom: 1,
+                            left: 1,
+                            width: `calc((100% - 2px) / ${options.length})`,
+                            borderRadius: 9,
+                            background: "rgb(8, 109, 177)",
+                            border: "1px solid rgb(8, 109, 177)",
+                            boxShadow: "0 10px 24px rgba(15, 23, 42, 0.18)",
+                            transform: `translateX(${activeIndex * 100}%)`,
+                            transition: "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
+                            willChange: "transform",
+                        }}
+                    />
+                    {options.map((option) => {
+                        const isActive = option.value === activeValue;
+
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                className={`searchSegmentButton${isActive ? " searchSegmentButtonActive" : ""}`}
+                                aria-pressed={isActive}
+                                onClick={() => onSelect(option.value)}
+                                style={{
+                                    position: "relative",
+                                    zIndex: 1,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    minWidth: 0,
+                                    minHeight: 25,
+                                    border: "none",
+                                    borderRadius: 10,
+                                    background: "transparent",
+                                    boxShadow: "none",
+                                    color: isActive ? "#ffffff" : "#59636e",
+                                    fontSize: 14,
+                                    fontWeight: isActive ? 700 : 600,
+                                    padding: "0 14px",
+                                    appearance: "none",
+                                    WebkitAppearance: "none",
+                                    transition: "color 180ms ease",
+                                }}
+                            >
+                                <span className="searchSegmentButtonLabel">{option.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto" }}>
             {mentorDeleteTarget !== undefined && (
                 <div
                     aria-label="删除导师确认弹窗遮罩"
@@ -1020,67 +1153,17 @@ const SearchScreen = () => {
                     </div>
                 </div>
             )}
-            <h2>信息检索</h2>
-            <p>输入关键词，按导师姓名或论文相关信息进行搜索。</p>
-
-            <div>
-                <button onClick={() => router.push("/")}>
-                    返回主页
-                </button>
-            </div>
-
-            <div style={{ display: "flex", gap: 8 }}>
-                <button
-                    onClick={() => switchMode("mentor")}
-                    disabled={mode === "mentor"}
-                >
-                    搜人
-                </button>
-                <button
-                    onClick={() => switchMode("paper")}
-                    disabled={mode === "paper"}
-                >
-                    搜论文
-                </button>
-            </div>
-
-            <div style={{ display: "flex", gap: 8 }}>
-                <button
-                    onClick={() => changeMatchMode("exact")}
-                    disabled={matchMode === "exact"}
-                >
-                    精确搜索
-                </button>
-                <button
-                    onClick={() => changeMatchMode("fuzzy")}
-                    disabled={matchMode === "fuzzy"}
-                >
-                    模糊搜索
-                </button>
-            </div>
-
-            {mode === "paper" && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                        onClick={() => changePaperSortMode("default")}
-                        disabled={paperSortMode === "default"}
-                    >
-                        默认排序
-                    </button>
-                    <button
-                        onClick={() => changePaperSortMode("early")}
-                        disabled={paperSortMode === "early"}
-                    >
-                        发表时间从早到晚
-                    </button>
-                    <button
-                        onClick={() => changePaperSortMode("late")}
-                        disabled={paperSortMode === "late"}
-                    >
-                        发表时间从晚到早
-                    </button>
-                </div>
-            )}
+            <h2
+                title={searchHeadingText}
+                style={isEmptySearch ? undefined : {
+                    maxWidth: 654,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                }}
+            >
+                {searchHeadingText}
+            </h2>
 
             <div style={{ display: "flex", gap: 8 }}>
                 <input
@@ -1095,8 +1178,26 @@ const SearchScreen = () => {
                     清空
                 </button>
                 <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
-                    {loading ? "搜索中..." : "搜索"}
+                    搜索
                 </button>
+            </div>
+
+            <div className="searchSegmentRow" aria-label="搜索选项分段控件">
+                {renderSegmentedControl("搜索类型", SEARCH_MODE_OPTIONS, mode, switchMode)}
+                {renderSegmentedControl("匹配方式", MATCH_MODE_OPTIONS, matchMode, changeMatchMode)}
+                {renderSegmentedControl(
+                    mode === "paper" ? "论文排序" : "导师筛选",
+                    thirdSegmentOptions,
+                    thirdSegmentValue,
+                    (value) => {
+                        if (mode === "paper") {
+                            changePaperSortMode(value as SearchPaperSortMode);
+                            return;
+                        }
+
+                        setMentorResultFilter(value as MentorResultFilter);
+                    },
+                )}
             </div>
 
             {isAdmin && (
@@ -1224,27 +1325,6 @@ const SearchScreen = () => {
 
             {mode === "mentor" && mentors.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button
-                            onClick={() => setMentorResultFilter("all")}
-                            disabled={mentorResultFilter === "all"}
-                        >
-                            全部导师（{allMentorsTotal}）
-                        </button>
-                        <button
-                            onClick={() => setMentorResultFilter("mine")}
-                            disabled={mentorResultFilter === "mine"}
-                        >
-                            仅我的私有导师（{mentorResultTotalMineCount}）
-                        </button>
-                        <button
-                            onClick={() => setMentorResultFilter("public")}
-                            disabled={mentorResultFilter === "public"}
-                        >
-                            仅公共导师（{Math.max(0, allMentorsTotal - mentorResultTotalMineCount)}）
-                        </button>
-                    </div>
-
                     {mentorResultFilter === "mine" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
                             {!isLoggedIn ? (
@@ -1297,16 +1377,19 @@ const SearchScreen = () => {
                             justifyContent: "space-between",
                             gap: 8,
                             padding: 12,
-                            border: "1px solid #ccc",
-                            borderRadius: 6,
                             flexWrap: "wrap",
                         }}
                     >
-                        <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
                         <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
+                            showPrevious={false}
+                            nextLabel="Next"
+                            centered
+                            controlHeight={33.77}
+                            jumpInputWidth={120}
+                            activePageHighlightColor="rgb(8, 109, 177)"
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1413,6 +1496,12 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
+                        showPrevious={false}
+                        nextLabel="Next"
+                        centered
+                        controlHeight={33.77}
+                        jumpInputWidth={120}
+                        activePageHighlightColor="rgb(8, 109, 177)"
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
@@ -1427,16 +1516,19 @@ const SearchScreen = () => {
                             justifyContent: "space-between",
                             gap: 8,
                             padding: 12,
-                            border: "1px solid #ccc",
-                            borderRadius: 6,
                             flexWrap: "wrap",
                         }}
                     >
-                        <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
                         <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
+                            showPrevious={false}
+                            nextLabel="Next"
+                            centered
+                            controlHeight={33.77}
+                            jumpInputWidth={120}
+                            activePageHighlightColor="rgb(8, 109, 177)"
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1549,6 +1641,12 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
+                        showPrevious={false}
+                        nextLabel="Next"
+                        centered
+                        controlHeight={33.77}
+                        jumpInputWidth={120}
+                        activePageHighlightColor="rgb(8, 109, 177)"
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
@@ -1567,6 +1665,37 @@ const SearchScreen = () => {
             )}
 
             <style jsx>{`
+                .searchSegmentRow {
+                    display: flex;
+                    gap: 12px;
+                    width: 100%;
+                    overflow-x: auto;
+                    padding: 4px 2px 8px;
+                    scrollbar-width: thin;
+                    -webkit-overflow-scrolling: touch;
+                }
+
+                .searchSegmentGroup {
+                    min-width: 0;
+                }
+
+                .searchSegmentButton {
+                    transform: none;
+                }
+
+                .searchSegmentButton:focus-visible {
+                    outline: 2px solid rgba(47, 129, 247, 0.35);
+                    outline-offset: -2px;
+                }
+
+                .searchSegmentButtonLabel {
+                    display: block;
+                    width: 100%;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
                 .searchTimelinePaperHeaderRow {
                     display: flex;
                     align-items: center;
@@ -1666,6 +1795,12 @@ const SearchScreen = () => {
                     object-fit: contain;
                     display: block;
                     flex: 0 0 auto;
+                }
+
+                @media (max-width: 820px) {
+                    .searchSegmentRow {
+                        width: calc(100% + 4px);
+                    }
                 }
             `}</style>
         </div>

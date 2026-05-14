@@ -108,6 +108,11 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
+        expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "返回主页" })).not.toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "搜索类型" })).toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "匹配方式" })).toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "导师筛选" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "我的私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "添加私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText("导师中文名（可选）")).not.toBeInTheDocument();
@@ -141,7 +146,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -184,7 +189,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -224,7 +229,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -276,7 +281,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
@@ -305,7 +310,7 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=&search_mode=exact",
+                "/api/search/mentors?keyword=&search_mode=fuzzy",
                 "GET",
                 true,
             );
@@ -356,8 +361,10 @@ describe("SearchScreen", () => {
             );
         });
 
-        expect(screen.getByRole("button", { name: "搜论文" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "模糊搜索" })).toBeDisabled();
+        expect(screen.getByRole("heading", { name: "Showing 1 results for all: 大模型" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "搜论文" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "模糊" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "默认" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByDisplayValue("大模型")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
         expect(mockReplace).not.toHaveBeenCalled();
@@ -377,14 +384,15 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=%E5%9B%BE%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C&search_mode=exact",
+                "/api/search/mentors?keyword=%E5%9B%BE%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C&search_mode=fuzzy",
                 "GET",
                 true,
             );
         });
 
-        expect(screen.getByRole("button", { name: "搜人" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "精确搜索" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "搜人" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "模糊" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "全部" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByDisplayValue("图神经网络")).toBeInTheDocument();
     });
 
@@ -417,11 +425,11 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=exact",
+                "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy",
                 "GET",
                 true,
             );
@@ -442,7 +450,7 @@ describe("SearchScreen", () => {
                 return { mentors: [] };
             }
 
-            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=exact") {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
                 return {
                     mentors: [{
                         id: 1,
@@ -481,7 +489,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张三" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
@@ -533,7 +541,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "测试" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
@@ -584,19 +592,19 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
         });
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "李四" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=%E6%9D%8E%E5%9B%9B&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
@@ -648,10 +656,10 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "压缩" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "Compression Paper" });
 
@@ -694,10 +702,10 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "标题公式" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByText(/Compression/i);
 
@@ -740,10 +748,10 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "块公式" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByRole("heading", { name: "Block Formula Paper" });
 
@@ -783,10 +791,10 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "块标题公式" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await screen.findByText(/Block/i);
 
@@ -827,7 +835,7 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
@@ -991,20 +999,20 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "导师" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "仅我的私有导师（1）" }));
+        fireEvent.click(screen.getByRole("button", { name: "私有" }));
 
         await waitFor(() => {
             expect(screen.queryByRole("heading", { name: "李雷", level: 3 })).not.toBeInTheDocument();
             expect(screen.getByRole("heading", { name: /王五/, level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "仅公共导师（1）" }));
+        fireEvent.click(screen.getByRole("button", { name: "公共" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
@@ -1056,7 +1064,7 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
@@ -1081,25 +1089,25 @@ describe("SearchScreen", () => {
         });
     });
 
-    it("sends fuzzy mode when toggled", async () => {
+    it("sends exact mode when toggled from the default fuzzy mode", async () => {
         renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
-        fireEvent.click(screen.getByRole("button", { name: "模糊搜索" }));
+        fireEvent.click(screen.getByRole("button", { name: "精确" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy",
+                "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact",
                 "GET",
                 true,
             );
         });
 
         expect(mockReplace).toHaveBeenCalledWith(
-            "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy",
+            "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=exact",
             undefined,
             { shallow: true },
         );
@@ -1111,7 +1119,7 @@ describe("SearchScreen", () => {
                 return { mentors: [] };
             }
 
-            if (url === "/api/search/papers?keyword=&search_mode=exact&sort_mode=default") {
+            if (url === "/api/search/papers?keyword=&search_mode=fuzzy&sort_mode=default") {
                 return {
                     papers: [{
                         id: 21,
@@ -1125,7 +1133,7 @@ describe("SearchScreen", () => {
                 };
             }
 
-            if (url === "/api/search/mentors?keyword=&search_mode=exact") {
+            if (url === "/api/search/mentors?keyword=&search_mode=fuzzy") {
                 return {
                     mentors: [{
                         id: 11,
@@ -1149,18 +1157,20 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
             expect(screen.getByRole("heading", { name: "All Papers" })).toBeInTheDocument();
         });
+        expect(screen.queryByText("Showing 1 results for all")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Search in 1 entrys:" })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "搜人" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=&search_mode=exact",
+                "/api/search/mentors?keyword=&search_mode=fuzzy",
                 "GET",
                 true,
             );
@@ -1175,36 +1185,36 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "搜论文" }));
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
         });
-        fireEvent.change(screen.getByPlaceholderText("输入论文题目、论文分类、导师姓名或导师研究方向"), {
+        fireEvent.change(screen.getByPlaceholderText("输入论文题目、导师姓名或导师研究方向"), {
             target: { value: "机器学习" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=exact&sort_mode=default",
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=fuzzy&sort_mode=default",
                 "GET",
                 true,
             );
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "发表时间从晚到早" }));
+        fireEvent.click(screen.getByRole("button", { name: "最晚" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=exact&sort_mode=late",
+                "/api/search/papers?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&search_mode=fuzzy&sort_mode=late",
                 "GET",
                 true,
             );
         });
 
         expect(mockReplace).toHaveBeenCalledWith(
-            "/search?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&mode=paper&search_mode=exact&sort_mode=late",
+            "/search?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&mode=paper&search_mode=fuzzy&sort_mode=late",
             undefined,
             { shallow: true },
         );
@@ -1216,11 +1226,11 @@ describe("SearchScreen", () => {
                 return { mentors: [] };
             }
 
-            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact") {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy") {
                 return {
                     page: 1,
-                    total: 2,
-                    total_pages: 2,
+                    total: 6,
+                    total_pages: 6,
                     has_previous: false,
                     has_next: true,
                     mentors: [
@@ -1237,13 +1247,13 @@ describe("SearchScreen", () => {
                 };
             }
 
-            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact&page=2") {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy&page=2") {
                 return {
                     page: 2,
-                    total: 2,
-                    total_pages: 2,
+                    total: 6,
+                    total_pages: 6,
                     has_previous: true,
-                    has_next: false,
+                    has_next: true,
                     mentors: [
                         {
                             id: 2,
@@ -1267,30 +1277,34 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitFor(() => {
-            expect(screen.getByText("共 2 条结果，第 1 / 2 页")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "下一页" })[0]);
+        ["1", "2", "3", "4", "5"].forEach((pageLabel) => {
+            expect(screen.getAllByRole("button", { name: pageLabel }).length).toBeGreaterThan(0);
+        });
+
+        fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=%E5%BC%A0&search_mode=exact&page=2",
+                "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy&page=2",
                 "GET",
                 true,
             );
         });
 
         await waitFor(() => {
-            expect(screen.getByText("共 2 条结果，第 2 / 2 页")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
 
         expect(mockReplace).toHaveBeenCalledWith(
-            "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=exact&page=2",
+            "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy&page=2",
             undefined,
             { shallow: true },
         );
@@ -1312,10 +1326,51 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
-                "/api/search/mentors?keyword=&search_mode=exact",
+                "/api/search/mentors?keyword=&search_mode=fuzzy",
                 "GET",
                 true,
             );
+        });
+
+        expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
+    });
+
+    it("stores the full summary string in the title attribute for long keywords", async () => {
+        const longKeyword = "超长搜索关键词".repeat(12);
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "长关键词导师",
+                        research_direction: "测试",
+                        email: "",
+                        profile: "",
+                        paperTitles: [],
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: longKeyword },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        const expectedSummary = `Showing 1 results for all: ${longKeyword}`;
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: expectedSummary })).toHaveAttribute("title", expectedSummary);
         });
     });
 });

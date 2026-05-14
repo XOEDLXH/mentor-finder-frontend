@@ -13,7 +13,7 @@ export interface SearchQueryState {
 export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
     keyword: "",
     mode: "mentor",
-    searchMode: "exact",
+    searchMode: "fuzzy",
     sortMode: "default",
     page: 1,
 };
