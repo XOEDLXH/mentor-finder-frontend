@@ -109,6 +109,9 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         expect(screen.queryByRole("button", { name: "返回主页" })).not.toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "搜索类型" })).toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "匹配方式" })).toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "导师筛选" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "我的私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "添加私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText("导师中文名（可选）")).not.toBeInTheDocument();
@@ -357,8 +360,9 @@ describe("SearchScreen", () => {
             );
         });
 
-        expect(screen.getByRole("button", { name: "搜论文" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "模糊搜索" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "搜论文" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "模糊" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "默认" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByDisplayValue("大模型")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
         expect(mockReplace).not.toHaveBeenCalled();
@@ -384,8 +388,9 @@ describe("SearchScreen", () => {
             );
         });
 
-        expect(screen.getByRole("button", { name: "搜人" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "精确搜索" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "搜人" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "精确" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "全部" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByDisplayValue("图神经网络")).toBeInTheDocument();
     });
 
@@ -998,14 +1003,14 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "仅我的私有导师（1）" }));
+        fireEvent.click(screen.getByRole("button", { name: "私有" }));
 
         await waitFor(() => {
             expect(screen.queryByRole("heading", { name: "李雷", level: 3 })).not.toBeInTheDocument();
             expect(screen.getByRole("heading", { name: /王五/, level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "仅公共导师（1）" }));
+        fireEvent.click(screen.getByRole("button", { name: "公共" }));
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
@@ -1089,7 +1094,7 @@ describe("SearchScreen", () => {
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
             target: { value: "张" },
         });
-        fireEvent.click(screen.getByRole("button", { name: "模糊搜索" }));
+        fireEvent.click(screen.getByRole("button", { name: "模糊" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -1194,7 +1199,7 @@ describe("SearchScreen", () => {
             );
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "发表时间从晚到早" }));
+        fireEvent.click(screen.getByRole("button", { name: "最晚" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
