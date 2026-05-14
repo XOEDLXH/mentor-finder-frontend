@@ -1091,7 +1091,298 @@ describe("SearchScreen", () => {
         });
     });
 
+    it("encodes mentor visibility in the URL and restores it from router query changes", async () => {
+        const privateMentorData = {
+            id: 101,
+            Chinese_name: "王五",
+            English_name: "Wang Wu",
+            research_direction: "强化学习",
+            email: "wangwu@example.com",
+            profile: "私有导师测试数据",
+            paperTitles: ["RL Paper"],
+        };
+        const publicMentorData = {
+            id: 301,
+            Chinese_name: "李雷",
+            English_name: "Li Lei",
+            research_direction: "知识图谱",
+            email: "lilei@example.com",
+            profile: "公共导师测试数据",
+            paperTitles: ["KG Paper"],
+        };
 
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [mockPrivateMentor] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E5%AF%BC%E5%B8%88&search_mode=fuzzy") {
+                return { mentors: [privateMentorData, publicMentorData], total: 2, total_pages: 1 };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E5%AF%BC%E5%B8%88&search_mode=fuzzy&visibility=mine") {
+                return { mentors: [privateMentorData], total: 1, total_pages: 1 };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E5%AF%BC%E5%B8%88&search_mode=fuzzy&visibility=public") {
+                return { mentors: [publicMentorData], total: 1, total_pages: 1 };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "导师" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "私有" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith(
+                "/search?keyword=%E5%AF%BC%E5%B8%88&mode=mentor&search_mode=fuzzy&visibility=mine",
+                undefined,
+                { shallow: true, scroll: false },
+            );
+            expect(screen.getByRole("button", { name: "私有" })).toHaveAttribute("aria-pressed", "true");
+            expect(screen.getByRole("heading", { name: "王五", level: 3 })).toBeInTheDocument();
+        });
+
+        act(() => {
+            mockRouter.query = {
+                keyword: "导师",
+                mode: "mentor",
+                search_mode: "fuzzy",
+                visibility: "public",
+            };
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E5%AF%BC%E5%B8%88&search_mode=fuzzy&visibility=public",
+                "GET",
+                true,
+            );
+            expect(screen.getByRole("button", { name: "公共" })).toHaveAttribute("aria-pressed", "true");
+            expect(screen.getByRole("heading", { name: "李雷", level: 3 })).toBeInTheDocument();
+        });
+    });
+
+    it("re-fetches and restores search state when router query changes after initial render", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=&search_mode=fuzzy") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/papers?keyword=%E5%A4%A7%E6%A8%A1%E5%9E%8B&search_mode=exact&sort_mode=late&page=3") {
+                return {
+                    papers: [{
+                        id: 2,
+                        title: "第三页论文",
+                        abstract: "用于测试 query 变化恢复。",
+                        publish_date: "2026-01-03",
+                        author_names: "李四",
+                        subjects: "cs.CL",
+                        mentorNames: ["李四"],
+                    }],
+                    page: 3,
+                    total: 9,
+                    total_pages: 3,
+                    has_previous: true,
+                    has_next: false,
+                };
+            }
+
+            return {};
+        });
+
+        const view = renderWithStore();
+        await waitForMineRequest();
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+
+        act(() => {
+            mockRouter.query = {
+                keyword: "大模型",
+                mode: "paper",
+                search_mode: "exact",
+                sort_mode: "late",
+                page: "3",
+            };
+            view.rerender(
+                <Provider store={configureStore({
+                    reducer: { auth: authReducer },
+                    preloadedState: {
+                        auth: {
+                            name: "student",
+                            token: "mock-token",
+                            role: "student",
+                        },
+                    },
+                })}>
+                    <SearchScreen />
+                </Provider>,
+            );
+        });
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/papers?keyword=%E5%A4%A7%E6%A8%A1%E5%9E%8B&search_mode=exact&sort_mode=late&page=3",
+                "GET",
+                true,
+            );
+        });
+
+        expect(screen.getByRole("button", { name: "搜论文" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "精确" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "最晚" })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByDisplayValue("大模型")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "第三页论文" })).toBeInTheDocument();
+    });
+
+    it("restores scroll position and expanded mentor cards on browser back", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            if (urlStr === "/api/search/papers?keyword=%E8%AE%BA%E6%96%8712&search_mode=exact&sort_mode=default") {
+                return {
+                    papers: [{
+                        id: 12,
+                        title: "论文12",
+                        abstract: "跳转后的论文结果。",
+                        publish_date: "2026-05-01",
+                        author_names: "测试导师",
+                        subjects: "cs.AI",
+                        mentorNames: ["测试导师"],
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        const view = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        await waitFor(() => {
+            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText("论文12")).toBeInTheDocument();
+        });
+
+        Object.defineProperty(window, "scrollY", {
+            value: 460,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+
+        fireEvent.click(screen.getByRole("button", { name: "论文12" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith(
+                "/search?keyword=%E8%AE%BA%E6%96%8712&mode=paper&search_mode=exact&sort_mode=default",
+                undefined,
+                { shallow: true, scroll: false },
+            );
+            expect(screen.getByRole("heading", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        act(() => {
+            mockRouter.query = {
+                keyword: "测试",
+                mode: "mentor",
+                search_mode: "fuzzy",
+            };
+            window.history.replaceState({ key: "test-history-1" }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            view.rerender(
+                <Provider store={configureStore({
+                    reducer: { auth: authReducer },
+                    preloadedState: {
+                        auth: {
+                            name: "student",
+                            token: "mock-token",
+                            role: "student",
+                        },
+                    },
+                })}>
+                    <SearchScreen />
+                </Provider>,
+            );
+        });
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText("论文12")).toBeInTheDocument();
+        });
+
+        await waitFor(() => {
+            expect(window.scrollTo).toHaveBeenCalled();
+        });
+        expect(window.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 460, behavior: "auto" });
+    });
 
     it("clicking a mentor author in paper result triggers exact mentor search", async () => {
         request.mockImplementation(async (url) => {
