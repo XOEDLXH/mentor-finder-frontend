@@ -419,7 +419,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const { container } = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -442,7 +442,7 @@ describe("SearchScreen", () => {
         expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
-        expect(document.querySelectorAll('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).toHaveLength(2);
+        expect(container.querySelectorAll('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).toHaveLength(2);
     });
 
     it("searches papers exactly when clicking mentor related paper title", async () => {
@@ -484,7 +484,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const { container } = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -496,7 +496,7 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         });
 
-        expect(document.querySelector('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).not.toBeNull();
 
         fireEvent.click(screen.getByRole("button", { name: "机器学习方法研究" }));
 
@@ -535,7 +535,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const { container } = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -547,7 +547,7 @@ describe("SearchScreen", () => {
             expect(screen.getByText(/Multi-Dimensional Grouping for Ultra-High Energy Efficiency in Spiking Transformer/)).toBeInTheDocument();
         });
 
-        expect(document.querySelector(".searchMentorPaperLinkText .katex")).not.toBeNull();
+        expect(container.querySelector(".searchMentorPaperLinkText .katex")).not.toBeNull();
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
