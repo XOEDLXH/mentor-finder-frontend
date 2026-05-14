@@ -134,6 +134,49 @@ const TimelinePage = () => {
             .filter((subject) => subject !== "");
     };
 
+    const renderPaperAuthors = (paper: TimelinePaper) => {
+        const names = (paper.author_names || "").split(/[,，、]/).map((name) => name.trim()).filter(Boolean);
+        const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
+
+        if (names.length === 0) {
+            return "未知";
+        }
+
+        return names.map((name, idx) => {
+            const mentorId = mentorIds[idx];
+            const isMentor = typeof mentorId === "number" && mentorId > 0;
+            const separator = idx === names.length - 1 ? "" : "、";
+
+            if (isMentor) {
+                return (
+                    <span key={`${paper.id}-${name}-${idx}`}>
+                        <a
+                            href={`/mentors/${mentorId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="timelineMentorLink"
+                        >
+                            <img
+                                src="/favicon_tsinghua.ico"
+                                alt="清华导师"
+                                className="timelineMentorIcon"
+                            />
+                            {name}
+                        </a>
+                        {separator}
+                    </span>
+                );
+            }
+
+            return (
+                <span key={`${paper.id}-${name}-${idx}`}>
+                    {name}
+                    {separator}
+                </span>
+            );
+        });
+    };
+
     const panelHeight = "calc(100vh - 220px)";
 
     return (
@@ -283,13 +326,13 @@ const TimelinePage = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        <h4 style={{ margin: "0 0 8px" }}>
+                                        <h4 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
                                             <LatexText text={paper.title} forceInlineMath />
                                         </h4>
                                         <div className="timelineMetaRow">
                                             <span className="timelineMetaLabel">作者：</span>
                                             <div className="timelineMetaContent">
-                                                {paper.author_names || "未知"}
+                                                {renderPaperAuthors(paper)}
                                             </div>
                                         </div>
                                         <div className="timelineMetaRow">
@@ -345,15 +388,24 @@ const TimelinePage = () => {
                     line-height: 1.4;
                 }
 
-                .timelinePaperLinks a {
+                .timelinePaperLinks a,
+                :global(a.timelineMentorLink) {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    height: 20px;
                     color: rgb(8, 109, 177);
                     text-decoration: none;
                     transition: color 0.16s ease, border-color 0.16s ease;
                     border-bottom: 1px dashed transparent;
+                    line-height: 1;
+                    vertical-align: middle;
                 }
 
                 .timelinePaperLinks a:hover,
-                .timelinePaperLinks a:focus-visible {
+                .timelinePaperLinks a:focus-visible,
+                :global(a.timelineMentorLink:hover),
+                :global(a.timelineMentorLink:focus-visible) {
                     color: rgb(45, 45, 45);
                     border-bottom-color: rgb(45, 45, 45);
                     outline: none;
@@ -381,6 +433,24 @@ const TimelinePage = () => {
                     line-height: 17.85px;
                     text-rendering: optimizelegibility;
                     white-space: nowrap;
+                }
+
+                :global(img.timelineMentorIcon) {
+                    width: 14px;
+                    height: 14px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
+                }
+
+                .timelineMetaRow {
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+
+                .timelineMetaLabel,
+                .timelineMetaContent {
+                    font-size: 14px;
                 }
             `}</style>
         </div>

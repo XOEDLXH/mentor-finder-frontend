@@ -78,6 +78,7 @@ export interface TimelinePaper {
     arxiv_url?: string;
     publish_date?: string;
     author_names: string;
+    mentor_ids?: number[];
     subjects?: string;
 }
 
