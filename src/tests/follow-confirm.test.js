@@ -28,6 +28,14 @@ describe("follow confirmation", () => {
         is_private: false,
         paper_ids: [],
     };
+    const follower = {
+        id: 12,
+        username: "fan_user",
+        realName: "粉丝用户",
+        role: "student",
+        signature: "关注了我",
+        followed: false,
+    };
 
     const renderWithStore = (ui) => {
         const store = configureStore({
@@ -142,6 +150,34 @@ describe("follow confirmation", () => {
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "关注" })).toBeEnabled();
         });
+    });
+
+    it("shows followers in the fans tab", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/mentors") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/follow/users") {
+                return { users: [] };
+            }
+
+            if (url === "/api/follow/followers") {
+                return { users: [follower] };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("button", { name: "我的粉丝 1" });
+        fireEvent.click(screen.getByRole("button", { name: "我的粉丝 1" }));
+
+        expect(screen.getByRole("heading", { name: "我的粉丝" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "粉丝用户" })).toBeInTheDocument();
+        expect(screen.getByText("关注了我")).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/followers", "GET", true);
     });
 
     it("directly unfollows from mentor detail page without confirmation", async () => {
