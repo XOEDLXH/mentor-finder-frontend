@@ -90,7 +90,7 @@ describe("TopNav", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Profile" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fprofile-settings");
+        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fusers");
     });
 
     it("allows typing into the top search input", () => {
