@@ -851,10 +851,11 @@ const SearchScreen = () => {
                         aria-hidden="true"
                         style={{
                             position: "absolute",
-                            inset: 0,
-                            width: `calc(100% / ${options.length})`,
-                            height: 25,
-                            borderRadius: 10,
+                            top: 1,
+                            bottom: 1,
+                            left: 1,
+                            width: `calc((100% - 2px) / ${options.length})`,
+                            borderRadius: 9,
                             background: "rgb(8, 109, 177)",
                             border: "1px solid rgb(8, 109, 177)",
                             boxShadow: "0 10px 24px rgba(15, 23, 42, 0.18)",
