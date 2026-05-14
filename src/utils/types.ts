@@ -159,6 +159,33 @@ export interface BoundMentorProfile {
     email?: string;
 }
 
+export interface FollowUserResult {
+    id: number;
+    username: string;
+    realName?: string;
+    role: string;
+    avatarUrl?: string;
+    signature?: string;
+    followed: boolean;
+}
+
+export interface PublicUserProfile {
+    personalIntro: string;
+    researchExperience: string;
+    honors: string;
+    projectExperience: string;
+    showPersonalIntro: boolean;
+    showResearchExperience: boolean;
+    showHonors: boolean;
+    showProjectExperience: boolean;
+    updatedAt?: string;
+}
+
+export interface PublicUserProfileResult extends FollowUserResult {
+    isSelf: boolean;
+    profile: PublicUserProfile;
+}
+
 export interface AdminUserResult {
     id: number;
     username: string;

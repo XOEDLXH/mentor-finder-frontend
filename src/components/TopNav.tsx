@@ -2,8 +2,9 @@ import { KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 
-import { resetAuth } from "../redux/auth";
+import { resetAuth, setUserId } from "../redux/auth";
 import { RootState } from "../redux/store";
+import { request } from "../utils/network";
 import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
 import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
 
@@ -34,9 +35,9 @@ const NAV_ITEMS: NavItem[] = [
     },
     {
         label: "Profile",
-        href: "/user-home",
+        href: "/users",
         requiresAuth: true,
-        activeMatch: (pathname) => pathname === "/user-home" || pathname === "/profile" || pathname === "/profile-settings" || pathname === "/private-mentor",
+        activeMatch: (pathname) => pathname.startsWith("/users/") || pathname === "/profile" || pathname === "/profile-settings" || pathname === "/private-mentor",
     },
     {
         label: "Admin",
@@ -90,6 +91,32 @@ const TopNav = () => {
         setMobileMenuOpen(false);
         setAvatarMenuOpen(false);
         void router.push(targetHref);
+    };
+
+    const gotoProfile = async () => {
+        if (!isLoggedIn) {
+            goto("/users", true);
+            return;
+        }
+
+        if (auth.userId !== undefined) {
+            goto(`/users/${auth.userId}`, true);
+            return;
+        }
+
+        setMobileMenuOpen(false);
+        setAvatarMenuOpen(false);
+
+        try {
+            const res = await request<{ userId?: number }>("/api/profile/me", "GET", true);
+            if (typeof res.userId === "number") {
+                dispatch(setUserId(res.userId));
+                void router.push(`/users/${res.userId}`);
+            }
+        }
+        catch {
+            void router.push("/login?redirect=%2Fusers");
+        }
     };
 
     const gotoAuthPage = (basePath: "/login" | "/register") => {
@@ -154,7 +181,13 @@ const TopNav = () => {
                                 key={item.href}
                                 type="button"
                                 className={item.activeMatch(router.pathname) ? "topNavLink topNavLinkActive" : "topNavLink"}
-                                onClick={() => goto(item.href, Boolean(item.requiresAuth))}
+                                onClick={() => {
+                                    if (item.label === "Profile") {
+                                        void gotoProfile();
+                                        return;
+                                    }
+                                    goto(item.href, Boolean(item.requiresAuth));
+                                }}
                             >
                                 {item.label}
                             </button>
@@ -215,7 +248,7 @@ const TopNav = () => {
 
                             {avatarMenuOpen && (
                                 <div className="topNavAvatarMenu" role="menu" aria-label="Account menu">
-                                    <button type="button" className="topNavMenuItem" onClick={() => goto("/user-home", true)}>
+                                    <button type="button" className="topNavMenuItem" onClick={() => void gotoProfile()}>
                                         Profile
                                     </button>
                                     <button type="button" className="topNavMenuItem" onClick={() => goto("/follows", true)}>
@@ -256,7 +289,13 @@ const TopNav = () => {
                                 key={`mobile-${item.href}`}
                                 type="button"
                                 className={item.activeMatch(router.pathname) ? "topNavMobileLink topNavMobileLinkActive" : "topNavMobileLink"}
-                                onClick={() => goto(item.href, Boolean(item.requiresAuth))}
+                                onClick={() => {
+                                    if (item.label === "Profile") {
+                                        void gotoProfile();
+                                        return;
+                                    }
+                                    goto(item.href, Boolean(item.requiresAuth));
+                                }}
                             >
                                 {item.label}
                             </button>
@@ -277,7 +316,7 @@ const TopNav = () => {
                             <div className="topNavMobileAccountLabel">
                                 Signed in as <strong>{auth.name || "Account"}</strong>
                             </div>
-                            <button type="button" className="topNavMobileLink" onClick={() => goto("/user-home", true)}>
+                            <button type="button" className="topNavMobileLink" onClick={() => void gotoProfile()}>
                                 Profile
                             </button>
                             <button type="button" className="topNavMobileLink" onClick={() => goto("/follows", true)}>

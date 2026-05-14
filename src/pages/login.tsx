@@ -1,7 +1,7 @@
 import { FormEvent, RefCallback, useRef, useState } from "react";
 import { FAILURE_PREFIX, LOGIN_FAILED } from "../constants/string";
 import { useRouter } from "next/router";
-import { setName, setRole, setToken } from "../redux/auth";
+import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
 
@@ -85,6 +85,7 @@ const LoginScreen = () => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
                     dispatch(setToken(res.token));
                     dispatch(setRole(typeof res.role === "string" ? res.role : ""));
+                    dispatch(setUserId(typeof res.userId === "number" ? res.userId : undefined));
 
                     dispatch(setName(userName));
 

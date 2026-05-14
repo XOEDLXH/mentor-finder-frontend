@@ -28,6 +28,7 @@ describe("TopNav", () => {
         token: "",
         name: "",
         role: "",
+        userId: undefined,
     };
 
     const renderTopNav = () => {
@@ -44,6 +45,7 @@ describe("TopNav", () => {
             token: "",
             name: "",
             role: "",
+            userId: undefined,
         };
 
         useRouter.mockReturnValue(mockRouter);
@@ -88,7 +90,7 @@ describe("TopNav", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Profile" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fuser-home");
+        expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Fusers");
     });
 
     it("allows typing into the top search input", () => {
@@ -130,6 +132,7 @@ describe("TopNav", () => {
             token: "jwt-token",
             name: "alice",
             role: "student",
+            userId: 42,
         };
 
         renderTopNav();
@@ -144,6 +147,7 @@ describe("TopNav", () => {
             token: "jwt-token",
             name: "alice",
             role: "student",
+            userId: 42,
         };
 
         renderTopNav();
@@ -162,6 +166,7 @@ describe("TopNav", () => {
             token: "jwt-token",
             name: "ada",
             role: "admin",
+            userId: 7,
         };
 
         renderTopNav();
@@ -179,6 +184,7 @@ describe("TopNav", () => {
             token: "jwt-token",
             name: "alice",
             role: "student",
+            userId: 42,
         };
 
         renderTopNav();
@@ -200,6 +206,7 @@ describe("TopNav", () => {
             token: "jwt-token",
             name: "alice",
             role: "student",
+            userId: 42,
         };
 
         renderTopNav();
@@ -208,7 +215,7 @@ describe("TopNav", () => {
         const menu = screen.getByRole("menu", { name: "Account menu" });
         fireEvent.click(within(menu).getByRole("button", { name: "Profile" }));
 
-        expect(mockPush).toHaveBeenCalledWith("/user-home");
+        expect(mockPush).toHaveBeenCalledWith("/users/42");
         expect(screen.queryByRole("menu", { name: "Account menu" })).not.toBeInTheDocument();
     });
 
@@ -217,6 +224,7 @@ describe("TopNav", () => {
             token: "jwt-token",
             name: "alice",
             role: "student",
+            userId: 42,
         };
 
         renderTopNav();

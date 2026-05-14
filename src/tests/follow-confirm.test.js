@@ -71,7 +71,7 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        expect(screen.getByRole("button", { name: "全部（1）" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
 
         const followButton = screen.getByRole("button", { name: "取消关注" });
         fireEvent.click(followButton);
@@ -80,7 +80,7 @@ describe("follow confirmation", () => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
         });
         expect(screen.getByRole("button", { name: "关注" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "全部（0）" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "导师（0）" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "张三" })).toBeInTheDocument();
     });
 
@@ -112,7 +112,7 @@ describe("follow confirmation", () => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "POST", true);
         });
         expect(screen.getByRole("button", { name: "取消关注" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "全部（1）" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
     });
 
     it("disables the follows page button and keeps its label while request is pending", async () => {
