@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
@@ -12,14 +12,18 @@ import {
     DEFAULT_SEARCH_QUERY_STATE,
     parseSearchQuery,
     SearchMatchMode,
+    SearchMentorVisibility,
     SearchMode,
     SearchPaperSortMode,
+    SearchQueryState,
 } from "../utils/searchQuery";
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
-type MentorResultFilter = "all" | "mine" | "public";
+type MentorResultFilter = SearchMentorVisibility;
 
 const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
 const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量，超过后显示“查看更多”按钮展开完整列表
+const SEARCH_VIEW_STATE_STORAGE_PREFIX = "search-view-state:";
+const INITIAL_HISTORY_ENTRY_KEY = "search-entry-initial";
 
 interface PrivateMentorsResponse {
     mentors?: PrivateMentorResult[];
@@ -45,14 +49,13 @@ interface SearchPapersResponse {
     has_next?: boolean;
 }
 
-interface SearchOptions {
+interface SearchNavigationOptions {
     keyword?: string;
     mode?: SearchMode;
     searchMode?: SearchMatchMode;
     sortMode?: SearchPaperSortMode;
     page?: number;
-    shouldSyncUrl?: boolean;
-    visibility?: string;
+    visibility?: MentorResultFilter;
 }
 
 interface MentorDeleteTarget {
@@ -75,6 +78,13 @@ interface SegmentedOption<TValue extends string> {
     label: string;
     value: TValue;
 }
+
+interface SearchHistoryViewState {
+    scrollY: number;
+    expandedMentorIds: number[];
+}
+
+type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
@@ -145,7 +155,6 @@ const SearchScreen = () => {
     const [mentorDeleteSubmitting, setMentorDeleteSubmitting] = useState(false);
     const [paperDeleteTarget, setPaperDeleteTarget] = useState<PaperDeleteTarget | undefined>(undefined);
     const [paperDeleteSubmitting, setPaperDeleteSubmitting] = useState(false);
-    const [allMentorsTotal, setAllMentorsTotal] = useState(0);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
     const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
@@ -170,13 +179,20 @@ const SearchScreen = () => {
         publish_date: "",
         author_names: "",
     });
-    const [didInitFromQuery, setDidInitFromQuery] = useState(false);
+    const [activeSearchState, setActiveSearchState] = useState<SearchQueryState>(DEFAULT_SEARCH_QUERY_STATE);
 
-    const resetResults = () => {
+    const activeSearchStateRef = useRef<SearchQueryState>(DEFAULT_SEARCH_QUERY_STATE);
+    const expandedMentorIdsRef = useRef<Set<number>>(new Set());
+    const navigationIntentRef = useRef<SearchNavigationIntent>("init");
+    const hasLoadedRouteStateRef = useRef(false);
+
+    const resetResults = (clearExpandedMentors = true) => {
         setErrorMessage("");
         setMentors([]);
         setPapers([]);
-        setExpandedMentorIds(new Set());
+        if (clearExpandedMentors) {
+            setExpandedMentorIds(new Set());
+        }
         setCurrentPage(1);
         setTotalResults(0);
         setTotalPages(0);
@@ -222,39 +238,143 @@ const SearchScreen = () => {
         return typeof NetworkError === "function" && err instanceof NetworkError;
     };
 
-    const syncSearchUrl = (
-        nextKeyword: string,
-        nextMode: SearchMode,
-        nextSearchMode: SearchMatchMode,
-        nextSortMode: SearchPaperSortMode,
-        nextPage: number,
-    ) => {
-        void router.replace(
-            buildSearchUrl({
-                keyword: nextKeyword,
-                mode: nextMode,
-                searchMode: nextSearchMode,
-                sortMode: nextSortMode,
-                page: nextPage,
-            }),
-            undefined,
-            { shallow: true },
-        );
+    const getHistoryEntryKey = () => {
+        if (typeof window === "undefined") {
+            return INITIAL_HISTORY_ENTRY_KEY;
+        }
+
+        const historyState = window.history.state as { key?: unknown } | null;
+        const historyKey = historyState?.key;
+        if (typeof historyKey === "string" && historyKey.trim() !== "") {
+            return historyKey;
+        }
+
+        return INITIAL_HISTORY_ENTRY_KEY;
     };
 
-    const switchMode = (nextMode: SearchMode) => {
-        const trimmedKeyword = keyword.trim();
-
-        setMode(nextMode);
-        if (trimmedKeyword === "") {
-            setHasSearched(false);
+    const readHistoryViewState = (entryKey: string) => {
+        if (typeof window === "undefined") {
+            return undefined;
         }
-        resetResults();
+
+        try {
+            const rawValue = window.sessionStorage.getItem(`${SEARCH_VIEW_STATE_STORAGE_PREFIX}${entryKey}`);
+            if (rawValue === null) {
+                return undefined;
+            }
+
+            const parsedValue = JSON.parse(rawValue) as Partial<SearchHistoryViewState>;
+            const expandedIds = Array.isArray(parsedValue.expandedMentorIds)
+                ? parsedValue.expandedMentorIds
+                    .map((value) => Number(value))
+                    .filter((value) => Number.isInteger(value) && value > 0)
+                : [];
+
+            return {
+                scrollY: Number.isFinite(parsedValue.scrollY) ? Number(parsedValue.scrollY) : 0,
+                expandedMentorIds: expandedIds,
+            } satisfies SearchHistoryViewState;
+        }
+        catch {
+            return undefined;
+        }
+    };
+
+    const writeHistoryViewState = (entryKey: string, viewState: SearchHistoryViewState) => {
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        try {
+            window.sessionStorage.setItem(
+                `${SEARCH_VIEW_STATE_STORAGE_PREFIX}${entryKey}`,
+                JSON.stringify(viewState),
+            );
+        }
+        catch {
+            // Ignore sessionStorage failures and keep search functional.
+        }
+    };
+
+    const persistCurrentViewState = useCallback((entryKey = getHistoryEntryKey()) => {
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        writeHistoryViewState(entryKey, {
+            scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
+            expandedMentorIds: Array.from(expandedMentorIdsRef.current),
+        });
+    }, []);
+
+    const scrollWindowTo = useCallback((scrollY: number) => {
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        try {
+            window.scrollTo({ left: 0, top: scrollY, behavior: "auto" });
+        }
+        catch {
+            try {
+                window.scrollTo(0, scrollY);
+            }
+            catch {
+                // Ignore scroll failures in tests or non-browser environments.
+            }
+        }
+    }, []);
+
+    const scheduleAfterPaint = useCallback((callback: () => void) => {
+        if (typeof window === "undefined") {
+            callback();
+            return;
+        }
+
+        const schedule = window.requestAnimationFrame
+            ? window.requestAnimationFrame.bind(window)
+            : (fn: FrameRequestCallback) => window.setTimeout(() => fn(Date.now()), 16);
+
+        schedule(() => {
+            schedule(() => callback());
+        });
+    }, []);
+
+    const areSearchStatesEqual = useCallback((left: SearchQueryState, right: SearchQueryState) => {
+        return left.keyword === right.keyword &&
+            left.mode === right.mode &&
+            left.searchMode === right.searchMode &&
+            left.sortMode === right.sortMode &&
+            left.page === right.page &&
+            left.visibility === right.visibility;
+    }, []);
+
+    const resolveSearchState = useCallback((
+        overrides: SearchNavigationOptions = {},
+        baseState: SearchQueryState = activeSearchStateRef.current,
+    ) => {
+        const nextMode = overrides.mode ?? baseState.mode;
+        const nextKeyword = (overrides.keyword ?? baseState.keyword).trim();
+        const nextPageRaw = overrides.page ?? baseState.page;
+        const nextPage = Number.isFinite(nextPageRaw) && nextPageRaw > 0 ? Math.floor(nextPageRaw) : 1;
+        const nextSortMode = overrides.sortMode ?? baseState.sortMode;
+        const nextSearchMode = overrides.searchMode ?? baseState.searchMode;
+        const nextVisibility = nextMode === "mentor"
+            ? (overrides.visibility ?? (baseState.mode === "mentor" ? baseState.visibility : "all"))
+            : "all";
+
+        return {
+            keyword: nextKeyword,
+            mode: nextMode,
+            searchMode: nextSearchMode,
+            sortMode: nextSortMode,
+            page: nextPage,
+            visibility: nextVisibility,
+        } satisfies SearchQueryState;
+    }, []);
+
+    const resetAdminEditorState = useCallback(() => {
         setAdminMessage("");
-        if (nextMode === "paper") {
-            setMentorResultFilter("all");
-        }
-
         setMentorEditingId(undefined);
         setMentorDraft({
             Chinese_name: "",
@@ -263,7 +383,6 @@ const SearchScreen = () => {
             email: "",
             profile: "",
         });
-
         setPaperEditingId(undefined);
         setPaperDraft({
             title: "",
@@ -271,25 +390,155 @@ const SearchScreen = () => {
             publish_date: "",
             author_names: "",
         });
+    }, []);
 
-        if (trimmedKeyword === "") {
-            void search({
-                keyword: "",
-                mode: nextMode,
-                sortMode: paperSortMode,
-                page: 1,
-                shouldSyncUrl: true,
+    const resetTransientUiState = useCallback(() => {
+        resetAdminEditorState();
+        setMentorDeleteTarget(undefined);
+        setMentorDeleteSubmitting(false);
+        setPaperDeleteTarget(undefined);
+        setPaperDeleteSubmitting(false);
+    }, [resetAdminEditorState]);
+
+    const buildMentorSearchRequestUrl = useCallback((state: SearchQueryState) => {
+        const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
+        const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
+        const visibilityQuery = state.visibility !== "all" ? `&visibility=${state.visibility}` : "";
+
+        return `/api/search/mentors?${query}${pageQuery}${visibilityQuery}`;
+    }, []);
+
+    const buildPaperSearchRequestUrl = useCallback((state: SearchQueryState) => {
+        const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
+        const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
+
+        return `/api/search/papers?${query}&sort_mode=${state.sortMode}${pageQuery}`;
+    }, []);
+
+    const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
+        if (intent === "push") {
+            setExpandedMentorIds(new Set());
+            scheduleAfterPaint(() => {
+                scrollWindowTo(0);
+                writeHistoryViewState(getHistoryEntryKey(), {
+                    scrollY: 0,
+                    expandedMentorIds: [],
+                });
             });
             return;
         }
 
-        if (hasSearched) {
-            void search({
-                mode: nextMode,
-                page: 1,
-                shouldSyncUrl: true,
+        if (intent === "pop") {
+            const savedViewState = readHistoryViewState(getHistoryEntryKey());
+            const restoredExpandedIds = state.mode === "mentor"
+                ? new Set(savedViewState?.expandedMentorIds ?? [])
+                : new Set<number>();
+            setExpandedMentorIds(restoredExpandedIds);
+            scheduleAfterPaint(() => {
+                scrollWindowTo(savedViewState?.scrollY ?? 0);
             });
+            return;
         }
+
+        if (state.mode !== "mentor" && expandedMentorIdsRef.current.size > 0) {
+            setExpandedMentorIds(new Set());
+        }
+    }, [scheduleAfterPaint, scrollWindowTo]);
+
+    const loadSearchState = useCallback(async (
+        state: SearchQueryState,
+        intent: SearchNavigationIntent,
+    ) => {
+        activeSearchStateRef.current = state;
+        if (intent !== "refresh") {
+            resetTransientUiState();
+        }
+        setActiveSearchState(state);
+        setMode(state.mode);
+        setMatchMode(state.searchMode);
+        setPaperSortMode(state.sortMode);
+        setMentorResultFilter(state.visibility);
+        setKeyword(state.keyword);
+        setLoading(true);
+        setHasSearched(true);
+        setErrorMessage("");
+
+        try {
+            if (state.mode === "mentor") {
+                const res = await request<SearchMentorsResponse>(
+                    buildMentorSearchRequestUrl(state),
+                    "GET",
+                    isLoggedIn,
+                );
+                const mentorItems = Array.isArray(res.mentors) ? res.mentors : [];
+                setAppliedKeyword(state.keyword);
+                setMentors(mentorItems);
+                setPapers([]);
+                applyPagination(res, mentorItems.length, state.page);
+            }
+            else {
+                const res = await request<SearchPapersResponse>(
+                    buildPaperSearchRequestUrl(state),
+                    "GET",
+                    isLoggedIn,
+                );
+                const paperItems = Array.isArray(res.papers) ? res.papers : [];
+                setAppliedKeyword(state.keyword);
+                setPapers(paperItems);
+                setMentors([]);
+                applyPagination(res, paperItems.length, state.page);
+            }
+        }
+        catch (err) {
+            setAppliedKeyword(state.keyword);
+            resetResults(intent !== "pop");
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setLoading(false);
+            applyLoadedViewState(state, intent);
+            navigationIntentRef.current = "init";
+        }
+    }, [applyLoadedViewState, buildMentorSearchRequestUrl, buildPaperSearchRequestUrl, isLoggedIn, resetTransientUiState]);
+
+    const refreshCurrentSearch = useCallback(async (state = activeSearchStateRef.current) => {
+        navigationIntentRef.current = "refresh";
+        await loadSearchState(state, "refresh");
+    }, [loadSearchState]);
+
+    const navigateToSearchState = useCallback(async (nextState: SearchQueryState) => {
+        const currentState = activeSearchStateRef.current;
+
+        if (areSearchStatesEqual(nextState, currentState)) {
+            await refreshCurrentSearch(nextState);
+            return;
+        }
+
+        persistCurrentViewState();
+        navigationIntentRef.current = "push";
+        await router.push(
+            buildSearchUrl(nextState),
+            undefined,
+            { shallow: true, scroll: false },
+        );
+
+        if (!areSearchStatesEqual(activeSearchStateRef.current, nextState)) {
+            await loadSearchState(nextState, "push");
+        }
+    }, [areSearchStatesEqual, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
+
+    const switchMode = (nextMode: SearchMode) => {
+        if (nextMode === mode) {
+            return;
+        }
+
+        resetAdminEditorState();
+
+        void navigateToSearchState(resolveSearchState({
+            mode: nextMode,
+            page: 1,
+            visibility: "all",
+        }));
     };
 
     const formatAdminError = (err: unknown) => {
@@ -329,21 +578,51 @@ const SearchScreen = () => {
     }, [fetchMyPrivateMentors]);
 
     useEffect(() => {
-        if (!hasSearched || mode !== "mentor") {
+        activeSearchStateRef.current = activeSearchState;
+    }, [activeSearchState]);
+
+    useEffect(() => {
+        expandedMentorIdsRef.current = expandedMentorIds;
+    }, [expandedMentorIds]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") {
             return;
         }
-        void search({
-            page: 1,
-            shouldSyncUrl: false,
-            visibility: mentorResultFilter,
-        });
-    }, [mentorResultFilter]);
+
+        const handlePopState = () => {
+            navigationIntentRef.current = "pop";
+        };
+
+        window.addEventListener("popstate", handlePopState);
+        return () => {
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        const handleScroll = () => {
+            persistCurrentViewState();
+        };
+
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
+    }, [persistCurrentViewState]);
+
+    useEffect(() => {
+        persistCurrentViewState();
+    }, [expandedMentorIds, persistCurrentViewState]);
 
     const privateMentorIdSet = useMemo(() => {
         return new Set(privateMentors.map((mentor) => mentor.id));
     }, [privateMentors]);
 
-    const mentorResultTotalMineCount = privateMentors.length;
     const thirdSegmentOptions = mode === "paper" ? PAPER_SORT_OPTIONS : MENTOR_FILTER_OPTIONS;
     const thirdSegmentValue = mode === "paper" ? paperSortMode : mentorResultFilter;
     const trimmedAppliedKeyword = appliedKeyword.trim();
@@ -351,83 +630,6 @@ const SearchScreen = () => {
     const searchHeadingText = isEmptySearch
         ? `Search in ${totalResults} entrys:`
         : `Showing ${totalResults} results for all: ${trimmedAppliedKeyword}`;
-
-    const search = async ({
-        keyword: overrideKeyword,
-        mode: overrideMode,
-        searchMode: overrideSearchMode,
-        sortMode: overrideSortMode,
-        page: overridePage,
-        shouldSyncUrl = true,
-        visibility: overrideVisibility,
-    }: SearchOptions = {}) => {
-        const trimmedKeyword = (overrideKeyword ?? keyword).trim();
-        const resolvedMode = overrideMode ?? mode;
-        const resolvedSearchMode = overrideSearchMode ?? matchMode;
-        const resolvedPaperSortMode = overrideSortMode ?? paperSortMode;
-        const requestedPage = Math.max(1, overridePage ?? 1);
-        const resolvedVisibility = overrideVisibility ?? (resolvedMode === "mentor" ? mentorResultFilter : "all");
-        const pageQuery = requestedPage > 1 ? `&page=${requestedPage}` : "";
-
-        setKeyword(trimmedKeyword);
-        setMode(resolvedMode);
-        setMatchMode(resolvedSearchMode);
-        setPaperSortMode(resolvedPaperSortMode);
-        setLoading(true);
-        setHasSearched(true);
-        setErrorMessage("");
-
-        if (shouldSyncUrl) {
-            syncSearchUrl(
-                trimmedKeyword,
-                resolvedMode,
-                resolvedSearchMode,
-                resolvedPaperSortMode,
-                requestedPage,
-            );
-        }
-
-        try {
-            const query = `keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=${resolvedSearchMode}`;
-
-            if (resolvedMode === "mentor") {
-                const visibilityQuery = resolvedVisibility !== "all" ? `&visibility=${resolvedVisibility}` : "";
-                const res = await request<SearchMentorsResponse>(
-                    `/api/search/mentors?${query}${pageQuery}${visibilityQuery}`,
-                    "GET",
-                    isLoggedIn,
-                );
-                const mentorItems = Array.isArray(res.mentors) ? res.mentors : [];
-                setAppliedKeyword(trimmedKeyword);
-                setMentors(mentorItems);
-                setPapers([]);
-                applyPagination(res, mentorItems.length, requestedPage);
-                if (resolvedVisibility === "all") {
-                    setAllMentorsTotal(res.total ?? mentorItems.length);
-                }
-            }
-            else {
-                const res = await request<SearchPapersResponse>(
-                    `/api/search/papers?${query}&sort_mode=${resolvedPaperSortMode}${pageQuery}`,
-                    "GET",
-                    isLoggedIn,
-                );
-                const paperItems = Array.isArray(res.papers) ? res.papers : [];
-                setAppliedKeyword(trimmedKeyword);
-                setPapers(paperItems);
-                setMentors([]);
-                applyPagination(res, paperItems.length, requestedPage);
-            }
-        }
-        catch (err) {
-            setAppliedKeyword(trimmedKeyword);
-            resetResults();
-            setErrorMessage(FAILURE_PREFIX + String(err));
-        }
-        finally {
-            setLoading(false);
-        }
-    };
 
     const addPrivateMentorInSearch = useCallback(async () => {
         const chineseName = customMentorChineseName.trim();
@@ -454,7 +656,7 @@ const SearchScreen = () => {
             setCustomMentorChineseName("");
             setCustomMentorEnglishName("");
             await fetchMyPrivateMentors();
-            void search({ page: 1, shouldSyncUrl: true });
+            await refreshCurrentSearch(resolveSearchState({ page: 1 }));
             setPrivateMentorMsg("私有导师添加成功");
         }
         catch (err) {
@@ -468,52 +670,40 @@ const SearchScreen = () => {
         finally {
             setPrivateMentorSaving(false);
         }
-    }, [customMentorChineseName, customMentorEnglishName, privateMentors.length, fetchMyPrivateMentors, search]);
+    }, [customMentorChineseName, customMentorEnglishName, fetchMyPrivateMentors, privateMentors.length, refreshCurrentSearch, resolveSearchState]);
 
     useEffect(() => {
-        if (!router.isReady || didInitFromQuery) {
+        if (!router.isReady) {
             return;
         }
 
         const { hasAnySearchParam, state } = parseSearchQuery(router.query);
-        setDidInitFromQuery(true);
+        const nextRouteState = hasAnySearchParam ? state : DEFAULT_SEARCH_QUERY_STATE;
+        const nextIntent = hasLoadedRouteStateRef.current ? navigationIntentRef.current : "init";
 
-        if (hasAnySearchParam) {
-            void search({
-                keyword: state.keyword,
-                mode: state.mode,
-                searchMode: state.searchMode,
-                sortMode: state.sortMode,
-                page: state.page,
-                shouldSyncUrl: false,
-            });
+        if (hasLoadedRouteStateRef.current && areSearchStatesEqual(nextRouteState, activeSearchStateRef.current)) {
+            navigationIntentRef.current = "init";
             return;
         }
 
-        void search({
-            keyword: DEFAULT_SEARCH_QUERY_STATE.keyword,
-            mode: DEFAULT_SEARCH_QUERY_STATE.mode,
-            searchMode: DEFAULT_SEARCH_QUERY_STATE.searchMode,
-            sortMode: DEFAULT_SEARCH_QUERY_STATE.sortMode,
-            page: DEFAULT_SEARCH_QUERY_STATE.page,
-            shouldSyncUrl: false,
-        });
-    }, [didInitFromQuery, router.isReady, router.query]);
+        hasLoadedRouteStateRef.current = true;
+        void loadSearchState(nextRouteState, nextIntent);
+    }, [areSearchStatesEqual, loadSearchState, router.isReady, router.query]);
 
     const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
         if (paperSortMode === nextSortMode) {
             return;
         }
 
-        setPaperSortMode(nextSortMode);
-
-        if (mode === "paper" && hasSearched) {
-            void search({
-                sortMode: nextSortMode,
-                page: 1,
-                shouldSyncUrl: true,
-            });
+        if (!hasSearched || mode !== "paper") {
+            setPaperSortMode(nextSortMode);
+            return;
         }
+
+        void navigateToSearchState(resolveSearchState({
+            sortMode: nextSortMode,
+            page: 1,
+        }));
     };
 
     const changeMatchMode = (nextMatchMode: SearchMatchMode) => {
@@ -521,53 +711,32 @@ const SearchScreen = () => {
             return;
         }
 
-        setMatchMode(nextMatchMode);
-
-        if (hasSearched) {
-            void search({
-                searchMode: nextMatchMode,
-                page: 1,
-                shouldSyncUrl: true,
-            });
-        }
-    };
-
-    const gotoPreviousPage = () => {
-        if (loading || !hasPreviousPage) {
+        if (!hasSearched) {
+            setMatchMode(nextMatchMode);
             return;
         }
-        void search({
-            page: currentPage - 1,
-            shouldSyncUrl: true,
-        });
-    };
 
-    const gotoNextPage = () => {
-        if (loading || !hasNextPage) {
-            return;
-        }
-        void search({
-            page: currentPage + 1,
-            shouldSyncUrl: true,
-        });
+        void navigateToSearchState(resolveSearchState({
+            searchMode: nextMatchMode,
+            page: 1,
+        }));
     };
 
     const handleEnter = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
-            void search({
+            void navigateToSearchState(resolveSearchState({
+                keyword,
                 page: 1,
-                shouldSyncUrl: true,
-            });
+            }));
         }
     };
 
     const clearKeyword = () => {
         setKeyword("");
-        void search({
+        void navigateToSearchState(resolveSearchState({
             keyword: "",
             page: 1,
-            shouldSyncUrl: true,
-        });
+        }));
     };
 
     const searchPaperByTitle = (paperTitle: string) => {
@@ -575,25 +744,27 @@ const SearchScreen = () => {
         setMatchMode("exact");
         setKeyword(paperTitle);
         setPaperSortMode("default");
-        void search({
+        void navigateToSearchState(resolveSearchState({
             keyword: paperTitle,
             sortMode: "default",
             page: 1,
             mode: "paper",
             searchMode: "exact",
-        });
+            visibility: "all",
+        }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
     const searchMentorByName = (mentorName: string) => {
         setMode("mentor");
         setMatchMode("exact");
         setKeyword(mentorName);
-        void search({
+        void navigateToSearchState(resolveSearchState({
             keyword: mentorName,
             page: 1,
             mode: "mentor",
             searchMode: "exact",
-        });
+            visibility: "all",
+        }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
     const toggleMentorExpand = (mentorId: number) => {
@@ -646,7 +817,7 @@ const SearchScreen = () => {
             });
 
             if (mode === "mentor" && hasSearched) {
-                await search();
+                await refreshCurrentSearch();
             }
         }
         catch (err) {
@@ -691,7 +862,7 @@ const SearchScreen = () => {
             await fetchMyPrivateMentors();
 
             if (mode === "mentor" && hasSearched) {
-                await search();
+                await refreshCurrentSearch();
             }
         }
         catch (err) {
@@ -736,7 +907,7 @@ const SearchScreen = () => {
             setPaperDeleteTarget(undefined);
 
             if (mode === "paper" && hasSearched) {
-                await search();
+                await refreshCurrentSearch();
             }
         }
         catch (err) {
@@ -782,7 +953,7 @@ const SearchScreen = () => {
             });
 
             if (mode === "paper" && hasSearched) {
-                await search();
+                await refreshCurrentSearch();
             }
         }
         catch (err) {
@@ -1177,7 +1348,15 @@ const SearchScreen = () => {
                 <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading}>
                     清空
                 </button>
-                <button onClick={() => void search()} disabled={keyword.trim() === "" || loading}>
+                <button
+                    onClick={() => {
+                        void navigateToSearchState(resolveSearchState({
+                            keyword,
+                            page: 1,
+                        }));
+                    }}
+                    disabled={keyword.trim() === "" || loading}
+                >
                     搜索
                 </button>
             </div>
@@ -1195,7 +1374,16 @@ const SearchScreen = () => {
                             return;
                         }
 
-                        setMentorResultFilter(value as MentorResultFilter);
+                        const nextVisibility = value as MentorResultFilter;
+                        if (!hasSearched) {
+                            setMentorResultFilter(nextVisibility);
+                            return;
+                        }
+
+                        void navigateToSearchState(resolveSearchState({
+                            visibility: nextVisibility,
+                            page: 1,
+                        }));
                     },
                 )}
             </div>
@@ -1390,7 +1578,9 @@ const SearchScreen = () => {
                             controlHeight={33.77}
                             jumpInputWidth={120}
                             activePageHighlightColor="rgb(8, 109, 177)"
-                            onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                            onPageChange={(newPage) => {
+                                void navigateToSearchState(resolveSearchState({ page: newPage }));
+                            }}
                         />
                     </div>
 
@@ -1502,7 +1692,9 @@ const SearchScreen = () => {
                         controlHeight={33.77}
                         jumpInputWidth={120}
                         activePageHighlightColor="rgb(8, 109, 177)"
-                        onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                        onPageChange={(newPage) => {
+                            void navigateToSearchState(resolveSearchState({ page: newPage }));
+                        }}
                     />
                 </div>
             )}
@@ -1529,7 +1721,9 @@ const SearchScreen = () => {
                             controlHeight={33.77}
                             jumpInputWidth={120}
                             activePageHighlightColor="rgb(8, 109, 177)"
-                            onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                            onPageChange={(newPage) => {
+                                void navigateToSearchState(resolveSearchState({ page: newPage }));
+                            }}
                         />
                     </div>
 
@@ -1647,7 +1841,9 @@ const SearchScreen = () => {
                         controlHeight={33.77}
                         jumpInputWidth={120}
                         activePageHighlightColor="rgb(8, 109, 177)"
-                        onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
+                        onPageChange={(newPage) => {
+                            void navigateToSearchState(resolveSearchState({ page: newPage }));
+                        }}
                     />
                 </div>
             )}

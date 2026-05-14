@@ -1,6 +1,7 @@
 export type SearchMode = "mentor" | "paper";
 export type SearchMatchMode = "exact" | "fuzzy";
 export type SearchPaperSortMode = "default" | "early" | "late";
+export type SearchMentorVisibility = "all" | "mine" | "public";
 
 export interface SearchQueryState {
     keyword: string;
@@ -8,6 +9,7 @@ export interface SearchQueryState {
     searchMode: SearchMatchMode;
     sortMode: SearchPaperSortMode;
     page: number;
+    visibility: SearchMentorVisibility;
 }
 
 export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
@@ -16,6 +18,7 @@ export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
     searchMode: "fuzzy",
     sortMode: "default",
     page: 1,
+    visibility: "all",
 };
 
 const isSafeSearchMode = (value: unknown): value is SearchMode => {
@@ -28,6 +31,10 @@ const isSafeMatchMode = (value: unknown): value is SearchMatchMode => {
 
 const isSafeSortMode = (value: unknown): value is SearchPaperSortMode => {
     return value === "default" || value === "early" || value === "late";
+};
+
+const isSafeMentorVisibility = (value: unknown): value is SearchMentorVisibility => {
+    return value === "all" || value === "mine" || value === "public";
 };
 
 const normalizeQueryValue = (value: string | string[] | undefined) => {
@@ -59,13 +66,15 @@ export const parseSearchQuery = (
     const rawSearchMode = normalizeQueryValue(query.search_mode);
     const rawSortMode = normalizeQueryValue(query.sort_mode);
     const rawPage = normalizeQueryValue(query.page);
+    const rawVisibility = normalizeQueryValue(query.visibility);
 
     const hasAnySearchParam =
         rawKeyword !== "" ||
         rawMode !== "" ||
         rawSearchMode !== "" ||
         rawSortMode !== "" ||
-        rawPage !== "";
+        rawPage !== "" ||
+        rawVisibility !== "";
 
     return {
         hasAnySearchParam,
@@ -75,6 +84,7 @@ export const parseSearchQuery = (
             searchMode: isSafeMatchMode(rawSearchMode) ? rawSearchMode : DEFAULT_SEARCH_QUERY_STATE.searchMode,
             sortMode: isSafeSortMode(rawSortMode) ? rawSortMode : DEFAULT_SEARCH_QUERY_STATE.sortMode,
             page: rawPage === "" ? DEFAULT_SEARCH_QUERY_STATE.page : parsePositivePage(rawPage),
+            visibility: isSafeMentorVisibility(rawVisibility) ? rawVisibility : DEFAULT_SEARCH_QUERY_STATE.visibility,
         } satisfies SearchQueryState,
     };
 };
@@ -88,6 +98,9 @@ export const buildSearchUrl = (state: SearchQueryState) => {
 
     if (state.mode === "paper") {
         params.set("sort_mode", state.sortMode);
+    }
+    else if (state.visibility !== "all") {
+        params.set("visibility", state.visibility);
     }
 
     if (state.page > 1) {
@@ -104,5 +117,6 @@ export const buildGlobalPaperSearchUrl = (keyword: string) => {
         searchMode: "fuzzy",
         sortMode: "default",
         page: 1,
+        visibility: "all",
     });
 };

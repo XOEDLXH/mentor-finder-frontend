@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -17,11 +17,28 @@ jest.mock("../utils/network", () => ({
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
     const mockReplace = jest.fn();
+    let historyKeyCounter = 0;
     const mockRouter = {
         push: mockPush,
         replace: mockReplace,
         query: {},
         isReady: true,
+    };
+
+    const syncHistoryState = (key = `test-history-${historyKeyCounter++}`) => {
+        window.history.replaceState({ key }, "", "/search");
+        return key;
+    };
+
+    const applyUrlToRouter = (url) => {
+        const parsedUrl = new URL(url, "http://localhost");
+        const nextQuery = {};
+
+        parsedUrl.searchParams.forEach((value, key) => {
+            nextQuery[key] = value;
+        });
+
+        mockRouter.query = nextQuery;
     };
 
     const mockPrivateMentor = {
@@ -76,6 +93,7 @@ describe("SearchScreen", () => {
         mockPush.mockReset();
         mockReplace.mockReset();
         request.mockReset();
+        historyKeyCounter = 0;
 
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
@@ -94,7 +112,20 @@ describe("SearchScreen", () => {
         });
 
         mockRouter.query = {};
+        mockPush.mockImplementation(async (url) => {
+            syncHistoryState();
+            applyUrlToRouter(url);
+            return true;
+        });
+        mockReplace.mockImplementation(async (url) => {
+            applyUrlToRouter(url);
+            return true;
+        });
+        syncHistoryState("test-history-initial");
         useRouter.mockReturnValue(mockRouter);
+        window.sessionStorage.clear();
+        window.scrollTo = jest.fn();
+        window.requestAnimationFrame = (callback) => window.setTimeout(() => callback(0), 0);
     });
 
     it("shows admin operation panel only for admin role", async () => {
@@ -367,7 +398,7 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("button", { name: "默认" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByDisplayValue("大模型")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
-        expect(mockReplace).not.toHaveBeenCalled();
+        expect(mockPush).not.toHaveBeenCalled();
     });
 
     it("falls back to default values when URL query is invalid", async () => {
@@ -1060,6 +1091,8 @@ describe("SearchScreen", () => {
         });
     });
 
+
+
     it("clicking a mentor author in paper result triggers exact mentor search", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
@@ -1122,6 +1155,14 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: /李四/ }));
 
         await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith(
+                "/search?keyword=%E6%9D%8E%E5%9B%9B&mode=mentor&search_mode=exact",
+                undefined,
+                { shallow: true, scroll: false },
+            );
+        });
+
+        await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
                 "/api/search/mentors?keyword=%E6%9D%8E%E5%9B%9B&search_mode=exact",
                 "GET",
@@ -1147,10 +1188,10 @@ describe("SearchScreen", () => {
             );
         });
 
-        expect(mockReplace).toHaveBeenCalledWith(
+        expect(mockPush).toHaveBeenCalledWith(
             "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=exact",
             undefined,
-            { shallow: true },
+            { shallow: true, scroll: false },
         );
     });
 
@@ -1254,10 +1295,10 @@ describe("SearchScreen", () => {
             );
         });
 
-        expect(mockReplace).toHaveBeenCalledWith(
+        expect(mockPush).toHaveBeenCalledWith(
             "/search?keyword=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&mode=paper&search_mode=fuzzy&sort_mode=late",
             undefined,
-            { shallow: true },
+            { shallow: true, scroll: false },
         );
     });
 
@@ -1344,10 +1385,10 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
 
-        expect(mockReplace).toHaveBeenCalledWith(
+        expect(mockPush).toHaveBeenCalledWith(
             "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy&page=2",
             undefined,
-            { shallow: true },
+            { shallow: true, scroll: false },
         );
     });
 
