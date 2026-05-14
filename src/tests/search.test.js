@@ -419,7 +419,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const { container } = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -442,6 +442,7 @@ describe("SearchScreen", () => {
         expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+        expect(container.querySelectorAll('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).toHaveLength(2);
     });
 
     it("searches papers exactly when clicking mentor related paper title", async () => {
@@ -483,7 +484,7 @@ describe("SearchScreen", () => {
             return {};
         });
 
-        renderWithStore();
+        const { container } = renderWithStore();
         await waitForMineRequest();
 
         fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
@@ -494,6 +495,8 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         });
+
+        expect(container.querySelector('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).not.toBeNull();
 
         fireEvent.click(screen.getByRole("button", { name: "机器学习方法研究" }));
 
@@ -507,6 +510,44 @@ describe("SearchScreen", () => {
 
         expect(screen.getByRole("heading", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "arxiv" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
+    });
+
+    it("renders inline LaTeX in mentor related paper titles", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 3,
+                        Chinese_name: "李四",
+                        English_name: "Li Si",
+                        research_direction: "神经网络",
+                        email: "lisi@example.com",
+                        profile: "研究带有公式标题的论文。",
+                        paperTitles: ["GeS$^\\text{2}$mS-T: Multi-Dimensional Grouping for Ultra-High Energy Efficiency in Spiking Transformer"],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        const { container } = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "李四" },
+        });
+        fireEvent.click(screen.getByText("搜索"));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Multi-Dimensional Grouping for Ultra-High Energy Efficiency in Spiking Transformer/)).toBeInTheDocument();
+        });
+
+        expect(container.querySelector(".searchMentorPaperLinkText .katex")).not.toBeNull();
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
