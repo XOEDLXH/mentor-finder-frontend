@@ -144,38 +144,40 @@ const ProfileSettingsPage = () => {
 
                     <section className="settingsSection" aria-label="展示内容设置">
                         <h3>个人主页展示</h3>
-                        <label className="checkboxRow">
-                            <input
-                                type="checkbox"
-                                checked={settings.showPersonalIntro}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, showPersonalIntro: e.target.checked }))}
-                            />
-                            展示个人简介
-                        </label>
-                        <label className="checkboxRow">
-                            <input
-                                type="checkbox"
-                                checked={settings.showResearchExperience}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, showResearchExperience: e.target.checked }))}
-                            />
-                            展示科研经历
-                        </label>
-                        <label className="checkboxRow">
-                            <input
-                                type="checkbox"
-                                checked={settings.showHonors}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, showHonors: e.target.checked }))}
-                            />
-                            展示所获荣誉
-                        </label>
-                        <label className="checkboxRow">
-                            <input
-                                type="checkbox"
-                                checked={settings.showProjectExperience}
-                                onChange={(e) => setSettings((prev) => ({ ...prev, showProjectExperience: e.target.checked }))}
-                            />
-                            展示项目经历
-                        </label>
+                        <div className="visibilityOptions">
+                            <label className="checkboxRow">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.showPersonalIntro}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, showPersonalIntro: e.target.checked }))}
+                                />
+                                <span>展示个人简介</span>
+                            </label>
+                            <label className="checkboxRow">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.showResearchExperience}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, showResearchExperience: e.target.checked }))}
+                                />
+                                <span>展示科研经历</span>
+                            </label>
+                            <label className="checkboxRow">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.showHonors}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, showHonors: e.target.checked }))}
+                                />
+                                <span>展示所获荣誉</span>
+                            </label>
+                            <label className="checkboxRow">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.showProjectExperience}
+                                    onChange={(e) => setSettings((prev) => ({ ...prev, showProjectExperience: e.target.checked }))}
+                                />
+                                <span>展示项目经历</span>
+                            </label>
+                        </div>
                     </section>
 
                     <div className="actions">
@@ -262,10 +264,35 @@ const ProfileSettingsPage = () => {
                         #d9eefc;
                 }
 
+                .visibilityOptions {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 10px 12px;
+                }
+
                 .checkboxRow {
-                    display: flex;
+                    display: grid;
+                    grid-template-columns: 18px minmax(0, 1fr);
                     align-items: center;
-                    gap: 8px;
+                    gap: 10px;
+                    min-height: 42px;
+                    padding: 10px 12px;
+                    border: 1px solid #d7d7d7;
+                    border-radius: 6px;
+                    background: #fafafa;
+                    cursor: pointer;
+                }
+
+                .checkboxRow input {
+                    width: 16px;
+                    height: 16px;
+                    margin: 0;
+                }
+
+                .checkboxRow span {
+                    min-width: 0;
+                    line-height: 1.4;
+                    overflow-wrap: anywhere;
                 }
 
                 .actions {
@@ -287,6 +314,16 @@ const ProfileSettingsPage = () => {
                 .successPanel {
                     border: 1px solid #badbcc;
                     background: #d1e7dd;
+                }
+
+                @media (max-width: 560px) {
+                    .pageHeader {
+                        flex-direction: column;
+                    }
+
+                    .visibilityOptions {
+                        grid-template-columns: 1fr;
+                    }
                 }
             `}</style>
         </main>
