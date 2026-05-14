@@ -108,6 +108,7 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
+        expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "返回主页" })).not.toBeInTheDocument();
         expect(screen.getByRole("group", { name: "搜索类型" })).toBeInTheDocument();
         expect(screen.getByRole("group", { name: "匹配方式" })).toBeInTheDocument();
@@ -360,6 +361,7 @@ describe("SearchScreen", () => {
             );
         });
 
+        expect(screen.getByRole("heading", { name: "Showing 1 results for all: 大模型" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "搜论文" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByRole("button", { name: "模糊" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByRole("button", { name: "默认" })).toHaveAttribute("aria-pressed", "true");
@@ -1161,6 +1163,8 @@ describe("SearchScreen", () => {
             );
             expect(screen.getByRole("heading", { name: "All Papers" })).toBeInTheDocument();
         });
+        expect(screen.queryByText("Showing 1 results for all")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Search in 1 entrys:" })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "搜人" }));
 
@@ -1276,7 +1280,7 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
 
         await waitFor(() => {
-            expect(screen.getByText("共 2 条结果，第 1 / 2 页")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Showing 2 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
         });
 
@@ -1291,7 +1295,7 @@ describe("SearchScreen", () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText("共 2 条结果，第 2 / 2 页")).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Showing 2 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
 
@@ -1322,6 +1326,47 @@ describe("SearchScreen", () => {
                 "GET",
                 true,
             );
+        });
+
+        expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
+    });
+
+    it("stores the full summary string in the title attribute for long keywords", async () => {
+        const longKeyword = "超长搜索关键词".repeat(12);
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "长关键词导师",
+                        research_direction: "测试",
+                        email: "",
+                        profile: "",
+                        paperTitles: [],
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: longKeyword },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /^搜索(中\.\.\.)?$/ }));
+
+        const expectedSummary = `Showing 1 results for all: ${longKeyword}`;
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: expectedSummary })).toHaveAttribute("title", expectedSummary);
         });
     });
 });

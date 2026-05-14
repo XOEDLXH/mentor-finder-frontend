@@ -345,6 +345,11 @@ const SearchScreen = () => {
     const mentorResultTotalMineCount = privateMentors.length;
     const thirdSegmentOptions = mode === "paper" ? PAPER_SORT_OPTIONS : MENTOR_FILTER_OPTIONS;
     const thirdSegmentValue = mode === "paper" ? paperSortMode : mentorResultFilter;
+    const trimmedKeyword = keyword.trim();
+    const isEmptySearch = trimmedKeyword === "";
+    const searchHeadingText = isEmptySearch
+        ? `Search in ${totalResults} entrys:`
+        : `Showing ${totalResults} results for all: ${trimmedKeyword}`;
 
     const search = async ({
         keyword: overrideKeyword,
@@ -1144,7 +1149,17 @@ const SearchScreen = () => {
                     </div>
                 </div>
             )}
-            <h2>信息检索</h2>
+            <h2
+                title={searchHeadingText}
+                style={isEmptySearch ? undefined : {
+                    maxWidth: 654,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                }}
+            >
+                {searchHeadingText}
+            </h2>
 
             <div style={{ display: "flex", gap: 8 }}>
                 <input
@@ -1363,7 +1378,6 @@ const SearchScreen = () => {
                             flexWrap: "wrap",
                         }}
                     >
-                        <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
                         <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
@@ -1493,7 +1507,6 @@ const SearchScreen = () => {
                             flexWrap: "wrap",
                         }}
                     >
-                        <span>共 {totalResults} 条结果，第 {currentPage} / {Math.max(totalPages, 1)} 页</span>
                         <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
