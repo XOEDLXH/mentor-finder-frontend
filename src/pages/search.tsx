@@ -1798,8 +1798,6 @@ const SearchScreen = () => {
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
-                            showPrevious={false}
-                            nextLabel="Next"
                             centered
                             controlHeight={33.77}
                             jumpInputWidth={120}
@@ -1912,8 +1910,6 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
-                        showPrevious={false}
-                        nextLabel="Next"
                         centered
                         controlHeight={33.77}
                         jumpInputWidth={120}
@@ -1941,8 +1937,6 @@ const SearchScreen = () => {
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
-                            showPrevious={false}
-                            nextLabel="Next"
                             centered
                             controlHeight={33.77}
                             jumpInputWidth={120}
@@ -2061,8 +2055,6 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
-                        showPrevious={false}
-                        nextLabel="Next"
                         centered
                         controlHeight={33.77}
                         jumpInputWidth={120}

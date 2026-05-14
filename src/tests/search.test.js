@@ -1910,7 +1910,7 @@ describe("SearchScreen", () => {
             expect(screen.getAllByRole("button", { name: pageLabel }).length).toBeGreaterThan(0);
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
+        fireEvent.click(screen.getAllByRole("button", { name: "下一页" })[0]);
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
