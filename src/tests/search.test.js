@@ -498,7 +498,7 @@ describe("SearchScreen", () => {
         });
 
         expect(screen.getByRole("heading", { name: "机器学习方法研究" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "2402.00002" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
+        expect(screen.getByRole("link", { name: "arxiv" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
@@ -603,14 +603,15 @@ describe("SearchScreen", () => {
         });
 
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
-        expect(screen.getByText("arXiv：")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "2401.00001" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
-        expect(screen.getByText("发表日期：2024-06-15")).toBeInTheDocument();
-        expect(screen.getByText("学科/分类：cs.CL")).toBeInTheDocument();
+        expect(screen.getByText("2024-06-15")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "arxiv" })).toHaveAttribute("href", "https://arxiv.org/abs/2401.00001");
+        expect(screen.getByRole("link", { name: "pdf" })).toHaveAttribute("href", "https://arxiv.org/pdf/2401.00001");
+        expect(screen.getByText("cs.CL")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "李四" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "张三" })).toBeInTheDocument();
         expect(screen.getByText("摘要：")).toBeInTheDocument();
         expect(screen.getByText("本文介绍大语言模型在智能问答中的实践。").closest(".searchPaperAbstractContent")).not.toBeNull();
+        expect(screen.getByText("作者：").closest(".searchTimelineMetaRow")).not.toBeNull();
         // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
     });
 
@@ -700,7 +701,7 @@ describe("SearchScreen", () => {
         await screen.findByText(/Compression/i);
 
         const titleHeading = container.querySelector("h3");
-        const arxivLink = container.querySelector("a[href='https://arxiv.org/abs/2501.00003']");
+        const arxivLink = screen.getByRole("link", { name: "arxiv" });
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/2501.00003");
         expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
@@ -789,7 +790,7 @@ describe("SearchScreen", () => {
         await screen.findByText(/Block/i);
 
         const titleHeading = container.querySelector("h3");
-        const arxivLink = container.querySelector("a[href='https://arxiv.org/abs/2501.00004']");
+        const arxivLink = screen.getByRole("link", { name: "arxiv" });
         expect(titleHeading?.querySelector(".katex")).not.toBeNull();
         expect(titleHeading?.querySelector(".latexTextDisplay")).toBeNull();
         expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/2501.00004");

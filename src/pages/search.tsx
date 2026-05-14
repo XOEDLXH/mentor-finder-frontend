@@ -71,6 +71,25 @@ interface PaperDeleteTarget {
     mentorNames: string[];
 }
 
+const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
+    if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
+        return "";
+    }
+
+    return arxivUrl.replace("/abs/", "/pdf/");
+};
+
+const parseTimelineLikeSubjects = (subjects?: string) => {
+    if (typeof subjects !== "string" || subjects.trim() === "") {
+        return [];
+    }
+
+    return subjects
+        .split(",")
+        .map((subject) => subject.trim())
+        .filter((subject) => subject !== "");
+};
+
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -1422,84 +1441,104 @@ const SearchScreen = () => {
                         />
                     </div>
 
-                    {papers.map((paper) => (
-                        <div
-                            key={paper.id}
-                            style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
-                        >
-                            <h3 style={{ margin: "0 0 8px" }}>
-                                <LatexText text={paper.title} forceInlineMath />
-                            </h3>
-                            <p style={{ margin: "4px 0" }}>
-                                arXiv：
-                                {paper.arxiv_id && paper.arxiv_url ? (
-                                    <a href={paper.arxiv_url} target="_blank" rel="noopener noreferrer" style={{ color: "#0070f3", textDecoration: "underline" }}>
-                                        {paper.arxiv_id}
-                                    </a>
-                                ) : (paper.arxiv_id || "暂无")}
-                            </p>
-                            <p style={{ margin: "4px 0" }}>发表日期：{paper.publish_date || "未知"}</p>
-                            <p style={{ margin: "4px 0" }}>学科/分类：{paper.subjects || "暂无分类"}</p>
-                            <p style={{ margin: "4px 0" }}>
-                                作者：{
-                                    (() => {
-                                        const names = (paper.author_names || "").split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
-                                        const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
-                                        if (names.length === 0) {
-                                            return "未知";
-                                        }
+                    {papers.map((paper) => {
+                        const subjectTags = parseTimelineLikeSubjects(paper.subjects);
 
-                                        return names.map((name, idx) => {
-                                            const mentorId = mentorIds[idx];
-                                            const isMentor = typeof mentorId === "number" && mentorId > 0;
-                                            const separator = idx === names.length - 1 ? "" : "、";
-                                            if (isMentor) {
+                        return (
+                            <article
+                                key={paper.id}
+                                style={{
+                                    position: "relative",
+                                    padding: 16,
+                                    border: "1px solid #ccc",
+                                    borderRadius: 8,
+                                    backgroundColor: "#fff",
+                                }}
+                            >
+                                <div className="searchTimelinePaperHeaderRow">
+                                    <div className="searchTimelinePaperDate">
+                                        {paper.publish_date || "未知日期"}
+                                    </div>
+                                    {paper.arxiv_url && (
+                                        <div className="searchTimelinePaperLinks" aria-label="论文外部链接">
+                                            <span>[</span>
+                                            <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
+                                                arxiv
+                                            </a>
+                                            <span>, </span>
+                                            <a href={buildTimelineLikePdfUrl(paper.arxiv_url)} target="_blank" rel="noreferrer">
+                                                pdf
+                                            </a>
+                                            <span>]</span>
+                                        </div>
+                                    )}
+                                    {subjectTags.length > 0 && (
+                                        <div className="searchTimelineSubjectTags" aria-label="论文学科分类">
+                                            {subjectTags.map((subject) => (
+                                                <span key={subject} className="searchTimelineSubjectTag">
+                                                    {subject}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
+                                    <LatexText text={paper.title} forceInlineMath />
+                                </h3>
+                                <div className="searchTimelineMetaRow">
+                                    <span className="searchTimelineMetaLabel">作者：</span>
+                                    <div className="searchTimelineMetaContent">
+                                        {(() => {
+                                            const names = (paper.author_names || "").split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+                                            const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
+                                            if (names.length === 0) {
+                                                return "未知";
+                                            }
+
+                                            return names.map((name, idx) => {
+                                                const mentorId = mentorIds[idx];
+                                                const isMentor = typeof mentorId === "number" && mentorId > 0;
+                                                const separator = idx === names.length - 1 ? "" : "、";
+                                                if (isMentor) {
+                                                    return (
+                                                        <span key={`${name}-${idx}`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => searchMentorByName(name)}
+                                                                className="searchTimelineMentorButton"
+                                                            >
+                                                                {name}
+                                                            </button>
+                                                            {separator}
+                                                        </span>
+                                                    );
+                                                }
+
                                                 return (
                                                     <span key={`${name}-${idx}`}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => searchMentorByName(name)}
-                                                            style={{
-                                                                border: "none",
-                                                                background: "transparent",
-                                                                padding: 0,
-                                                                color: "#0070f3",
-                                                                textDecoration: "underline",
-                                                                cursor: "pointer",
-                                                                font: "inherit",
-                                                            }}
-                                                        >
-                                                            {name}
-                                                        </button>
+                                                        {name}
                                                         {separator}
                                                     </span>
                                                 );
-                                            }
-
-                                            return (
-                                                <span key={`${name}-${idx}`}>
-                                                    {name}
-                                                    {separator}
-                                                </span>
-                                            );
-                                        });
-                                    })()
-                                }
-                            </p>
-                            <div className="searchPaperAbstractRow">
-                                <span className="searchPaperAbstractLabel">摘要：</span>
-                                <div className="searchPaperAbstractContent">
-                                    <LatexText text={paper.abstract || "暂无摘要"} />
+                                            });
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
-                            {isAdmin && (
-                                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                                    <button onClick={() => beginEditPaper(paper)} disabled={adminSaving}>修改论文</button>
-                                    <button onClick={() => openDeletePaperDialog(paper)} disabled={adminSaving}>删除论文</button>
+                                <div className="searchTimelineMetaRow">
+                                    <span className="searchTimelineMetaLabel">摘要：</span>
+                                    <div className="searchTimelineMetaContent searchPaperAbstractContent">
+                                        <LatexText text={paper.abstract || "暂无摘要"} />
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    ))}
+                                {isAdmin && (
+                                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                        <button onClick={() => beginEditPaper(paper)} disabled={adminSaving}>修改论文</button>
+                                        <button onClick={() => openDeletePaperDialog(paper)} disabled={adminSaving}>删除论文</button>
+                                    </div>
+                                )}
+                            </article>
+                        );
+                    })}
 
                     <Pagination
                         currentPage={currentPage}
@@ -1521,6 +1560,102 @@ const SearchScreen = () => {
                     未找到匹配的论文结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
             )}
+
+            <style jsx>{`
+                .searchTimelinePaperHeaderRow {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-bottom: 8px;
+                    font-size: 13px;
+                    color: #666;
+                }
+
+                .searchTimelinePaperDate {
+                    color: #666;
+                }
+
+                .searchTimelinePaperLinks {
+                    color: rgb(45, 45, 45);
+                    font-size: 14px;
+                    line-height: 1.4;
+                }
+
+                .searchTimelinePaperLinks a {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    height: 20px;
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    transition: color 0.16s ease, border-color 0.16s ease;
+                    border-bottom: 1px dashed transparent;
+                    line-height: 1;
+                    vertical-align: middle;
+                }
+
+                .searchTimelinePaperLinks a:hover,
+                .searchTimelinePaperLinks a:focus-visible,
+                .searchTimelineMentorButton:hover,
+                .searchTimelineMentorButton:focus-visible {
+                    color: rgb(45, 45, 45);
+                    border-bottom-color: rgb(45, 45, 45);
+                    outline: none;
+                }
+
+                .searchTimelineSubjectTags {
+                    display: inline-flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+
+                .searchTimelineSubjectTag {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-sizing: border-box;
+                    min-height: 17.5px;
+                    padding: 0 8.925px;
+                    border-radius: 4px;
+                    background-color: rgb(8, 109, 177);
+                    color: rgb(255, 255, 255);
+                    font-size: 11.9px;
+                    font-style: normal;
+                    font-weight: 400;
+                    line-height: 17.85px;
+                    text-rendering: optimizelegibility;
+                    white-space: nowrap;
+                }
+
+                .searchTimelineMetaRow {
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+
+                .searchTimelineMetaLabel,
+                .searchTimelineMetaContent {
+                    font-size: 14px;
+                }
+
+                .searchTimelineMentorButton {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    height: 20px;
+                    border: none;
+                    background: transparent;
+                    padding: 0;
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    transition: color 0.16s ease, border-color 0.16s ease;
+                    border-bottom: 1px dashed transparent;
+                    line-height: 1;
+                    vertical-align: middle;
+                    cursor: pointer;
+                    font: inherit;
+                }
+            `}</style>
         </div>
     );
 };
