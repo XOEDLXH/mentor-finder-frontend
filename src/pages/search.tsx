@@ -662,7 +662,16 @@ const SearchScreen = () => {
         }
         catch (err) {
             if (isNetworkErrorInstance(err)) {
-                setPrivateMentorMsg(String(err));
+                const rawMsg = String(err);
+                if (rawMsg.includes("Mentor already exists")) {
+                    setPrivateMentorMsg("该导师已在你的私有导师列表中，请勿重复添加");
+                }
+                else if (rawMsg.includes("Private mentor limit reached")) {
+                    setPrivateMentorMsg("私有导师数量已达上限（10位），请先删除部分私有导师后再添加");
+                }
+                else {
+                    setPrivateMentorMsg(rawMsg);
+                }
             }
             else {
                 setPrivateMentorMsg(FAILURE_PREFIX + String(err));
@@ -1554,7 +1563,17 @@ const SearchScreen = () => {
                             {privateMentors.length >= 10 && (
                                 <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>私有导师数量已达上限（10位），请先删除部分私有导师后再添加。</p>
                             )}
-                            {privateMentorMsg !== "" && <span>{privateMentorMsg}</span>}
+                            {privateMentorMsg !== "" && (
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        fontSize: 13,
+                                        color: privateMentorMsg === "私有导师添加成功" ? undefined : "#cf222e",
+                                    }}
+                                >
+                                    {privateMentorMsg}
+                                </p>
+                            )}
                         </>
                     )}
                 </div>
