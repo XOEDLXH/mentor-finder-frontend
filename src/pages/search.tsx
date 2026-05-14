@@ -1023,12 +1023,6 @@ const SearchScreen = () => {
             <h2>信息检索</h2>
             <p>输入关键词，按导师姓名或论文相关信息进行搜索。</p>
 
-            <div>
-                <button onClick={() => router.push("/")}>
-                    返回主页
-                </button>
-            </div>
-
             <div style={{ display: "flex", gap: 8 }}>
                 <button
                     onClick={() => switchMode("mentor")}

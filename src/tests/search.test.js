@@ -108,6 +108,7 @@ describe("SearchScreen", () => {
         renderWithStore();
         await waitForMineRequest();
 
+        expect(screen.queryByRole("button", { name: "返回主页" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "我的私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "添加私有导师" })).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText("导师中文名（可选）")).not.toBeInTheDocument();
