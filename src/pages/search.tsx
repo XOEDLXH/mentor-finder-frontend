@@ -1388,6 +1388,7 @@ const SearchScreen = () => {
                             nextLabel="Next"
                             centered
                             controlHeight={33.77}
+                            jumpInputWidth={120}
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1498,6 +1499,7 @@ const SearchScreen = () => {
                         nextLabel="Next"
                         centered
                         controlHeight={33.77}
+                        jumpInputWidth={120}
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>
@@ -1523,6 +1525,7 @@ const SearchScreen = () => {
                             nextLabel="Next"
                             centered
                             controlHeight={33.77}
+                            jumpInputWidth={120}
                             onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                         />
                     </div>
@@ -1639,6 +1642,7 @@ const SearchScreen = () => {
                         nextLabel="Next"
                         centered
                         controlHeight={33.77}
+                        jumpInputWidth={120}
                         onPageChange={(newPage) => { void search({ page: newPage, shouldSyncUrl: true }); }}
                     />
                 </div>

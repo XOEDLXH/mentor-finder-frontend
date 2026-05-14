@@ -9,6 +9,7 @@ interface PaginationProps {
     nextLabel?: string;
     centered?: boolean;
     controlHeight?: number;
+    jumpInputWidth?: number;
 }
 
 const Pagination = ({
@@ -20,6 +21,7 @@ const Pagination = ({
     nextLabel = "下一页",
     centered = false,
     controlHeight,
+    jumpInputWidth,
 }: PaginationProps) => {
     const [jumpInput, setJumpInput] = useState("");
 
@@ -39,6 +41,10 @@ const Pagination = ({
             justifyContent: "center",
             padding: "0 12px",
         };
+    const inputStyle = {
+        ...controlStyle,
+        ...(jumpInputWidth === undefined ? undefined : { width: jumpInputWidth }),
+    };
 
     const pageNumbers = useMemo(() => {
         const pages: number[] = [];
@@ -117,12 +123,12 @@ const Pagination = ({
                 value={jumpInput}
                 onChange={(e) => setJumpInput(e.target.value)}
                 onKeyDown={handleJumpKeyDown}
-                placeholder="页码"
+                placeholder={`共${safeTotal}页`}
                 disabled={loading}
                 className="paginationJumpInput"
                 min={1}
                 max={safeTotal}
-                style={controlStyle}
+                style={inputStyle}
             />
             <button
                 onClick={handleJump}
