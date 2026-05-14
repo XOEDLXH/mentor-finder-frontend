@@ -1642,12 +1642,14 @@ const SearchScreen = () => {
                     min-width: 0;
                     min-height: 44px;
                     border: none;
+                    border-radius: 14px;
                     background: transparent;
                     box-shadow: none;
                     color: #59636e;
                     font-weight: 600;
                     padding: 0 12px;
                     transition: color 0.18s ease;
+                    appearance: none;
                 }
 
                 .searchSegmentButton:hover,
@@ -1655,6 +1657,11 @@ const SearchScreen = () => {
                     transform: none;
                     border-color: transparent;
                     box-shadow: none;
+                }
+
+                .searchSegmentButton:focus-visible {
+                    outline: 2px solid rgba(47, 129, 247, 0.35);
+                    outline-offset: -2px;
                 }
 
                 .searchSegmentButtonActive {
