@@ -544,6 +544,7 @@ const SearchScreen = () => {
         }
 
         pendingSearchPopRestore = undefined;
+        expandedMentorIdsRef.current = new Set(expandedMentorIds);
         const sourceEntryKey = getHistoryEntryKey();
         persistCurrentViewState(sourceEntryKey, true);
         blockAutoPersistRef.current = true;
@@ -561,7 +562,7 @@ const SearchScreen = () => {
         if (!areSearchStatesEqual(activeSearchStateRef.current, nextState)) {
             await loadSearchState(nextState, "push");
         }
-    }, [areSearchStatesEqual, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
+    }, [areSearchStatesEqual, expandedMentorIds, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
 
     const switchMode = (nextMode: SearchMode) => {
         if (nextMode === mode) {
