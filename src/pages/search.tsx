@@ -814,20 +814,55 @@ const SearchScreen = () => {
         options: SegmentedOption<TValue>[],
         activeValue: TValue,
         onSelect: (value: TValue) => void,
-        className?: string,
     ) => {
         const activeIndex = Math.max(0, options.findIndex((option) => option.value === activeValue));
-        const segmentWidth = 100 / options.length;
+        const groupFlex = options.length;
+        const groupMinWidth = options.length === 2 ? 180 : 270;
 
         return (
-            <div className={`searchSegmentGroup${className ? ` ${className}` : ""}`} role="group" aria-label={label}>
-                <div className="searchSegmentTrack">
+            <div
+                className="searchSegmentGroup"
+                role="group"
+                aria-label={label}
+                style={{
+                    minWidth: groupMinWidth,
+                    flex: `${groupFlex} 0 0`,
+                    flexShrink: 0,
+                }}
+            >
+                <div
+                    className="searchSegmentTrack"
+                    style={{
+                        position: "relative",
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
+                        alignItems: "stretch",
+                        width: "100%",
+                        minHeight: 56,
+                        padding: 4,
+                        border: "1px solid #d0d7de",
+                        borderRadius: 18,
+                        background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)",
+                        boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 2px rgba(15, 23, 42, 0.04)",
+                        overflow: "hidden",
+                    }}
+                >
                     <span
                         className="searchSegmentThumb"
                         aria-hidden="true"
                         style={{
-                            width: `${segmentWidth}%`,
+                            position: "absolute",
+                            top: 4,
+                            bottom: 4,
+                            left: 4,
+                            width: `calc((100% - 8px) / ${options.length})`,
+                            borderRadius: 14,
+                            background: "linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%)",
+                            border: "1px solid rgba(47, 129, 247, 0.22)",
+                            boxShadow: "0 10px 24px rgba(15, 23, 42, 0.14)",
                             transform: `translateX(${activeIndex * 100}%)`,
+                            transition: "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
+                            willChange: "transform",
                         }}
                     />
                     {options.map((option) => {
@@ -840,6 +875,25 @@ const SearchScreen = () => {
                                 className={`searchSegmentButton${isActive ? " searchSegmentButtonActive" : ""}`}
                                 aria-pressed={isActive}
                                 onClick={() => onSelect(option.value)}
+                                style={{
+                                    position: "relative",
+                                    zIndex: 1,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    minWidth: 0,
+                                    minHeight: 48,
+                                    border: "none",
+                                    borderRadius: 14,
+                                    background: "transparent",
+                                    boxShadow: "none",
+                                    color: isActive ? "#1f2328" : "#59636e",
+                                    fontWeight: isActive ? 700 : 600,
+                                    padding: "0 14px",
+                                    appearance: "none",
+                                    WebkitAppearance: "none",
+                                    transition: "color 180ms ease",
+                                }}
                             >
                                 <span className="searchSegmentButtonLabel">{option.label}</span>
                             </button>
@@ -1110,8 +1164,8 @@ const SearchScreen = () => {
             </div>
 
             <div className="searchSegmentRow" aria-label="搜索选项分段控件">
-                {renderSegmentedControl("搜索类型", SEARCH_MODE_OPTIONS, mode, switchMode, "searchSegmentGroupRatioTwo")}
-                {renderSegmentedControl("匹配方式", MATCH_MODE_OPTIONS, matchMode, changeMatchMode, "searchSegmentGroupRatioTwo")}
+                {renderSegmentedControl("搜索类型", SEARCH_MODE_OPTIONS, mode, switchMode)}
+                {renderSegmentedControl("匹配方式", MATCH_MODE_OPTIONS, matchMode, changeMatchMode)}
                 {renderSegmentedControl(
                     mode === "paper" ? "论文排序" : "导师筛选",
                     thirdSegmentOptions,
@@ -1124,7 +1178,6 @@ const SearchScreen = () => {
 
                         setMentorResultFilter(value as MentorResultFilter);
                     },
-                    "searchSegmentGroupRatioThree",
                 )}
             </div>
 
@@ -1580,92 +1633,22 @@ const SearchScreen = () => {
                     gap: 12px;
                     width: 100%;
                     overflow-x: auto;
-                    padding-bottom: 4px;
+                    padding: 4px 2px 8px;
                     scrollbar-width: thin;
+                    -webkit-overflow-scrolling: touch;
                 }
 
                 .searchSegmentGroup {
                     min-width: 0;
-                    flex-shrink: 0;
-                }
-
-                .searchSegmentGroupRatioTwo {
-                    flex: 2 0 0;
-                    min-width: 180px;
-                }
-
-                .searchSegmentGroupRatioThree {
-                    flex: 3 0 0;
-                    min-width: 270px;
-                }
-
-                .searchSegmentTrack {
-                    position: relative;
-                    display: grid;
-                    align-items: stretch;
-                    width: 100%;
-                    min-height: 52px;
-                    padding: 4px;
-                    border: 1px solid #d0d7de;
-                    border-radius: 18px;
-                    background: #f6f8fa;
-                    overflow: hidden;
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-                }
-
-                .searchSegmentGroupRatioTwo .searchSegmentTrack {
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
-                }
-
-                .searchSegmentGroupRatioThree .searchSegmentTrack {
-                    grid-template-columns: repeat(3, minmax(0, 1fr));
-                }
-
-                .searchSegmentThumb {
-                    position: absolute;
-                    top: 4px;
-                    bottom: 4px;
-                    left: 4px;
-                    border-radius: 14px;
-                    background: #ffffff;
-                    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-                    transition: transform 0.22s ease;
-                    will-change: transform;
                 }
 
                 .searchSegmentButton {
-                    position: relative;
-                    z-index: 1;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-width: 0;
-                    min-height: 44px;
-                    border: none;
-                    border-radius: 14px;
-                    background: transparent;
-                    box-shadow: none;
-                    color: #59636e;
-                    font-weight: 600;
-                    padding: 0 12px;
-                    transition: color 0.18s ease;
-                    appearance: none;
-                }
-
-                .searchSegmentButton:hover,
-                .searchSegmentButton:focus-visible {
                     transform: none;
-                    border-color: transparent;
-                    box-shadow: none;
                 }
 
                 .searchSegmentButton:focus-visible {
                     outline: 2px solid rgba(47, 129, 247, 0.35);
                     outline-offset: -2px;
-                }
-
-                .searchSegmentButtonActive {
-                    color: #1f2328;
                 }
 
                 .searchSegmentButtonLabel {
