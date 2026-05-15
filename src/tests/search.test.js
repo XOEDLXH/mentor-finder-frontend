@@ -1906,6 +1906,9 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
         });
 
+        expect(screen.getByRole("link", { name: "张三" })).toHaveAttribute("href", "/mentors/1");
+        expect(screen.queryByRole("button", { name: "查看导师主页" })).not.toBeInTheDocument();
+
         ["1", "2", "3", "4", "5"].forEach((pageLabel) => {
             expect(screen.getAllByRole("button", { name: pageLabel }).length).toBeGreaterThan(0);
         });
@@ -1924,6 +1927,9 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
+
+        expect(screen.getByRole("link", { name: "张六" })).toHaveAttribute("href", "/mentors/2");
+        expect(screen.queryByRole("button", { name: "查看导师主页" })).not.toBeInTheDocument();
 
         expect(mockPush).toHaveBeenCalledWith(
             "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy&page=2",

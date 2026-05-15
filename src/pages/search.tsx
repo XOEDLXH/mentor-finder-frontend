@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
@@ -1849,8 +1850,10 @@ const SearchScreen = () => {
                                     删除
                                 </button>
                             )}
-                            <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
-                                {mentor.Chinese_name}
+                            <h3 style={{ margin: "0 0 8px", fontSize: "20px" }}>
+                                <Link href={`/mentors/${mentor.id}`} className="searchMentorNameLink">
+                                    {mentor.Chinese_name}
+                                </Link>
                                 {privateMentorIdSet.has(mentor.id) && (
                                     <span aria-hidden="true" style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
                                 )}
@@ -1863,9 +1866,6 @@ const SearchScreen = () => {
                             </p>
                             <p style={{ margin: "4px 0", fontSize: "14px" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
                             <p style={{ margin: "4px 0", fontSize: "14px" }}>导师画像：{isExpanded ? profileText : profilePreview}</p>
-                            <button onClick={() => router.push(`/mentors/${mentor.id}`)} style={{ fontSize: "14px" }}>
-                                查看导师主页
-                            </button>
                             <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                                 {visiblePaperTitles.map((title) => (
@@ -2108,6 +2108,19 @@ const SearchScreen = () => {
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
+                }
+
+                :global(a.searchMentorNameLink) {
+                    color: #000000;
+                    text-decoration: none;
+                    transition: color 0.16s ease;
+                }
+
+                :global(a.searchMentorNameLink:hover),
+                :global(a.searchMentorNameLink:focus-visible) {
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    outline: none;
                 }
 
                 .searchTimelinePaperHeaderRow {
