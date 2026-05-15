@@ -1604,7 +1604,7 @@ describe("SearchScreen", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
             expect(screen.getByText(longProfile)).toBeInTheDocument();
         });
 
