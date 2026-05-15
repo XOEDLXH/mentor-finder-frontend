@@ -22,6 +22,20 @@ const getCurrentHistoryEntryKey = () => {
     return typeof historyState?.key === "string" ? historyState.key.trim() : "";
 };
 
+const mentorPageShellStyle = {
+    width: "min(794px, 100%)",
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 12,
+};
+
+const mentorPageCardStyle = {
+    padding: 12,
+    border: "1px solid #ccc",
+    borderRadius: 6,
+};
+
 const MentorDetailPage = () => {
     const router = useRouter();
     const { id } = router.query;
@@ -159,12 +173,16 @@ const MentorDetailPage = () => {
     };
 
     if (loading) {
-        return <p>加载中...</p>;
+        return (
+            <div style={mentorPageShellStyle}>
+                <p style={{ margin: 0, textAlign: "center" }}>加载中...</p>
+            </div>
+        );
     }
 
     if (errorMessage !== "") {
         return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
+            <div style={mentorPageShellStyle}>
                 <button onClick={() => void returnToSearch()}>返回检索</button>
                 <p style={{ color: "#c62828" }}>{errorMessage}</p>
             </div>
@@ -173,7 +191,7 @@ const MentorDetailPage = () => {
 
     if (mentor === undefined) {
         return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
+            <div style={mentorPageShellStyle}>
                 <button onClick={() => void returnToSearch()}>返回检索</button>
                 <p>暂无导师信息</p>
             </div>
@@ -181,10 +199,10 @@ const MentorDetailPage = () => {
     }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
+        <div style={mentorPageShellStyle}>
             <button onClick={() => void returnToSearch()}>返回检索</button>
 
-            <div style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}>
+            <div style={mentorPageCardStyle}>
                 <h2 style={{ margin: "0 0 8px" }}>{mentor.Chinese_name}</h2>
 
                 {mentor.is_private && (
