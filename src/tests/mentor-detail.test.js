@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -125,6 +125,22 @@ describe("MentorDetailPage search return", () => {
 
         await screen.findByRole("heading", { name: "测试导师" });
 
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        expect(within(sidebar).getByText("导师信息")).toBeInTheDocument();
+        expect(within(sidebar).getByText("英文名")).toBeInTheDocument();
+        expect(within(sidebar).getByText("研究方向")).toBeInTheDocument();
+        expect(within(sidebar).getByText("邮箱")).toBeInTheDocument();
+        expect(within(sidebar).getByText("Test Mentor")).toBeInTheDocument();
+        expect(within(sidebar).getByText("知识工程")).toBeInTheDocument();
+        expect(within(sidebar).getByText("test@example.com")).toBeInTheDocument();
+        expect(sidebar.querySelector('img[src="/English_Name.ico"]')).not.toBeNull();
+        expect(sidebar.querySelector('img[src="/Reseach_Direction.ico"]')).not.toBeNull();
+        expect(sidebar.querySelector('img[src="/Email.ico"]')).not.toBeNull();
+
+        expect(screen.queryByText("英文名：Test Mentor")).not.toBeInTheDocument();
+        expect(screen.queryByText("研究方向：知识工程")).not.toBeInTheDocument();
+        expect(screen.queryByText("邮箱：test@example.com")).not.toBeInTheDocument();
+
         expect(screen.getByText("相关论文：")).toBeInTheDocument();
         expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
 
@@ -163,5 +179,30 @@ describe("MentorDetailPage search return", () => {
 
         await screen.findByRole("heading", { name: "测试导师" });
         expect(screen.getByText("暂无相关论文")).toBeInTheDocument();
+    });
+
+    it("shows fallback text when the english name is missing in the sidebar", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return {
+                    mentor: {
+                        ...mentor,
+                        English_name: "",
+                    },
+                };
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        expect(within(sidebar).getByText("暂无英文名")).toBeInTheDocument();
     });
 });

@@ -24,7 +24,7 @@ const getCurrentHistoryEntryKey = () => {
 };
 
 const mentorPageShellStyle = {
-    width: "min(794px, 100%)",
+    width: "min(1088px, 100%)",
     margin: "0 auto",
     display: "flex",
     flexDirection: "column" as const,
@@ -36,6 +36,11 @@ const mentorPageCardStyle = {
     padding: 12,
     border: "1px solid #ccc",
     borderRadius: 6,
+};
+
+const mentorPageMainColumnStyle = {
+    width: "794px",
+    minWidth: 0,
 };
 
 const buildMentorFollowButtonStyle = (followed: boolean) => ({
@@ -228,134 +233,218 @@ const MentorDetailPage = () => {
         <div style={mentorPageShellStyle}>
             <button onClick={() => void returnToSearch()}>返回检索</button>
 
-            <div style={mentorPageCardStyle}>
-                {canFollow && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            top: 8,
-                            right: 8,
-                            display: "flex",
-                            alignItems: "center",
-                            zIndex: 1,
-                        }}
-                    >
-                        <FollowToggleButton
-                            className="searchMentorFollowButton"
-                            followed={followed}
-                            loading={followLoading}
-                            onClick={() => void toggleFollow()}
-                            style={buildMentorFollowButtonStyle(followed)}
-                        />
-                    </div>
-                )}
-
-                <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{mentor.Chinese_name}</h2>
-
-                {mentor.is_private && (
-                    <p style={{ margin: "4px 0", color: "#555" }}>我的私有导师</p>
-                )}
-
-
-                {mentor.English_name && (
-                    <p style={{ margin: "4px 0" }}>英文名：{mentor.English_name}</p>
-                )}
-
-                <p style={{ margin: "4px 0" }}>
-                    研究方向：{mentor.research_direction || "暂无研究方向"}
-                </p>
-
-                <p style={{ margin: "4px 0" }}>
-                    邮箱：{mentor.email || "暂无邮箱"}
-                </p>
-
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                    导师画像：{mentor.profile || "暂无导师画像"}
-                </p>
-
-                <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
-                {mentor.paper_ids.length > 0 ? (
-                    <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
-                        {mentor.paper_ids.map((paper) => (
-                            <li key={paper.id}>
-                                {paper.arxiv_url ? (
-                                    <a
-                                        href={paper.arxiv_url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="mentorPaperLink"
-                                    >
-                                        <img
-                                            src="/arxiv.ico"
-                                            alt=""
-                                            aria-hidden="true"
-                                            className="mentorPaperLinkIcon"
-                                        />
-                                        <span className="mentorPaperLinkText">
-                                            <LatexText text={paper.title} forceInlineMath />
-                                        </span>
-                                    </a>
-                                ) : (
-                                    <span
-                                        className="mentorPaperLink"
-                                        style={{ color: "#1f2328", cursor: "default" }}
-                                    >
-                                        <img
-                                            src="/arxiv.ico"
-                                            alt=""
-                                            aria-hidden="true"
-                                            className="mentorPaperLinkIcon"
-                                        />
-                                        <span className="mentorPaperLinkText">
-                                            <LatexText text={paper.title} forceInlineMath />
-                                        </span>
-                                    </span>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p style={{ margin: "4px 0" }}>暂无相关论文</p>
-                )}
-                
-                <div style={{ marginTop: 8 }}>
-                    <button onClick={() => void analyzeRecentDirection()} disabled={analysisLoading}>
-                        {analysisLoading ? "AI正在分析近一年论文，请稍候..." : "AI分析最近研究方向"}
-                    </button>
-                </div>
-
-                {(analysisLoading || analysisResult !== undefined) && (
-                    <div style={{ marginTop: 16, padding: 12, border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#fafafa" }}>
-                        <h3 style={{ margin: "0 0 8px" }}>最近研究方向分析</h3>
-                        {analysisLoading && (
-                            <p style={{ margin: 0 }}>正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...</p>
+            <div className="mentorDetailLayout">
+                <div style={mentorPageMainColumnStyle}>
+                    <div style={mentorPageCardStyle}>
+                        {canFollow && (
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    top: 8,
+                                    right: 8,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    zIndex: 1,
+                                }}
+                            >
+                                <FollowToggleButton
+                                    className="searchMentorFollowButton"
+                                    followed={followed}
+                                    loading={followLoading}
+                                    onClick={() => void toggleFollow()}
+                                    style={buildMentorFollowButtonStyle(followed)}
+                                />
+                            </div>
                         )}
-                        {!analysisLoading && analysisResult !== undefined && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <p style={{ margin: 0, color: "#666" }}>
-                                    近一年论文数：{analysisResult.paperCount} ｜ 生成方式：{analysisResult.generatedBy}
-                                </p>
-                                <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                                    {analysisResult.analysis}
-                                </p>
-                                {analysisResult.papers.length > 0 && (
-                                    <div>
-                                        <p style={{ margin: "4px 0" }}>本次分析使用的论文：</p>
-                                        <ul style={{ margin: 0, paddingLeft: 20 }}>
-                                            {analysisResult.papers.map((paper) => (
-                                                <li key={paper.id}>
-                                                    {paper.title}
-                                                    {paper.publish_date ? `（${paper.publish_date}）` : ""}
-                                                </li>
-                                            ))}
-                                        </ul>
+
+                        <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{mentor.Chinese_name}</h2>
+
+                        {mentor.is_private && (
+                            <p style={{ margin: "4px 0", color: "#555" }}>我的私有导师</p>
+                        )}
+
+                        <p style={{ margin: "4px 0", fontSize: "14px" }}>
+                            导师画像：{mentor.profile || "暂无导师画像"}
+                        </p>
+
+                        <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
+                        {mentor.paper_ids.length > 0 ? (
+                            <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
+                                {mentor.paper_ids.map((paper) => (
+                                    <li key={paper.id}>
+                                        {paper.arxiv_url ? (
+                                            <a
+                                                href={paper.arxiv_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="mentorPaperLink"
+                                            >
+                                                <img
+                                                    src="/arxiv.ico"
+                                                    alt=""
+                                                    aria-hidden="true"
+                                                    className="mentorPaperLinkIcon"
+                                                />
+                                                <span className="mentorPaperLinkText">
+                                                    <LatexText text={paper.title} forceInlineMath />
+                                                </span>
+                                            </a>
+                                        ) : (
+                                            <span
+                                                className="mentorPaperLink"
+                                                style={{ color: "#1f2328", cursor: "default" }}
+                                            >
+                                                <img
+                                                    src="/arxiv.ico"
+                                                    alt=""
+                                                    aria-hidden="true"
+                                                    className="mentorPaperLinkIcon"
+                                                />
+                                                <span className="mentorPaperLinkText">
+                                                    <LatexText text={paper.title} forceInlineMath />
+                                                </span>
+                                            </span>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p style={{ margin: "4px 0" }}>暂无相关论文</p>
+                        )}
+                        
+                        <div style={{ marginTop: 8 }}>
+                            <button onClick={() => void analyzeRecentDirection()} disabled={analysisLoading}>
+                                {analysisLoading ? "AI正在分析近一年论文，请稍候..." : "AI分析最近研究方向"}
+                            </button>
+                        </div>
+
+                        {(analysisLoading || analysisResult !== undefined) && (
+                            <div style={{ marginTop: 16, padding: 12, border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#fafafa" }}>
+                                <h3 style={{ margin: "0 0 8px" }}>最近研究方向分析</h3>
+                                {analysisLoading && (
+                                    <p style={{ margin: 0 }}>正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...</p>
+                                )}
+                                {!analysisLoading && analysisResult !== undefined && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                        <p style={{ margin: 0, color: "#666" }}>
+                                            近一年论文数：{analysisResult.paperCount} ｜ 生成方式：{analysisResult.generatedBy}
+                                        </p>
+                                        <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                                            {analysisResult.analysis}
+                                        </p>
+                                        {analysisResult.papers.length > 0 && (
+                                            <div>
+                                                <p style={{ margin: "4px 0" }}>本次分析使用的论文：</p>
+                                                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                                                    {analysisResult.papers.map((paper) => (
+                                                        <li key={paper.id}>
+                                                            {paper.title}
+                                                            {paper.publish_date ? `（${paper.publish_date}）` : ""}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
                         )}
                     </div>
-                )}
+                </div>
+
+                <aside
+                    aria-label="导师信息"
+                    className="mentorDetailSidebar"
+                >
+                    <h3 className="mentorDetailSidebarTitle">导师信息</h3>
+
+                    <section className="mentorDetailSidebarItem">
+                        <div className="mentorDetailSidebarLabel">
+                            <img src="/English_Name.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                            <span>英文名</span>
+                        </div>
+                        <p className="mentorDetailSidebarValue">{mentor.English_name?.trim() || "暂无英文名"}</p>
+                    </section>
+
+                    <section className="mentorDetailSidebarItem">
+                        <div className="mentorDetailSidebarLabel">
+                            <img src="/Reseach_Direction.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                            <span>研究方向</span>
+                        </div>
+                        <p className="mentorDetailSidebarValue">{mentor.research_direction || "暂无研究方向"}</p>
+                    </section>
+
+                    <section className="mentorDetailSidebarItem">
+                        <div className="mentorDetailSidebarLabel">
+                            <img src="/Email.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                            <span>邮箱</span>
+                        </div>
+                        <p className="mentorDetailSidebarValue">{mentor.email || "暂无邮箱"}</p>
+                    </section>
+                </aside>
             </div>
+
+            <style jsx>{`
+                .mentorDetailLayout {
+                    display: grid;
+                    grid-template-columns: 794px 270px;
+                    gap: 24px;
+                    align-items: start;
+                }
+
+                .mentorDetailSidebar {
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background: #ffffff;
+                    padding: 12px;
+                }
+
+                .mentorDetailSidebarTitle {
+                    margin: 0 0 12px;
+                    font-size: 16px;
+                }
+
+                .mentorDetailSidebarItem {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .mentorDetailSidebarItem + .mentorDetailSidebarItem {
+                    margin-top: 12px;
+                }
+
+                .mentorDetailSidebarLabel {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #1f2328;
+                }
+
+                .mentorDetailSidebarIcon {
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
+                }
+
+                .mentorDetailSidebarValue {
+                    margin: 0;
+                    font-size: 14px;
+                    color: #1f2328;
+                    word-break: break-word;
+                    white-space: normal;
+                }
+
+                @media (max-width: 1080px) {
+                    .mentorDetailLayout {
+                        grid-template-columns: minmax(0, 1fr);
+                    }
+                }
+            `}</style>
         </div>
     );
 };
