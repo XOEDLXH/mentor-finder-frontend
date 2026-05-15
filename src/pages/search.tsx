@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CSSProperties, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
@@ -19,6 +19,11 @@ import {
     SearchPaperSortMode,
     SearchQueryState,
 } from "../utils/searchQuery";
+import {
+    clearPendingMentorSearchReturn,
+    readPendingMentorSearchReturn,
+    writePendingMentorSearchReturn,
+} from "../utils/searchNavigation";
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 type MentorResultFilter = SearchMentorVisibility;
 
@@ -96,6 +101,29 @@ let pendingSearchPopRestore:
         transitionId: number;
     }
     | undefined;
+
+const getWindowHistoryEntryKey = () => {
+    if (typeof window === "undefined") {
+        return INITIAL_HISTORY_ENTRY_KEY;
+    }
+
+    const historyState = window.history.state as { key?: unknown } | undefined;
+    const historyKey = historyState?.key;
+    if (typeof historyKey === "string" && historyKey.trim() !== "") {
+        return historyKey;
+    }
+
+    return INITIAL_HISTORY_ENTRY_KEY;
+};
+
+const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
+    return event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey;
+};
 
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
@@ -251,6 +279,27 @@ const SearchScreen = () => {
     const hasLoadedRouteStateRef = useRef(false);
     const pendingPushRestoreRef = useRef<{ transitionId?: number; targetEntryKey?: string }>({});
     const blockAutoPersistRef = useRef(false);
+    const hasCheckedCrossPageRestoreRef = useRef(false);
+
+    if (!hasCheckedCrossPageRestoreRef.current) {
+        hasCheckedCrossPageRestoreRef.current = true;
+
+        if (typeof window !== "undefined" && pendingSearchPopRestore === undefined) {
+            const pendingMentorSearchReturn = readPendingMentorSearchReturn();
+            const currentEntryKey = getWindowHistoryEntryKey();
+
+            if (pendingMentorSearchReturn?.sourceEntryKey === currentEntryKey) {
+                const transitionId = navigationTransitionIdRef.current + 1;
+                navigationTransitionIdRef.current = transitionId;
+                blockAutoPersistRef.current = true;
+                pendingSearchPopRestore = {
+                    entryKey: currentEntryKey,
+                    transitionId,
+                };
+                navigationIntentRef.current = "pop";
+            }
+        }
+    }
 
     const resetResults = (clearExpandedMentors = true) => {
         setErrorMessage("");
@@ -306,17 +355,7 @@ const SearchScreen = () => {
     };
 
     const getHistoryEntryKey = () => {
-        if (typeof window === "undefined") {
-            return INITIAL_HISTORY_ENTRY_KEY;
-        }
-
-        const historyState = window.history.state as { key?: unknown } | undefined;
-        const historyKey = historyState?.key;
-        if (typeof historyKey === "string" && historyKey.trim() !== "") {
-            return historyKey;
-        }
-
-        return INITIAL_HISTORY_ENTRY_KEY;
+        return getWindowHistoryEntryKey();
     };
 
     const readHistoryViewState = (entryKey: string) => {
@@ -541,6 +580,9 @@ const SearchScreen = () => {
                     }
                     blockAutoPersistRef.current = false;
                     persistCurrentViewState(entryKey, true);
+                    if (readPendingMentorSearchReturn()?.sourceEntryKey === entryKey) {
+                        clearPendingMentorSearchReturn();
+                    }
                     if (pendingSearchPopRestore?.transitionId === transitionId) {
                         pendingSearchPopRestore = undefined;
                     }
@@ -1006,6 +1048,50 @@ const SearchScreen = () => {
             visibility: "all",
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
+
+    const navigateToMentorHomepage = useCallback(async (mentorId: number) => {
+        expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
+        expandedPaperMentorIdsRef.current = new Set(expandedPaperMentorIds);
+        const sourceEntryKey = getHistoryEntryKey();
+        persistCurrentViewState(sourceEntryKey, true);
+        writePendingMentorSearchReturn({
+            mentorId,
+            sourceEntryKey,
+            targetEntryKey: sourceEntryKey,
+            sourcePath: "/search",
+        });
+
+        try {
+            await router.push(`/mentors/${mentorId}`);
+            const targetEntryKey = getHistoryEntryKey();
+            writePendingMentorSearchReturn({
+                mentorId,
+                sourceEntryKey,
+                targetEntryKey,
+                sourcePath: "/search",
+            });
+        }
+        catch {
+            clearPendingMentorSearchReturn();
+        }
+    }, [
+        expandedPaperMentorIds,
+        expandedProfileMentorIds,
+        persistCurrentViewState,
+        router,
+    ]);
+
+    const handleMentorHomepageLinkClick = useCallback((
+        event: MouseEvent<HTMLAnchorElement>,
+        mentorId: number,
+    ) => {
+        if (isModifiedNavigationClick(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        void navigateToMentorHomepage(mentorId);
+    }, [navigateToMentorHomepage]);
 
     const toggleMentorProfileExpand = (mentorId: number) => {
         setExpandedProfileMentorIds((prev) => {
@@ -2060,7 +2146,11 @@ const SearchScreen = () => {
                                 </div>
                             )}
                             <h3 style={{ margin: "0 0 8px", fontSize: "20px" }}>
-                                <Link href={`/mentors/${mentor.id}`} className="searchMentorNameLink">
+                                <Link
+                                    href={`/mentors/${mentor.id}`}
+                                    className="searchMentorNameLink"
+                                    onClick={(event) => handleMentorHomepageLinkClick(event, mentor.id)}
+                                >
                                     {mentor.Chinese_name}
                                 </Link>
                                 {privateMentorIdSet.has(mentor.id) && (
@@ -2122,7 +2212,7 @@ const SearchScreen = () => {
                                         )}
                                         <button
                                             type="button"
-                                            onClick={() => void router.push(`/mentors/${mentor.id}`)}
+                                            onClick={() => void navigateToMentorHomepage(mentor.id)}
                                             className="searchMentorInlineLinkButton searchMentorInlineLinkButtonSpaced"
                                             data-testid={`mentor-homepage-button-${mentor.id}`}
                                         >
@@ -2148,7 +2238,7 @@ const SearchScreen = () => {
                                         {" "}
                                         <button
                                             type="button"
-                                            onClick={() => void router.push(`/mentors/${mentor.id}`)}
+                                            onClick={() => void navigateToMentorHomepage(mentor.id)}
                                             className={`searchMentorInlineLinkButton${hasProfileMore ? " searchMentorInlineLinkButtonSpaced" : ""}`}
                                             data-testid={`mentor-homepage-button-${mentor.id}`}
                                         >

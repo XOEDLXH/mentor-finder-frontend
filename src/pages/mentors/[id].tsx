@@ -6,11 +6,21 @@ import FollowToggleButton from "../../components/FollowToggleButton";
 import { FAILURE_PREFIX } from "../../constants/string";
 import { RootState } from "../../redux/store";
 import { request } from "../../utils/network";
+import { readPendingMentorSearchReturn } from "../../utils/searchNavigation";
 import {
     MentorDetail,
     MentorRecentDirectionAnalysisResponse,
     SearchMentorResult,
 } from "../../utils/types";
+
+const getCurrentHistoryEntryKey = () => {
+    if (typeof window === "undefined") {
+        return "";
+    }
+
+    const historyState = window.history.state as { key?: unknown } | undefined;
+    return typeof historyState?.key === "string" ? historyState.key.trim() : "";
+};
 
 const MentorDetailPage = () => {
     const router = useRouter();
@@ -129,6 +139,25 @@ const MentorDetailPage = () => {
         }
     };
 
+    const returnToSearch = async () => {
+        const mentorId = Number(id);
+        const pendingSearchReturn = readPendingMentorSearchReturn();
+        const currentEntryKey = getCurrentHistoryEntryKey();
+
+        if (
+            Number.isInteger(mentorId) &&
+            mentorId > 0 &&
+            pendingSearchReturn?.mentorId === mentorId &&
+            pendingSearchReturn.sourcePath === "/search" &&
+            pendingSearchReturn.targetEntryKey === currentEntryKey
+        ) {
+            await router.back();
+            return;
+        }
+
+        await router.push("/search");
+    };
+
     if (loading) {
         return <p>加载中...</p>;
     }
@@ -136,7 +165,7 @@ const MentorDetailPage = () => {
     if (errorMessage !== "") {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
-                <button onClick={() => router.push("/search")}>返回检索</button>
+                <button onClick={() => void returnToSearch()}>返回检索</button>
                 <p style={{ color: "#c62828" }}>{errorMessage}</p>
             </div>
         );
@@ -145,7 +174,7 @@ const MentorDetailPage = () => {
     if (mentor === undefined) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
-                <button onClick={() => router.push("/search")}>返回检索</button>
+                <button onClick={() => void returnToSearch()}>返回检索</button>
                 <p>暂无导师信息</p>
             </div>
         );
@@ -153,7 +182,7 @@ const MentorDetailPage = () => {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
-            <button onClick={() => router.push("/search")}>返回检索</button>
+            <button onClick={() => void returnToSearch()}>返回检索</button>
 
             <div style={{ padding: 12, border: "1px solid #ccc", borderRadius: 6 }}>
                 <h2 style={{ margin: "0 0 8px" }}>{mentor.Chinese_name}</h2>

@@ -17,11 +17,13 @@ jest.mock("../utils/network", () => ({
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
     const mockReplace = jest.fn();
+    const mockBack = jest.fn();
     let beforePopStateHandler = () => true;
     let historyKeyCounter = 0;
     const mockRouter = {
         push: mockPush,
         replace: mockReplace,
+        back: mockBack,
         beforePopState: jest.fn((handler) => {
             beforePopStateHandler = handler;
         }),
@@ -96,6 +98,7 @@ describe("SearchScreen", () => {
     beforeEach(() => {
         mockPush.mockReset();
         mockReplace.mockReset();
+        mockBack.mockReset();
         mockRouter.beforePopState.mockClear();
         request.mockReset();
         historyKeyCounter = 0;
@@ -119,7 +122,15 @@ describe("SearchScreen", () => {
 
         mockRouter.query = {};
         mockPush.mockImplementation(async (url) => {
-            syncHistoryState();
+            const nextPath = String(url);
+            if (nextPath.startsWith("/search")) {
+                syncHistoryState();
+                applyUrlToRouter(nextPath);
+                return true;
+            }
+
+            const nextHistoryKey = `test-history-${historyKeyCounter++}`;
+            window.history.replaceState({ key: nextHistoryKey }, "", nextPath);
             applyUrlToRouter(url);
             return true;
         });
@@ -127,6 +138,7 @@ describe("SearchScreen", () => {
             applyUrlToRouter(url);
             return true;
         });
+        mockBack.mockImplementation(async () => true);
         syncHistoryState("test-history-initial");
         useRouter.mockReturnValue(mockRouter);
         window.sessionStorage.clear();
@@ -1816,6 +1828,8 @@ describe("SearchScreen", () => {
             expect(window.scrollTo).toHaveBeenCalledWith({ left: 0, top: 13, behavior: "auto" });
         });
     });
+
+
 
     it("clicking a mentor author in paper result triggers exact mentor search", async () => {
         request.mockImplementation(async (url) => {
