@@ -84,6 +84,22 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transform: translateY(-1px);
 }
 
+button.searchMentorFollowButton:hover:not(:disabled),
+button.searchMentorFollowButton:focus-visible {
+  transform: none;
+  box-shadow: none;
+}
+
+button.searchMentorFollowButton:focus-visible {
+  outline: 2px solid rgba(8, 109, 177, 0.35);
+  outline-offset: 2px;
+}
+
+button.searchMentorFollowButton:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
 .followToggleButtonOverlay {
   position: absolute;
   inset: 0;

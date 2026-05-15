@@ -31,10 +31,35 @@ const mentorPageShellStyle = {
 };
 
 const mentorPageCardStyle = {
+    position: "relative" as const,
     padding: 12,
     border: "1px solid #ccc",
     borderRadius: 6,
 };
+
+const buildMentorFollowButtonStyle = (followed: boolean) => ({
+    position: "relative" as const,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 72,
+    minHeight: 28,
+    border: "0 solid transparent",
+    borderRadius: 6,
+    padding: "0 12px",
+    backgroundColor: followed ? "rgba(246, 248, 250, 0.96)" : "rgb(8, 109, 177)",
+    color: followed ? "#000000" : "#ffffff",
+    fontSize: 14,
+    fontWeight: 500,
+    lineHeight: 1,
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    cursor: "pointer",
+    boxShadow: "none",
+    transition: "none",
+    appearance: "none" as const,
+    opacity: 1,
+});
 
 const MentorDetailPage = () => {
     const router = useRouter();
@@ -203,33 +228,32 @@ const MentorDetailPage = () => {
             <button onClick={() => void returnToSearch()}>返回检索</button>
 
             <div style={mentorPageCardStyle}>
-                <h2 style={{ margin: "0 0 8px" }}>{mentor.Chinese_name}</h2>
+                {canFollow && (
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            display: "flex",
+                            alignItems: "center",
+                            zIndex: 1,
+                        }}
+                    >
+                        <FollowToggleButton
+                            className="searchMentorFollowButton"
+                            followed={followed}
+                            followedLabel="已关注"
+                            loading={followLoading}
+                            onClick={() => void toggleFollow()}
+                            style={buildMentorFollowButtonStyle(followed)}
+                        />
+                    </div>
+                )}
+
+                <h2 style={{ margin: "0 0 8px", fontSize: "20px" }}>{mentor.Chinese_name}</h2>
 
                 {mentor.is_private && (
                     <p style={{ margin: "4px 0", color: "#555" }}>我的私有导师</p>
-                )}
-
-                {canFollow && (
-                    <FollowToggleButton
-                        followed={followed}
-                        loading={followLoading}
-                        onClick={() => void toggleFollow()}
-                        style={{
-                            position: "relative",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            minWidth: 92,
-                            minHeight: 36,
-                            border: "1px solid #d0d7de",
-                            borderRadius: 999,
-                            background: "#fff",
-                            color: "#1f2328",
-                            padding: "0 16px",
-                            fontWeight: 600,
-                            overflow: "hidden",
-                        }}
-                    />
                 )}
 
 
