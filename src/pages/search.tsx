@@ -1442,7 +1442,7 @@ const SearchScreen = () => {
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto", padding: "0 12px", boxSizing: "border-box" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto", boxSizing: "border-box" }}>
             {mentorDeleteTarget !== undefined && (
                 <div
                     aria-label="删除导师确认弹窗遮罩"
