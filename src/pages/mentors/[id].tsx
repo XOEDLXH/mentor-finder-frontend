@@ -270,7 +270,7 @@ const MentorDetailPage = () => {
                     邮箱：{mentor.email || "暂无邮箱"}
                 </p>
 
-                <p style={{ margin: "4px 0" }}>
+                <p style={{ margin: "4px 0", fontSize: "14px" }}>
                     导师画像：{mentor.profile || "暂无导师画像"}
                 </p>
 
