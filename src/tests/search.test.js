@@ -130,7 +130,17 @@ describe("SearchScreen", () => {
         syncHistoryState("test-history-initial");
         useRouter.mockReturnValue(mockRouter);
         window.sessionStorage.clear();
-        window.scrollTo = jest.fn();
+        window.scrollTo = jest.fn((optionsOrX, y) => {
+            const nextScrollY = typeof optionsOrX === "object" && optionsOrX !== null
+                ? Number(optionsOrX.top ?? 0)
+                : Number(y ?? 0);
+
+            Object.defineProperty(window, "scrollY", {
+                value: Number.isFinite(nextScrollY) ? nextScrollY : 0,
+                writable: true,
+                configurable: true,
+            });
+        });
         window.requestAnimationFrame = (callback) => window.setTimeout(() => callback(0), 0);
     });
 
