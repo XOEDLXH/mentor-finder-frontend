@@ -83,7 +83,9 @@ interface SegmentedOption<TValue extends string> {
 
 interface SearchHistoryViewState {
     scrollY: number;
-    expandedMentorIds: number[];
+    expandedProfileMentorIds: number[];
+    expandedPaperMentorIds: number[];
+    expandedMentorIds?: number[];
 }
 
 type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
@@ -91,6 +93,7 @@ type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 let pendingSearchPopRestore:
     | {
         entryKey: string;
+        transitionId: number;
     }
     | undefined;
 
@@ -111,6 +114,28 @@ const parseTimelineLikeSubjects = (subjects?: string) => {
         .split(",")
         .map((subject) => subject.trim())
         .filter((subject) => subject !== "");
+};
+
+const normalizeHistoryMentorIds = (values?: Iterable<number> | ArrayLike<number>) => {
+    return Array.from(values ?? [])
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0);
+};
+
+const buildSearchHistoryViewState = (
+    scrollY: number,
+    expandedProfileMentorIds: Iterable<number> | ArrayLike<number>,
+    expandedPaperMentorIds: Iterable<number> | ArrayLike<number>,
+) => {
+    const normalizedProfileMentorIds = normalizeHistoryMentorIds(expandedProfileMentorIds);
+    const normalizedPaperMentorIds = normalizeHistoryMentorIds(expandedPaperMentorIds);
+
+    return {
+        scrollY: Number.isFinite(scrollY) ? scrollY : 0,
+        expandedProfileMentorIds: normalizedProfileMentorIds,
+        expandedPaperMentorIds: normalizedPaperMentorIds,
+        expandedMentorIds: Array.from(new Set([...normalizedProfileMentorIds, ...normalizedPaperMentorIds])),
+    };
 };
 
 const SEARCH_MODE_OPTIONS: SegmentedOption<SearchMode>[] = [
@@ -168,7 +193,8 @@ const SearchScreen = () => {
     const [followedMentorIds, setFollowedMentorIds] = useState<Set<number>>(new Set());
     const [followToggleMentorId, setFollowToggleMentorId] = useState<number | undefined>(undefined);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
-    const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
+    const [expandedProfileMentorIds, setExpandedProfileMentorIds] = useState<Set<number>>(new Set());
+    const [expandedPaperMentorIds, setExpandedPaperMentorIds] = useState<Set<number>>(new Set());
     const [privateMentorSaving, setPrivateMentorSaving] = useState(false);
     const [privateMentorMsg, setPrivateMentorMsg] = useState("");
     const [customMentorChineseName, setCustomMentorChineseName] = useState("");
@@ -194,10 +220,12 @@ const SearchScreen = () => {
     const [activeSearchState, setActiveSearchState] = useState<SearchQueryState>(DEFAULT_SEARCH_QUERY_STATE);
 
     const activeSearchStateRef = useRef<SearchQueryState>(DEFAULT_SEARCH_QUERY_STATE);
-    const expandedMentorIdsRef = useRef<Set<number>>(new Set());
+    const expandedProfileMentorIdsRef = useRef<Set<number>>(new Set());
+    const expandedPaperMentorIdsRef = useRef<Set<number>>(new Set());
     const navigationIntentRef = useRef<SearchNavigationIntent>("init");
+    const navigationTransitionIdRef = useRef(0);
     const hasLoadedRouteStateRef = useRef(false);
-    const pendingPushRestoreRef = useRef<{ targetEntryKey?: string }>({});
+    const pendingPushRestoreRef = useRef<{ transitionId?: number; targetEntryKey?: string }>({});
     const blockAutoPersistRef = useRef(false);
 
     const resetResults = (clearExpandedMentors = true) => {
@@ -205,7 +233,8 @@ const SearchScreen = () => {
         setMentors([]);
         setPapers([]);
         if (clearExpandedMentors) {
-            setExpandedMentorIds(new Set());
+            setExpandedProfileMentorIds(new Set());
+            setExpandedPaperMentorIds(new Set());
         }
         setCurrentPage(1);
         setTotalResults(0);
@@ -278,15 +307,21 @@ const SearchScreen = () => {
             }
 
             const parsedValue = JSON.parse(rawValue) as Partial<SearchHistoryViewState>;
-            const expandedIds = Array.isArray(parsedValue.expandedMentorIds)
-                ? parsedValue.expandedMentorIds
-                    .map((value) => Number(value))
-                    .filter((value) => Number.isInteger(value) && value > 0)
+            const legacyExpandedIds = Array.isArray(parsedValue.expandedMentorIds)
+                ? normalizeHistoryMentorIds(parsedValue.expandedMentorIds)
                 : [];
+            const expandedProfileIds = Array.isArray(parsedValue.expandedProfileMentorIds)
+                ? normalizeHistoryMentorIds(parsedValue.expandedProfileMentorIds)
+                : legacyExpandedIds;
+            const expandedPaperIds = Array.isArray(parsedValue.expandedPaperMentorIds)
+                ? normalizeHistoryMentorIds(parsedValue.expandedPaperMentorIds)
+                : legacyExpandedIds;
 
             return {
                 scrollY: Number.isFinite(parsedValue.scrollY) ? Number(parsedValue.scrollY) : 0,
-                expandedMentorIds: expandedIds,
+                expandedProfileMentorIds: expandedProfileIds,
+                expandedPaperMentorIds: expandedPaperIds,
+                expandedMentorIds: Array.from(new Set([...expandedProfileIds, ...expandedPaperIds])),
             } satisfies SearchHistoryViewState;
         }
         catch {
@@ -321,12 +356,14 @@ const SearchScreen = () => {
 
         const nextViewState = {
             scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
-            expandedMentorIds: Array.from(expandedMentorIdsRef.current),
+            expandedProfileMentorIds: Array.from(expandedProfileMentorIdsRef.current),
+            expandedPaperMentorIds: Array.from(expandedPaperMentorIdsRef.current),
         };
-        writeHistoryViewState(entryKey, {
-            scrollY: nextViewState.scrollY,
-            expandedMentorIds: nextViewState.expandedMentorIds,
-        });
+        writeHistoryViewState(entryKey, buildSearchHistoryViewState(
+            nextViewState.scrollY,
+            nextViewState.expandedProfileMentorIds,
+            nextViewState.expandedPaperMentorIds,
+        ));
     }, []);
 
     const scrollWindowTo = useCallback((scrollY: number) => {
@@ -440,42 +477,61 @@ const SearchScreen = () => {
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
             const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
-            setExpandedMentorIds(new Set());
-            writeHistoryViewState(targetEntryKey, {
-                scrollY: 0,
-                expandedMentorIds: [],
-            });
+            const transitionId = pendingPushRestoreRef.current.transitionId ?? navigationTransitionIdRef.current;
+            setExpandedProfileMentorIds(new Set());
+            setExpandedPaperMentorIds(new Set());
+            writeHistoryViewState(targetEntryKey, buildSearchHistoryViewState(0, [], []));
             scheduleAfterPaint(() => {
                 scrollWindowTo(0);
                 scheduleAfterPaint(() => {
+                    if (navigationTransitionIdRef.current !== transitionId) {
+                        return;
+                    }
+                    writeHistoryViewState(targetEntryKey, buildSearchHistoryViewState(0, [], []));
                     blockAutoPersistRef.current = false;
+                    if (pendingPushRestoreRef.current.transitionId === transitionId) {
+                        pendingPushRestoreRef.current = {};
+                    }
                 });
             });
-            pendingPushRestoreRef.current = {};
             return;
         }
 
         if (intent === "pop") {
             const entryKey = pendingSearchPopRestore?.entryKey ?? getHistoryEntryKey();
+            const transitionId = pendingSearchPopRestore?.transitionId ?? navigationTransitionIdRef.current;
             const savedViewState = readHistoryViewState(entryKey);
-            const restoredExpandedIds = state.mode === "mentor"
-                ? new Set(savedViewState?.expandedMentorIds ?? [])
+            const restoredProfileExpandedIds = state.mode === "mentor"
+                ? new Set(savedViewState?.expandedProfileMentorIds ?? [])
                 : new Set<number>();
-            setExpandedMentorIds(restoredExpandedIds);
+            const restoredPaperExpandedIds = state.mode === "mentor"
+                ? new Set(savedViewState?.expandedPaperMentorIds ?? [])
+                : new Set<number>();
+            setExpandedProfileMentorIds(restoredProfileExpandedIds);
+            setExpandedPaperMentorIds(restoredPaperExpandedIds);
             scheduleAfterPaint(() => {
                 scrollWindowTo(savedViewState?.scrollY ?? 0);
                 scheduleAfterPaint(() => {
+                    if (navigationTransitionIdRef.current !== transitionId) {
+                        return;
+                    }
                     blockAutoPersistRef.current = false;
                     persistCurrentViewState(entryKey, true);
-                    pendingSearchPopRestore = undefined;
+                    if (pendingSearchPopRestore?.transitionId === transitionId) {
+                        pendingSearchPopRestore = undefined;
+                    }
                 });
             });
             return;
         }
 
         blockAutoPersistRef.current = false;
-        if (state.mode !== "mentor" && expandedMentorIdsRef.current.size > 0) {
-            setExpandedMentorIds(new Set());
+        if (
+            state.mode !== "mentor" &&
+            (expandedProfileMentorIdsRef.current.size > 0 || expandedPaperMentorIdsRef.current.size > 0)
+        ) {
+            setExpandedProfileMentorIds(new Set());
+            setExpandedPaperMentorIds(new Set());
         }
     }, [persistCurrentViewState, scheduleAfterPaint, scrollWindowTo]);
 
@@ -548,8 +604,11 @@ const SearchScreen = () => {
             return;
         }
 
+        const transitionId = navigationTransitionIdRef.current + 1;
+        navigationTransitionIdRef.current = transitionId;
         pendingSearchPopRestore = undefined;
-        expandedMentorIdsRef.current = new Set(expandedMentorIds);
+        expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
+        expandedPaperMentorIdsRef.current = new Set(expandedPaperMentorIds);
         const sourceEntryKey = getHistoryEntryKey();
         persistCurrentViewState(sourceEntryKey, true);
         blockAutoPersistRef.current = true;
@@ -561,13 +620,22 @@ const SearchScreen = () => {
             { shallow: true, scroll: false },
         );
         pendingPushRestoreRef.current = {
+            transitionId,
             targetEntryKey: getHistoryEntryKey(),
         };
 
         if (!areSearchStatesEqual(activeSearchStateRef.current, nextState)) {
             await loadSearchState(nextState, "push");
         }
-    }, [areSearchStatesEqual, expandedMentorIds, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
+    }, [
+        areSearchStatesEqual,
+        expandedPaperMentorIds,
+        expandedProfileMentorIds,
+        loadSearchState,
+        persistCurrentViewState,
+        refreshCurrentSearch,
+        router,
+    ]);
 
     const switchMode = (nextMode: SearchMode) => {
         if (nextMode === mode) {
@@ -683,28 +751,28 @@ const SearchScreen = () => {
     }, [activeSearchState]);
 
     useEffect(() => {
-        expandedMentorIdsRef.current = expandedMentorIds;
-    }, [expandedMentorIds]);
+        expandedProfileMentorIdsRef.current = expandedProfileMentorIds;
+        expandedPaperMentorIdsRef.current = expandedPaperMentorIds;
+    }, [expandedPaperMentorIds, expandedProfileMentorIds]);
 
     useEffect(() => {
         if (typeof window === "undefined") {
             return;
         }
 
-        const markPendingPopRestore = (entryKey: string) => {
-            blockAutoPersistRef.current = true;
-            pendingSearchPopRestore = {
-                entryKey,
-            };
-            navigationIntentRef.current = "pop";
-        };
-
         const handlePopState = () => {
             if (pendingSearchPopRestore !== undefined) {
                 return;
             }
 
-            markPendingPopRestore(getHistoryEntryKey());
+            const transitionId = navigationTransitionIdRef.current + 1;
+            navigationTransitionIdRef.current = transitionId;
+            blockAutoPersistRef.current = true;
+            pendingSearchPopRestore = {
+                entryKey: getHistoryEntryKey(),
+                transitionId,
+            };
+            navigationIntentRef.current = "pop";
         };
 
         const hasBeforePopState = typeof router.beforePopState === "function";
@@ -714,7 +782,14 @@ const SearchScreen = () => {
                 const entryKey = typeof stateLike?.key === "string" && stateLike.key.trim() !== ""
                     ? stateLike.key
                     : getHistoryEntryKey();
-                markPendingPopRestore(entryKey);
+                const transitionId = navigationTransitionIdRef.current + 1;
+                navigationTransitionIdRef.current = transitionId;
+                blockAutoPersistRef.current = true;
+                pendingSearchPopRestore = {
+                    entryKey,
+                    transitionId,
+                };
+                navigationIntentRef.current = "pop";
                 return true;
             });
         }
@@ -745,7 +820,7 @@ const SearchScreen = () => {
 
     useEffect(() => {
         persistCurrentViewState();
-    }, [expandedMentorIds, persistCurrentViewState]);
+    }, [expandedPaperMentorIds, expandedProfileMentorIds, persistCurrentViewState]);
 
     const privateMentorIdSet = useMemo(() => {
         return new Set(privateMentors.map((mentor) => mentor.id));
@@ -908,8 +983,8 @@ const SearchScreen = () => {
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
-    const toggleMentorExpand = (mentorId: number) => {
-        setExpandedMentorIds((prev) => {
+    const toggleMentorProfileExpand = (mentorId: number) => {
+        setExpandedProfileMentorIds((prev) => {
             const next = new Set(prev);
             if (next.has(mentorId)) {
                 next.delete(mentorId);
@@ -917,11 +992,37 @@ const SearchScreen = () => {
             else {
                 next.add(mentorId);
             }
-            expandedMentorIdsRef.current = next;
-            writeHistoryViewState(getHistoryEntryKey(), {
-                scrollY: typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
-                expandedMentorIds: Array.from(next),
-            });
+            expandedProfileMentorIdsRef.current = next;
+            writeHistoryViewState(
+                getHistoryEntryKey(),
+                buildSearchHistoryViewState(
+                    typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
+                    next,
+                    expandedPaperMentorIdsRef.current,
+                ),
+            );
+            return next;
+        });
+    };
+
+    const toggleMentorPaperExpand = (mentorId: number) => {
+        setExpandedPaperMentorIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(mentorId)) {
+                next.delete(mentorId);
+            }
+            else {
+                next.add(mentorId);
+            }
+            expandedPaperMentorIdsRef.current = next;
+            writeHistoryViewState(
+                getHistoryEntryKey(),
+                buildSearchHistoryViewState(
+                    typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
+                    expandedProfileMentorIdsRef.current,
+                    next,
+                ),
+            );
             return next;
         });
     };
@@ -1875,15 +1976,17 @@ const SearchScreen = () => {
                     )}
 
                     {mentors.map((mentor) => {
-                        const isExpanded = expandedMentorIds.has(mentor.id);
+                        const isProfileExpanded = expandedProfileMentorIds.has(mentor.id);
+                        const isPaperExpanded = expandedPaperMentorIds.has(mentor.id);
                         const profileText = mentor.profile || "暂无导师画像";
                         const profilePreview = profileText.length > PROFILE_PREVIEW_LENGTH
                             ? `${profileText.slice(0, PROFILE_PREVIEW_LENGTH)}...`
                             : profileText;
-                        const visiblePaperTitles = isExpanded
+                        const visiblePaperTitles = isPaperExpanded
                             ? mentor.paperTitles
                             : mentor.paperTitles.slice(0, PAPER_TITLES_PREVIEW_COUNT);
-                        const hasMoreDetails = profileText.length > PROFILE_PREVIEW_LENGTH || mentor.paperTitles.length > PAPER_TITLES_PREVIEW_COUNT;
+                        const hasProfileMore = profileText.length > PROFILE_PREVIEW_LENGTH;
+                        const hasPaperMore = mentor.paperTitles.length > PAPER_TITLES_PREVIEW_COUNT;
 
                         return (
                         <div
@@ -1992,8 +2095,17 @@ const SearchScreen = () => {
                                     className="searchMentorMetaIcon"
                                 />
                                 <span className="searchMentorMetaSrOnly">导师画像</span>
-                                <span className="searchMentorMetaText">{isExpanded ? profileText : profilePreview}</span>
+                                <span className="searchMentorMetaText">{isProfileExpanded ? profileText : profilePreview}</span>
                             </p>
+                            {hasProfileMore && (
+                                <button
+                                    type="button"
+                                    onClick={() => toggleMentorProfileExpand(mentor.id)}
+                                    style={{ marginTop: 8, fontSize: "14px" }}
+                                >
+                                    {isProfileExpanded ? "收起" : "查看更多"}
+                                </button>
+                            )}
                             <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                                 {visiblePaperTitles.map((title) => (
@@ -2016,12 +2128,13 @@ const SearchScreen = () => {
                                     </li>
                                 ))}
                             </ul>
-                            {hasMoreDetails && (
+                            {hasPaperMore && (
                                 <button
-                                    onClick={() => toggleMentorExpand(mentor.id)}
+                                    type="button"
+                                    onClick={() => toggleMentorPaperExpand(mentor.id)}
                                     style={{ marginTop: 8, fontSize: "14px" }}
                                 >
-                                    {isExpanded ? "收起" : "查看更多"}
+                                    {isPaperExpanded ? "收起" : "查看更多"}
                                 </button>
                             )}
                             {isAdmin && (
