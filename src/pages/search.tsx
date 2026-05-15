@@ -445,7 +445,6 @@ const SearchScreen = () => {
                 });
                 scheduleAfterPaint(() => {
                     blockAutoPersistRef.current = false;
-                    persistCurrentViewState(targetEntryKey, true);
                 });
             });
             pendingPushRestoreRef.current = {};
