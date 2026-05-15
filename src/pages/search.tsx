@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
@@ -159,6 +159,30 @@ const MENTOR_FILTER_OPTIONS: SegmentedOption<MentorResultFilter>[] = [
     { label: "私有", value: "mine" },
     { label: "公共", value: "public" },
 ];
+
+const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
+    position: "relative",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 72,
+    minHeight: 28,
+    border: "0 solid transparent",
+    borderRadius: 6,
+    padding: "0 12px",
+    backgroundColor: followed ? "rgba(246, 248, 250, 0.96)" : "rgb(8, 109, 177)",
+    color: followed ? "#000000" : "#ffffff",
+    fontSize: 14,
+    fontWeight: 500,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    cursor: "pointer",
+    boxShadow: "none",
+    transition: "none",
+    appearance: "none",
+    opacity: 1,
+});
 
 const SearchScreen = () => {
     const router = useRouter();
@@ -1988,6 +2012,8 @@ const SearchScreen = () => {
                         const hasProfileMore = profileText.length > PROFILE_PREVIEW_LENGTH;
                         const hasPaperMore = mentor.paperTitles.length > PAPER_TITLES_PREVIEW_COUNT;
 
+                        const isFollowed = followedMentorIds.has(mentor.id);
+
                         return (
                         <div
                             key={mentor.id}
@@ -2007,26 +2033,12 @@ const SearchScreen = () => {
                                 >
                                     {canFollowMentor && (
                                         <FollowToggleButton
-                                            followed={followedMentorIds.has(mentor.id)}
+                                            className="searchMentorFollowButton"
+                                            followed={isFollowed}
+                                            followedLabel="已关注"
                                             loading={followToggleMentorId === mentor.id}
                                             onClick={() => void toggleMentorFollow(mentor.id)}
-                                            style={{
-                                                position: "relative",
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                minWidth: 76,
-                                                minHeight: 28,
-                                                border: "1px solid #d0d7de",
-                                                borderRadius: 999,
-                                                background: "#ffffff",
-                                                color: "#1f2328",
-                                                padding: "0 12px",
-                                                fontWeight: 600,
-                                                fontSize: 13,
-                                                overflow: "hidden",
-                                                cursor: "pointer",
-                                            }}
+                                            style={buildSearchMentorFollowButtonStyle(isFollowed)}
                                         />
                                     )}
                                     {isLoggedIn && privateMentorIdSet.has(mentor.id) && (
@@ -2450,6 +2462,22 @@ const SearchScreen = () => {
                     display: inline-block;
                     margin-top: 6px;
                     margin-left: 0;
+                }
+
+                :global(button.searchMentorFollowButton:hover:not(:disabled)),
+                :global(button.searchMentorFollowButton:focus-visible) {
+                    transform: none;
+                    box-shadow: none;
+                }
+
+                :global(button.searchMentorFollowButton:focus-visible) {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
+                }
+
+                :global(button.searchMentorFollowButton:disabled) {
+                    opacity: 1;
+                    cursor: not-allowed;
                 }
 
                 .searchMentorPaperFooter {
