@@ -243,7 +243,6 @@ const MentorDetailPage = () => {
                         <FollowToggleButton
                             className="searchMentorFollowButton"
                             followed={followed}
-                            followedLabel="已关注"
                             loading={followLoading}
                             onClick={() => void toggleFollow()}
                             style={buildMentorFollowButtonStyle(followed)}
