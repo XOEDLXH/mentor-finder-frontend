@@ -55,6 +55,20 @@ const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSPropertie
     opacity: 1,
 });
 
+const formatViewSwitchCount = (value: number) => {
+    const safeValue = Math.max(0, Math.floor(value));
+
+    if (safeValue < 1000) {
+        return String(safeValue);
+    }
+
+    if (safeValue >= 99950) {
+        return "99.9k";
+    }
+
+    return `${(safeValue / 1000).toFixed(1)}k`;
+};
+
 const FollowsPage = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -242,6 +256,7 @@ const FollowsPage = () => {
     const followedUserIds = new Set(
         users.filter((user) => user.followed).map((user) => user.id),
     );
+    const followingCount = mentors.filter((mentor) => mentor.followed).length + users.filter((user) => user.followed).length;
     const visibleUserSearchResults = userSearchResults.filter((user) => (
         !user.followed && !followedUserIds.has(user.id)
     ));
@@ -262,23 +277,35 @@ const FollowsPage = () => {
             <div className="followsPage">
                 <div className="pageHeader">
                     <h2 className="pageTitle">{activeView === "following" ? "我的关注" : "我的粉丝"}</h2>
-                    <div className="viewSwitch" aria-label="关注页面切换">
-                        <button
-                            className={activeView === "following" ? "viewSwitchButton viewSwitchButtonActive" : "viewSwitchButton"}
-                            type="button"
-                            onClick={() => setActiveView("following")}
-                        >
-                            我的关注
-                            <span>{mentors.filter((mentor) => mentor.followed).length + users.filter((user) => user.followed).length}</span>
-                        </button>
-                        <button
-                            className={activeView === "followers" ? "viewSwitchButton viewSwitchButtonActive" : "viewSwitchButton"}
-                            type="button"
-                            onClick={() => setActiveView("followers")}
-                        >
-                            我的粉丝
-                            <span>{followers.length}</span>
-                        </button>
+                    <div className="viewSwitchGroup" role="group" aria-label="关注页面切换">
+                        <div className="viewSwitch">
+                            <span
+                                className={activeView === "following" ? "viewSwitchThumb" : "viewSwitchThumb viewSwitchThumbFollowers"}
+                                aria-hidden="true"
+                            />
+                            <button
+                                className={activeView === "following" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
+                                type="button"
+                                aria-pressed={activeView === "following"}
+                                onClick={() => setActiveView("following")}
+                            >
+                                <span className="viewSwitchButtonLabel">我的关注</span>
+                                <span className="viewSwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(followingCount)}
+                                </span>
+                            </button>
+                            <button
+                                className={activeView === "followers" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
+                                type="button"
+                                aria-pressed={activeView === "followers"}
+                                onClick={() => setActiveView("followers")}
+                            >
+                                <span className="viewSwitchButtonLabel">我的粉丝</span>
+                                <span className="viewSwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(followers.length)}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -437,41 +464,92 @@ const FollowsPage = () => {
                     margin: 0;
                 }
 
+                .viewSwitchGroup {
+                    min-width: 260px;
+                }
+
                 .viewSwitch {
                     position: relative;
                     display: grid;
                     grid-template-columns: repeat(2, minmax(0, 1fr));
-                    gap: 4px;
-                    min-width: 260px;
+                    align-items: stretch;
+                    width: 100%;
+                    height: 44px;
                     border: 1px solid #d0d7de;
-                    border-radius: 999px;
-                    background: #f6f8fa;
-                    padding: 4px;
+                    border-radius: 16px;
+                    background: rgba(246, 248, 250, 0.96);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 2px rgba(15, 23, 42, 0.04);
+                    overflow: hidden;
+                }
+
+                .viewSwitchThumb {
+                    position: absolute;
+                    top: 2px;
+                    bottom: 2px;
+                    left: 2px;
+                    width: calc((100% - 4px) / 2);
+                    border-radius: 14px;
+                    background: rgb(8, 109, 177);
+                    border: 1px solid rgb(8, 109, 177);
+                    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+                    transform: translateX(0);
+                    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+                    will-change: transform;
+                }
+
+                .viewSwitchThumbFollowers {
+                    transform: translateX(100%);
                 }
 
                 .viewSwitchButton {
+                    position: relative;
+                    z-index: 1;
                     display: inline-flex;
-                    min-height: 36px;
+                    min-height: 44px;
                     align-items: center;
                     justify-content: center;
                     gap: 6px;
                     border: 0;
-                    border-radius: 999px;
+                    border-radius: 16px;
                     background: transparent;
-                    color: #57606a;
-                    padding: 0 12px;
-                    font-weight: 800;
+                    box-shadow: none;
+                    color: #59636e;
+                    padding: 0 16px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    appearance: none;
+                    -webkit-appearance: none;
+                    transition: color 180ms ease;
                 }
 
-                .viewSwitchButton span {
+                .viewSwitchButtonLabel,
+                .viewSwitchButtonCount {
                     color: inherit;
-                    font-size: 12px;
+                }
+
+                .viewSwitchButtonCount {
+                    display: inline-flex;
+                    min-width: 5ch;
+                    justify-content: flex-end;
+                    font-size: 14px;
+                    font-weight: 700;
+                    font-variant-numeric: tabular-nums;
                 }
 
                 .viewSwitchButtonActive {
-                    background: #0969da;
+                    font-weight: 700;
                     color: #fff;
-                    box-shadow: 0 3px 10px rgba(9, 105, 218, 0.22);
+                }
+
+                .viewSwitchButton:hover,
+                .viewSwitchButton:focus-visible {
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .viewSwitchButton:focus-visible {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
                 }
 
                 .content {

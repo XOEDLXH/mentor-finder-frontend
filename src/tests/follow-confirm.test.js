@@ -174,8 +174,8 @@ describe("follow confirmation", () => {
 
         renderWithStore(<FollowsPage />);
 
-        await screen.findByRole("button", { name: "我的粉丝 1" });
-        fireEvent.click(screen.getByRole("button", { name: "我的粉丝 1" }));
+        const viewSwitch = await screen.findByRole("group", { name: "关注页面切换" });
+        fireEvent.click(within(viewSwitch).getByRole("button", { name: /我的粉丝/i }));
 
         expect(screen.getByRole("heading", { name: "我的粉丝" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "粉丝用户" })).toBeInTheDocument();
