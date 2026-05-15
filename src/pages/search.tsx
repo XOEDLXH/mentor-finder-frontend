@@ -437,12 +437,12 @@ const SearchScreen = () => {
         if (intent === "push") {
             const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
             setExpandedMentorIds(new Set());
+            writeHistoryViewState(targetEntryKey, {
+                scrollY: 0,
+                expandedMentorIds: [],
+            });
             scheduleAfterPaint(() => {
                 scrollWindowTo(0);
-                writeHistoryViewState(targetEntryKey, {
-                    scrollY: 0,
-                    expandedMentorIds: [],
-                });
                 scheduleAfterPaint(() => {
                     blockAutoPersistRef.current = false;
                 });
