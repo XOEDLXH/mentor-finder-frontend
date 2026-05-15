@@ -130,7 +130,17 @@ describe("SearchScreen", () => {
         syncHistoryState("test-history-initial");
         useRouter.mockReturnValue(mockRouter);
         window.sessionStorage.clear();
-        window.scrollTo = jest.fn();
+        window.scrollTo = jest.fn((optionsOrX, y) => {
+            const nextScrollY = typeof optionsOrX === "object" && optionsOrX !== undefined
+                ? Number(optionsOrX.top ?? 0)
+                : Number(y ?? 0);
+
+            Object.defineProperty(window, "scrollY", {
+                value: Number.isFinite(nextScrollY) ? nextScrollY : 0,
+                writable: true,
+                configurable: true,
+            });
+        });
         window.requestAnimationFrame = (callback) => window.setTimeout(() => callback(0), 0);
     });
 
@@ -142,7 +152,7 @@ describe("SearchScreen", () => {
     });
 
     it("does not render private mentor management module in search page", async () => {
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
@@ -342,7 +352,7 @@ describe("SearchScreen", () => {
     });
 
     it("auto loads all mentors when entering search page with empty keyword", async () => {
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         await waitFor(() => {
@@ -473,12 +483,16 @@ describe("SearchScreen", () => {
         });
 
         expect(screen.getByRole("heading", { name: "张三" })).toBeInTheDocument();
-        expect(screen.getByText("英文名：Zhang San")).toBeInTheDocument();
-        expect(screen.getByText("研究方向：机器学习")).toBeInTheDocument();
-        expect(screen.getByText("邮箱：zhangsan@example.com")).toBeInTheDocument();
-        expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
+        expect(screen.getByText("Zhang San")).toBeInTheDocument();
+        expect(screen.getByText("机器学习")).toBeInTheDocument();
+        expect(screen.getByText("zhangsan@example.com")).toBeInTheDocument();
+        expect(screen.getByText("主要研究机器学习与数据挖掘。")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/English_Name.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/Reseach_Direction.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/Email.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/Mentor_Profile.ico"]')).not.toBeNull();
         expect(container.querySelectorAll('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).toHaveLength(2);
     });
 
@@ -625,14 +639,14 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
         });
 
-        expect(screen.queryByText(`导师画像：${longProfile}`)).not.toBeInTheDocument();
+        expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "查看更多" })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
 
         await waitFor(() => {
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
             expect(screen.getByText("论文12")).toBeInTheDocument();
             expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
         });
@@ -1343,7 +1357,7 @@ describe("SearchScreen", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
         await waitFor(() => {
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
             expect(screen.getByText("论文12")).toBeInTheDocument();
         });
 
@@ -1469,7 +1483,7 @@ describe("SearchScreen", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
         await waitFor(() => {
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
         });
 
         const expandedSourceEntryKey = window.history.state.key;
@@ -1906,6 +1920,10 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
         });
 
+        expect(screen.getByRole("link", { name: "张三" })).toHaveAttribute("href", "/mentors/1");
+        expect(screen.queryByRole("button", { name: "查看导师主页" })).not.toBeInTheDocument();
+        expect(document.querySelector('img.searchMentorMetaIcon[src="/Mentor_Profile.ico"]')).not.toBeNull();
+
         ["1", "2", "3", "4", "5"].forEach((pageLabel) => {
             expect(screen.getAllByRole("button", { name: pageLabel }).length).toBeGreaterThan(0);
         });
@@ -1924,6 +1942,9 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
+
+        expect(screen.getByRole("link", { name: "张六" })).toHaveAttribute("href", "/mentors/2");
+        expect(screen.queryByRole("button", { name: "查看导师主页" })).not.toBeInTheDocument();
 
         expect(mockPush).toHaveBeenCalledWith(
             "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy&page=2",
