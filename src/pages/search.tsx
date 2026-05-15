@@ -2701,58 +2701,12 @@ const SearchScreen = () => {
                     font: inherit;
                 }
 
-                :global(button.searchMentorPaperLinkButton) {
-                    display: inline-flex;
-                    align-items: flex-start;
-                    gap: 6px;
-                    border: none;
-                    background: transparent;
-                    padding: 0;
-                    color: rgb(8, 109, 177);
-                    transition: color 0.16s ease;
-                    cursor: pointer;
-                    font: inherit;
-                    text-align: left;
-                    white-space: normal;
-                }
-
-                :global(button.searchMentorPaperLinkButton:hover),
-                :global(button.searchMentorPaperLinkButton:focus-visible) {
-                    color: rgb(45, 45, 45);
-                    outline: none;
-                }
-
-                :global(span.searchMentorPaperLinkText) {
-                    color: inherit;
-                    text-decoration: none;
-                    text-decoration-thickness: 1px;
-                    text-underline-offset: 2px;
-                    text-decoration-color: transparent;
-                    transition: text-decoration-color 0.16s ease;
-                }
-
-                :global(button.searchMentorPaperLinkButton:hover span.searchMentorPaperLinkText),
-                :global(button.searchMentorPaperLinkButton:focus-visible span.searchMentorPaperLinkText) {
-                    text-decoration-line: underline;
-                    text-decoration-style: dashed;
-                    text-decoration-color: currentColor;
-                }
-
                 :global(img.searchTimelineMentorIcon) {
                     width: 14px;
                     height: 14px;
                     object-fit: contain;
                     display: block;
                     flex: 0 0 auto;
-                }
-
-                :global(img.searchMentorPaperLinkIcon) {
-                    width: 16px;
-                    height: 16px;
-                    object-fit: contain;
-                    display: block;
-                    flex: 0 0 auto;
-                    margin-top: 1px;
                 }
 
                 @media (max-width: 820px) {

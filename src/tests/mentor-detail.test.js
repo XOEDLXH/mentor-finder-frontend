@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -26,7 +26,17 @@ describe("MentorDetailPage search return", () => {
         email: "test@example.com",
         profile: "导师画像",
         is_private: false,
-        paper_ids: [],
+        paper_ids: [{
+            id: 1,
+            title: "Test Paper With Link",
+            author_names: "测试导师",
+            arxiv_id: "1234.5678",
+            arxiv_url: "https://arxiv.org/abs/1234.5678",
+        }, {
+            id: 2,
+            title: "Test Paper Without Link",
+            author_names: "测试导师",
+        }],
     };
 
     const renderWithStore = () => {
@@ -90,7 +100,12 @@ describe("MentorDetailPage search return", () => {
         renderWithStore();
 
         await screen.findByRole("heading", { name: "测试导师" });
-        fireEvent.click(screen.getByRole("button", { name: "返回检索" }));
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        const returnButton = screen.getByRole("button", { name: "返回检索" });
+        expect(returnButton.querySelector('img[src="/return_back_arrow.ico"]')).not.toBeNull();
+        expect(screen.getAllByRole("button", { name: "返回检索" })).toHaveLength(1);
+        expect(within(sidebar).queryByRole("button", { name: "返回检索" })).not.toBeInTheDocument();
+        fireEvent.click(returnButton);
 
         await waitFor(() => {
             expect(mockBack).toHaveBeenCalledTimes(1);
@@ -102,11 +117,200 @@ describe("MentorDetailPage search return", () => {
         renderWithStore();
 
         await screen.findByRole("heading", { name: "测试导师" });
-        fireEvent.click(screen.getByRole("button", { name: "返回检索" }));
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        const returnButton = screen.getByRole("button", { name: "返回检索" });
+        expect(returnButton.querySelector('img[src="/return_back_arrow.ico"]')).not.toBeNull();
+        expect(screen.getAllByRole("button", { name: "返回检索" })).toHaveLength(1);
+        expect(within(sidebar).queryByRole("button", { name: "返回检索" })).not.toBeInTheDocument();
+        fireEvent.click(returnButton);
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/search");
         });
         expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it("renders related papers with arxiv links and plain-text fallback", async () => {
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+
+        const aiSidebar = screen.getByRole("complementary", { name: "AI 分析" });
+        expect(within(aiSidebar).getByText("AI 分析")).toBeInTheDocument();
+        expect(within(aiSidebar).getByRole("button", { name: "AI分析最近研究方向" })).toBeInTheDocument();
+
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        expect(within(sidebar).getByText("导师信息")).toBeInTheDocument();
+        expect(within(sidebar).getByText("英文名")).toBeInTheDocument();
+        expect(within(sidebar).getByText("研究方向")).toBeInTheDocument();
+        expect(within(sidebar).getByText("邮箱")).toBeInTheDocument();
+        expect(within(sidebar).getByText("Test Mentor")).toBeInTheDocument();
+        expect(within(sidebar).getByText("知识工程")).toBeInTheDocument();
+        expect(within(sidebar).getByText("test@example.com")).toBeInTheDocument();
+        expect(sidebar.querySelector('img[src="/English_Name.ico"]')).not.toBeNull();
+        expect(sidebar.querySelector('img[src="/Reseach_Direction.ico"]')).not.toBeNull();
+        expect(sidebar.querySelector('img[src="/Email.ico"]')).not.toBeNull();
+
+        expect(screen.queryByText("英文名：Test Mentor")).not.toBeInTheDocument();
+        expect(screen.queryByText("研究方向：知识工程")).not.toBeInTheDocument();
+        expect(screen.queryByText("邮箱：test@example.com")).not.toBeInTheDocument();
+
+        expect(screen.getByText("相关论文：")).toBeInTheDocument();
+        expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
+        expect(screen.getByText("导师画像：导师画像")).toBeInTheDocument();
+
+        const linkedPaper = screen.getByRole("link", { name: /Test Paper With Link/ });
+        expect(linkedPaper).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(linkedPaper).toHaveAttribute("target", "_blank");
+        expect(linkedPaper).toHaveAttribute("rel", "noreferrer");
+
+        const linkedPaperIcon = linkedPaper.querySelector("img");
+        expect(linkedPaperIcon).not.toBeNull();
+        expect(linkedPaperIcon).toHaveAttribute("src", "/arxiv.ico");
+
+        expect(screen.getByText("Test Paper Without Link")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /Test Paper Without Link/ })).not.toBeInTheDocument();
+    });
+
+    it("renders empty related-paper state when the mentor has no papers", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return {
+                    mentor: {
+                        ...mentor,
+                        paper_ids: [],
+                    },
+                };
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        expect(screen.getByText("暂无相关论文")).toBeInTheDocument();
+    });
+
+    it("shows fallback text when the english name is missing in the sidebar", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return {
+                    mentor: {
+                        ...mentor,
+                        English_name: "",
+                    },
+                };
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        expect(within(sidebar).getByText("暂无英文名")).toBeInTheDocument();
+    });
+
+    it("renders recent direction analysis in the left ai sidebar after clicking the button", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return { mentor };
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/dataset/mentors/88/recent-direction-analysis" && method === "POST") {
+                return {
+                    mentorId: 88,
+                    mentorName: "测试导师",
+                    paperCount: 2,
+                    generatedBy: "rule",
+                    analysis: "该导师近一年主要聚焦知识工程与推理建模。",
+                    papers: [{
+                        id: 11,
+                        title: "Analysis Paper One",
+                        publish_date: "2025-01-01",
+                    }, {
+                        id: 12,
+                        title: "Analysis Paper Two",
+                        publish_date: "2025-02-02",
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        const aiSidebar = screen.getByRole("complementary", { name: "AI 分析" });
+
+        fireEvent.click(within(aiSidebar).getByRole("button", { name: "AI分析最近研究方向" }));
+
+        await waitFor(() => {
+            expect(within(aiSidebar).getByText("最近研究方向分析")).toBeInTheDocument();
+        });
+        expect(within(aiSidebar).getByText("近一年论文数：2 ｜ 生成方式：rule")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("该导师近一年主要聚焦知识工程与推理建模。")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("本次分析使用的论文：")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("Analysis Paper One（2025-01-01）")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("Analysis Paper Two（2025-02-02）")).toBeInTheDocument();
+    });
+
+    it("shows the ai analysis loading state inside the left sidebar", async () => {
+        let resolveAnalysis;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return Promise.resolve({ mentor });
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/dataset/mentors/88/recent-direction-analysis" && method === "POST") {
+                return new Promise((resolve) => {
+                    resolveAnalysis = resolve;
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        const aiSidebar = screen.getByRole("complementary", { name: "AI 分析" });
+
+        fireEvent.click(within(aiSidebar).getByRole("button", { name: "AI分析最近研究方向" }));
+
+        expect(within(aiSidebar).getByRole("button", { name: "AI正在分析近一年论文，请稍候..." })).toBeDisabled();
+        expect(within(aiSidebar).getByText("正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...")).toBeInTheDocument();
+
+        resolveAnalysis?.({
+            mentorId: 88,
+            mentorName: "测试导师",
+            paperCount: 2,
+            generatedBy: "rule",
+            analysis: "完成分析",
+            papers: [],
+        });
+
+        await waitFor(() => {
+            expect(within(aiSidebar).getByText("近一年论文数：2 ｜ 生成方式：rule")).toBeInTheDocument();
+        });
     });
 });
