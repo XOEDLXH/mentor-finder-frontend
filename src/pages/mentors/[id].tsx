@@ -24,7 +24,7 @@ const getCurrentHistoryEntryKey = () => {
 };
 
 const mentorPageShellStyle = {
-    width: "min(1088px, 100%)",
+    width: "100%",
     margin: "0 auto",
     display: "flex",
     flexDirection: "column" as const,
@@ -230,10 +230,55 @@ const MentorDetailPage = () => {
     }
 
     return (
-        <div style={mentorPageShellStyle}>
+        <div style={mentorPageShellStyle} className="mentorDetailPageWide">
             <button onClick={() => void returnToSearch()}>返回检索</button>
 
             <div className="mentorDetailLayout">
+                <aside
+                    aria-label="AI 分析"
+                    className="mentorDetailAiSidebar"
+                >
+                    <h3 className="mentorDetailSidebarTitle">AI 分析</h3>
+
+                    <div style={{ marginTop: 8 }}>
+                        <button onClick={() => void analyzeRecentDirection()} disabled={analysisLoading}>
+                            {analysisLoading ? "AI正在分析近一年论文，请稍候..." : "AI分析最近研究方向"}
+                        </button>
+                    </div>
+
+                    {(analysisLoading || analysisResult !== undefined) && (
+                        <div className="mentorDetailAiResultCard">
+                            <h3 style={{ margin: "0 0 8px" }}>最近研究方向分析</h3>
+                            {analysisLoading && (
+                                <p style={{ margin: 0 }}>正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...</p>
+                            )}
+                            {!analysisLoading && analysisResult !== undefined && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    <p style={{ margin: 0, color: "#666" }}>
+                                        近一年论文数：{analysisResult.paperCount} ｜ 生成方式：{analysisResult.generatedBy}
+                                    </p>
+                                    <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                                        {analysisResult.analysis}
+                                    </p>
+                                    {analysisResult.papers.length > 0 && (
+                                        <div>
+                                            <p style={{ margin: "4px 0" }}>本次分析使用的论文：</p>
+                                            <ul style={{ margin: 0, paddingLeft: 20 }}>
+                                                {analysisResult.papers.map((paper) => (
+                                                    <li key={paper.id}>
+                                                        {paper.title}
+                                                        {paper.publish_date ? `（${paper.publish_date}）` : ""}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </aside>
+
                 <div style={mentorPageMainColumnStyle}>
                     <div style={mentorPageCardStyle}>
                         {canFollow && (
@@ -312,44 +357,6 @@ const MentorDetailPage = () => {
                         ) : (
                             <p style={{ margin: "4px 0" }}>暂无相关论文</p>
                         )}
-                        
-                        <div style={{ marginTop: 8 }}>
-                            <button onClick={() => void analyzeRecentDirection()} disabled={analysisLoading}>
-                                {analysisLoading ? "AI正在分析近一年论文，请稍候..." : "AI分析最近研究方向"}
-                            </button>
-                        </div>
-
-                        {(analysisLoading || analysisResult !== undefined) && (
-                            <div style={{ marginTop: 16, padding: 12, border: "1px solid #ddd", borderRadius: 6, backgroundColor: "#fafafa" }}>
-                                <h3 style={{ margin: "0 0 8px" }}>最近研究方向分析</h3>
-                                {analysisLoading && (
-                                    <p style={{ margin: 0 }}>正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...</p>
-                                )}
-                                {!analysisLoading && analysisResult !== undefined && (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                        <p style={{ margin: 0, color: "#666" }}>
-                                            近一年论文数：{analysisResult.paperCount} ｜ 生成方式：{analysisResult.generatedBy}
-                                        </p>
-                                        <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                                            {analysisResult.analysis}
-                                        </p>
-                                        {analysisResult.papers.length > 0 && (
-                                            <div>
-                                                <p style={{ margin: "4px 0" }}>本次分析使用的论文：</p>
-                                                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                                                    {analysisResult.papers.map((paper) => (
-                                                        <li key={paper.id}>
-                                                            {paper.title}
-                                                            {paper.publish_date ? `（${paper.publish_date}）` : ""}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -386,13 +393,18 @@ const MentorDetailPage = () => {
             </div>
 
             <style jsx>{`
+                :global(.appMain:has(.mentorDetailPageWide)) {
+                    width: min(1412px, calc(100% - 32px));
+                }
+
                 .mentorDetailLayout {
                     display: grid;
-                    grid-template-columns: 794px 270px;
+                    grid-template-columns: 300px 794px 270px;
                     gap: 24px;
                     align-items: start;
                 }
 
+                .mentorDetailAiSidebar,
                 .mentorDetailSidebar {
                     border: 1px solid #ccc;
                     border-radius: 6px;
@@ -403,6 +415,29 @@ const MentorDetailPage = () => {
                 .mentorDetailSidebarTitle {
                     margin: 0 0 12px;
                     font-size: 16px;
+                }
+
+                .mentorDetailAiSidebar {
+                    font-size: 14px;
+                }
+
+                .mentorDetailAiSidebar :global(button) {
+                    font-size: 14px;
+                }
+
+                .mentorDetailAiSidebar p,
+                .mentorDetailAiSidebar li,
+                .mentorDetailAiSidebar ul,
+                .mentorDetailAiSidebar div {
+                    font-size: 14px;
+                }
+
+                .mentorDetailAiResultCard {
+                    margin-top: 16px;
+                    padding: 12px;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    background-color: #fafafa;
                 }
 
                 .mentorDetailSidebarItem {
@@ -440,9 +475,17 @@ const MentorDetailPage = () => {
                     white-space: normal;
                 }
 
-                @media (max-width: 1080px) {
+                @media (max-width: 1440px) {
                     .mentorDetailLayout {
                         grid-template-columns: minmax(0, 1fr);
+                    }
+
+                    .mentorDetailAiSidebar {
+                        order: 3;
+                    }
+
+                    .mentorDetailSidebar {
+                        order: 2;
                     }
                 }
             `}</style>

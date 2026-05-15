@@ -125,6 +125,10 @@ describe("MentorDetailPage search return", () => {
 
         await screen.findByRole("heading", { name: "测试导师" });
 
+        const aiSidebar = screen.getByRole("complementary", { name: "AI 分析" });
+        expect(within(aiSidebar).getByText("AI 分析")).toBeInTheDocument();
+        expect(within(aiSidebar).getByRole("button", { name: "AI分析最近研究方向" })).toBeInTheDocument();
+
         const sidebar = screen.getByRole("complementary", { name: "导师信息" });
         expect(within(sidebar).getByText("导师信息")).toBeInTheDocument();
         expect(within(sidebar).getByText("英文名")).toBeInTheDocument();
@@ -143,6 +147,7 @@ describe("MentorDetailPage search return", () => {
 
         expect(screen.getByText("相关论文：")).toBeInTheDocument();
         expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
+        expect(screen.getByText("导师画像：导师画像")).toBeInTheDocument();
 
         const linkedPaper = screen.getByRole("link", { name: /Test Paper With Link/ });
         expect(linkedPaper).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
@@ -204,5 +209,98 @@ describe("MentorDetailPage search return", () => {
         await screen.findByRole("heading", { name: "测试导师" });
         const sidebar = screen.getByRole("complementary", { name: "导师信息" });
         expect(within(sidebar).getByText("暂无英文名")).toBeInTheDocument();
+    });
+
+    it("renders recent direction analysis in the left ai sidebar after clicking the button", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return { mentor };
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/dataset/mentors/88/recent-direction-analysis" && method === "POST") {
+                return {
+                    mentorId: 88,
+                    mentorName: "测试导师",
+                    paperCount: 2,
+                    generatedBy: "rule",
+                    analysis: "该导师近一年主要聚焦知识工程与推理建模。",
+                    papers: [{
+                        id: 11,
+                        title: "Analysis Paper One",
+                        publish_date: "2025-01-01",
+                    }, {
+                        id: 12,
+                        title: "Analysis Paper Two",
+                        publish_date: "2025-02-02",
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        const aiSidebar = screen.getByRole("complementary", { name: "AI 分析" });
+
+        fireEvent.click(within(aiSidebar).getByRole("button", { name: "AI分析最近研究方向" }));
+
+        await waitFor(() => {
+            expect(within(aiSidebar).getByText("最近研究方向分析")).toBeInTheDocument();
+        });
+        expect(within(aiSidebar).getByText("近一年论文数：2 ｜ 生成方式：rule")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("该导师近一年主要聚焦知识工程与推理建模。")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("本次分析使用的论文：")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("Analysis Paper One（2025-01-01）")).toBeInTheDocument();
+        expect(within(aiSidebar).getByText("Analysis Paper Two（2025-02-02）")).toBeInTheDocument();
+    });
+
+    it("shows the ai analysis loading state inside the left sidebar", async () => {
+        let resolveAnalysis;
+        request.mockImplementation((url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return Promise.resolve({ mentor });
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return Promise.resolve({ mentors: [] });
+            }
+
+            if (url === "/api/dataset/mentors/88/recent-direction-analysis" && method === "POST") {
+                return new Promise((resolve) => {
+                    resolveAnalysis = resolve;
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        const aiSidebar = screen.getByRole("complementary", { name: "AI 分析" });
+
+        fireEvent.click(within(aiSidebar).getByRole("button", { name: "AI分析最近研究方向" }));
+
+        expect(within(aiSidebar).getByRole("button", { name: "AI正在分析近一年论文，请稍候..." })).toBeDisabled();
+        expect(within(aiSidebar).getByText("正在读取该导师近一年论文的题目和摘要并生成总结，请稍候...")).toBeInTheDocument();
+
+        resolveAnalysis?.({
+            mentorId: 88,
+            mentorName: "测试导师",
+            paperCount: 2,
+            generatedBy: "rule",
+            analysis: "完成分析",
+            papers: [],
+        });
+
+        await waitFor(() => {
+            expect(within(aiSidebar).getByText("近一年论文数：2 ｜ 生成方式：rule")).toBeInTheDocument();
+        });
     });
 });
