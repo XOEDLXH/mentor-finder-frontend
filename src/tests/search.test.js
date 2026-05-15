@@ -131,7 +131,7 @@ describe("SearchScreen", () => {
         useRouter.mockReturnValue(mockRouter);
         window.sessionStorage.clear();
         window.scrollTo = jest.fn((optionsOrX, y) => {
-            const nextScrollY = typeof optionsOrX === "object" && optionsOrX !== null
+            const nextScrollY = typeof optionsOrX === "object" && optionsOrX !== undefined
                 ? Number(optionsOrX.top ?? 0)
                 : Number(y ?? 0);
 
@@ -152,7 +152,7 @@ describe("SearchScreen", () => {
     });
 
     it("does not render private mentor management module in search page", async () => {
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
@@ -352,7 +352,7 @@ describe("SearchScreen", () => {
     });
 
     it("auto loads all mentors when entering search page with empty keyword", async () => {
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         await waitFor(() => {

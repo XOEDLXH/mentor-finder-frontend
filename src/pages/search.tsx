@@ -134,8 +134,6 @@ const MENTOR_FILTER_OPTIONS: SegmentedOption<MentorResultFilter>[] = [
     { label: "公共", value: "public" },
 ];
 
-const SEARCH_LOGIC_HELP_TEXT = "注意：AND 的优先级高于 OR；若括号不匹配则会将括号理解为关键词的一部分。";
-
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
