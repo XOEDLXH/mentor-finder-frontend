@@ -1859,13 +1859,47 @@ const SearchScreen = () => {
                                 )}
                             </h3>
                             {mentor.English_name && (
-                                <p style={{ margin: "4px 0", fontSize: "14px" }}>英文名：{mentor.English_name}</p>
+                                <p className="searchMentorMetaRow">
+                                    <img
+                                        src="/English_Name.ico"
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="searchMentorMetaIcon"
+                                    />
+                                    <span className="searchMentorMetaSrOnly">英文名</span>
+                                    <span className="searchMentorMetaText">{mentor.English_name}</span>
+                                </p>
                             )}
-                            <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                                研究方向：{mentor.research_direction || "暂无研究方向"}
+                            <p className="searchMentorMetaRow">
+                                <img
+                                    src="/Reseach_Direction.ico"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="searchMentorMetaIcon"
+                                />
+                                <span className="searchMentorMetaSrOnly">研究方向</span>
+                                <span className="searchMentorMetaText">{mentor.research_direction || "暂无研究方向"}</span>
                             </p>
-                            <p style={{ margin: "4px 0", fontSize: "14px" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
-                            <p style={{ margin: "4px 0", fontSize: "14px" }}>导师画像：{isExpanded ? profileText : profilePreview}</p>
+                            <p className="searchMentorMetaRow">
+                                <img
+                                    src="/Email.ico"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="searchMentorMetaIcon"
+                                />
+                                <span className="searchMentorMetaSrOnly">邮箱</span>
+                                <span className="searchMentorMetaText">{mentor.email || "暂无邮箱"}</span>
+                            </p>
+                            <p className="searchMentorMetaRow">
+                                <img
+                                    src="/Mentor_Profile.ico"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="searchMentorMetaIcon"
+                                />
+                                <span className="searchMentorMetaSrOnly">导师画像</span>
+                                <span className="searchMentorMetaText">{isExpanded ? profileText : profilePreview}</span>
+                            </p>
                             <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                                 {visiblePaperTitles.map((title) => (
@@ -2121,6 +2155,41 @@ const SearchScreen = () => {
                     color: rgb(8, 109, 177);
                     text-decoration: none;
                     outline: none;
+                }
+
+                .searchMentorMetaRow {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    margin: 4px 0;
+                    font-size: 14px;
+                }
+
+                .searchMentorMetaIcon {
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
+                    margin-top: 1px;
+                }
+
+                .searchMentorMetaText {
+                    min-width: 0;
+                    white-space: normal;
+                    word-break: break-word;
+                }
+
+                .searchMentorMetaSrOnly {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
                 }
 
                 .searchTimelinePaperHeaderRow {
