@@ -2103,6 +2103,7 @@ const SearchScreen = () => {
                                                 type="button"
                                                 onClick={() => toggleMentorProfileExpand(mentor.id)}
                                                 className="searchMentorInlineLinkButton searchMentorInlineLinkButtonBlock"
+                                                data-testid={`mentor-profile-toggle-${mentor.id}`}
                                             >
                                                 收起
                                             </button>
@@ -2118,6 +2119,7 @@ const SearchScreen = () => {
                                                     type="button"
                                                     onClick={() => toggleMentorProfileExpand(mentor.id)}
                                                     className="searchMentorInlineLinkButton"
+                                                    data-testid={`mentor-profile-toggle-${mentor.id}`}
                                                 >
                                                     展开
                                                 </button>
@@ -2153,6 +2155,7 @@ const SearchScreen = () => {
                                             type="button"
                                             onClick={() => toggleMentorPaperExpand(mentor.id)}
                                             className="searchMentorInlineLinkButton searchMentorInlineLinkButtonPaperFooter"
+                                            data-testid={`mentor-paper-toggle-${mentor.id}`}
                                         >
                                             {isPaperExpanded ? "收起" : "展开"}
                                         </button>

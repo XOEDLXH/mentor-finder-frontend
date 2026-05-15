@@ -641,23 +641,22 @@ describe("SearchScreen", () => {
 
         expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
-        const expandButtons = screen.getAllByRole("button", { name: "查看更多" });
-        expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
-        expect(expandButtons).toHaveLength(1);
+        expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        expect(screen.getByTestId("mentor-paper-toggle-88")).toHaveTextContent("展开");
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
 
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
             expect(screen.queryByText("论文12")).not.toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("收起");
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "收起" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
 
         await waitFor(() => {
             expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
         });
     });
 
@@ -1364,23 +1363,22 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
             expect(screen.queryByText("论文12")).not.toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "收起" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
             expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
         await waitFor(() => {
             expect(screen.getByText("论文12")).toBeInTheDocument();
-            const paperButtons = screen.getAllByRole("button", { name: "展开" });
-            expect(paperButtons.length).toBeGreaterThanOrEqual(1);
+            expect(screen.getByTestId("mentor-paper-toggle-88")).toHaveTextContent("收起");
         });
 
         Object.defineProperty(window, "scrollY", {
@@ -1503,12 +1501,12 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
@@ -1604,19 +1602,19 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("收起");
             expect(screen.getByText(longProfile)).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "收起" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
             expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "展开" }));
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
