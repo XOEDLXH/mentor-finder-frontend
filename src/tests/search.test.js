@@ -724,6 +724,84 @@ describe("SearchScreen", () => {
         // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
     });
 
+    it("renders the search mentor follow button in bilibili style and toggles between follow states", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/follow/mentors") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=&search_mode=fuzzy") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            if (url === "/api/follow/mentors/1" && method === "POST") {
+                return { followed: true };
+            }
+
+            if (url === "/api/follow/mentors/1" && method === "DELETE") {
+                return { followed: false };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        const followButton = await screen.findByRole("button", { name: "关注" });
+        expect(followButton).toHaveStyle({
+            backgroundColor: "rgb(8, 109, 177)",
+            color: "rgb(255, 255, 255)",
+            fontSize: "14px",
+            border: "0px solid transparent",
+        });
+
+        fireEvent.click(followButton);
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/follow/mentors/1", "POST", true);
+        });
+
+        const followedButton = await screen.findByRole("button", { name: "已关注" });
+        expect(followedButton).toHaveStyle({
+            backgroundColor: "rgba(246, 248, 250, 0.96)",
+            color: "rgb(0, 0, 0)",
+            fontSize: "14px",
+            border: "0px solid transparent",
+        });
+
+        fireEvent.click(followedButton);
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/follow/mentors/1", "DELETE", true);
+        });
+
+        expect(await screen.findByRole("button", { name: "关注" })).toBeInTheDocument();
+    });
+
     it("renders inline LaTeX in paper search result abstracts", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
