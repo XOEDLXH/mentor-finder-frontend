@@ -2095,17 +2095,37 @@ const SearchScreen = () => {
                                     className="searchMentorMetaIcon"
                                 />
                                 <span className="searchMentorMetaSrOnly">导师画像</span>
-                                <span className="searchMentorMetaText">{isProfileExpanded ? profileText : profilePreview}</span>
+                                {isProfileExpanded ? (
+                                    <span className="searchMentorMetaText searchMentorMetaTextExpanded">
+                                        <span className="searchMentorProfileFullText">{profileText}</span>
+                                        {hasProfileMore && (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleMentorProfileExpand(mentor.id)}
+                                                className="searchMentorInlineLinkButton searchMentorInlineLinkButtonBlock"
+                                            >
+                                                收起
+                                            </button>
+                                        )}
+                                    </span>
+                                ) : (
+                                    <span className="searchMentorMetaText">
+                                        {profilePreview}
+                                        {hasProfileMore && (
+                                            <>
+                                                {" "}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleMentorProfileExpand(mentor.id)}
+                                                    className="searchMentorInlineLinkButton"
+                                                >
+                                                    展开
+                                                </button>
+                                            </>
+                                        )}
+                                    </span>
+                                )}
                             </p>
-                            {hasProfileMore && (
-                                <button
-                                    type="button"
-                                    onClick={() => toggleMentorProfileExpand(mentor.id)}
-                                    style={{ marginTop: 8, fontSize: "14px" }}
-                                >
-                                    {isProfileExpanded ? "收起" : "查看更多"}
-                                </button>
-                            )}
                             <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                                 {visiblePaperTitles.map((title) => (
@@ -2385,6 +2405,40 @@ const SearchScreen = () => {
                     min-width: 0;
                     white-space: normal;
                     word-break: break-word;
+                }
+
+                .searchMentorMetaTextExpanded {
+                    display: inline;
+                }
+
+                .searchMentorProfileFullText {
+                    display: block;
+                }
+
+                .searchMentorInlineLinkButton {
+                    display: inline;
+                    margin: 0;
+                    padding: 0;
+                    border: 0;
+                    background: transparent;
+                    appearance: none;
+                    -webkit-appearance: none;
+                    color: rgb(8, 109, 177);
+                    font: inherit;
+                    text-decoration: none;
+                    cursor: pointer;
+                }
+
+                .searchMentorInlineLinkButton:hover,
+                .searchMentorInlineLinkButton:focus-visible {
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    outline: none;
+                }
+
+                .searchMentorInlineLinkButtonBlock {
+                    display: inline-block;
+                    margin-top: 0;
                 }
 
                 .searchMentorMetaSrOnly {

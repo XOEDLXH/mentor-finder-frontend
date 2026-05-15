@@ -642,9 +642,10 @@ describe("SearchScreen", () => {
         expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
         const expandButtons = screen.getAllByRole("button", { name: "查看更多" });
-        expect(expandButtons).toHaveLength(2);
+        expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
+        expect(expandButtons).toHaveLength(1);
 
-        fireEvent.click(expandButtons[0]);
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
 
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
@@ -652,11 +653,11 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "查看更多" })[0]);
+        fireEvent.click(screen.getByRole("button", { name: "收起" }));
 
         await waitFor(() => {
-            expect(screen.getByText("论文12")).toBeInTheDocument();
-            expect(screen.getAllByRole("button", { name: "收起" })).toHaveLength(2);
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
         });
     });
 
@@ -1363,13 +1364,19 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "查看更多" })[0]);
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
             expect(screen.queryByText("论文12")).not.toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "查看更多" })[0]);
+        fireEvent.click(screen.getByRole("button", { name: "收起" }));
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
         await waitFor(() => {
             expect(screen.getByText("论文12")).toBeInTheDocument();
         });
@@ -1494,7 +1501,7 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "查看更多" })[0]);
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
         });
@@ -1595,10 +1602,16 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "查看更多" })[0]);
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "查看更多" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
             expect(screen.getByText(longProfile)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "收起" }));
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
         });
 
         fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
