@@ -641,14 +641,22 @@ describe("SearchScreen", () => {
 
         expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "查看更多" })).toBeInTheDocument();
+        expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        expect(screen.getByTestId("mentor-paper-toggle-88")).toHaveTextContent("展开");
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
 
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
-            expect(screen.getByText("论文12")).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
+            expect(screen.queryByText("论文12")).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("收起");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
         });
     });
 
@@ -1355,10 +1363,22 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
+            expect(screen.queryByText("论文12")).not.toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+        await waitFor(() => {
             expect(screen.getByText("论文12")).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-paper-toggle-88")).toHaveTextContent("收起");
         });
 
         Object.defineProperty(window, "scrollY", {
@@ -1481,16 +1501,22 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
 
         const expandedSourceEntryKey = window.history.state.key;
         const expandedSourceViewState = JSON.parse(
             window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
         );
-        expect(expandedSourceViewState.expandedMentorIds).toEqual([88]);
+        expect(expandedSourceViewState.expandedProfileMentorIds).toEqual([88]);
+        expect(expandedSourceViewState.expandedPaperMentorIds).toEqual([88]);
 
         Object.defineProperty(window, "scrollY", {
             value: 460,
@@ -1514,7 +1540,8 @@ describe("SearchScreen", () => {
 
         expect(sourceViewState.scrollY).toBe(460);
         expect(targetViewState.scrollY).toBe(0);
-        expect(targetViewState.expandedMentorIds).toEqual([]);
+        expect(targetViewState.expandedProfileMentorIds).toEqual([]);
+        expect(targetViewState.expandedPaperMentorIds).toEqual([]);
     });
 
     it("does not overwrite the saved mentor scroll state when the browser resets scroll before pop restore", async () => {
@@ -1575,7 +1602,19 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        await waitFor(() => {
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("收起");
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
