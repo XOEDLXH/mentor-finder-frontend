@@ -80,6 +80,9 @@ describe("follow confirmation", () => {
 
         await screen.findByRole("heading", { name: "张三" });
         expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
+        const mentorCardHeader = screen.getByTestId("mentor-card-header-7");
+        expect(within(mentorCardHeader).getByRole("heading", { name: "张三" })).toBeInTheDocument();
+        expect(within(mentorCardHeader).getByRole("button", { name: "取消关注" })).toBeInTheDocument();
 
         const followButton = screen.getByRole("button", { name: "取消关注" });
         fireEvent.click(followButton);

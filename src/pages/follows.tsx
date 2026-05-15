@@ -302,21 +302,22 @@ const FollowsPage = () => {
                                         }
                                     }}
                                 >
-                                    <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
-                                        <FollowToggleButton
-                                            className="followToggleButton"
-                                            followed={mentor.followed}
-                                            loading={actionMentorId === mentor.id}
-                                            onClick={() => void toggleFollow(mentor)}
-                                        />
+                                    <div className="mentorCardHeader" data-testid={`mentor-card-header-${mentor.id}`}>
+                                        <h3 className="mentorName">
+                                            {mentor.Chinese_name}
+                                            {mentor.is_private && (
+                                                <span className="privateBadge">我的私有导师</span>
+                                            )}
+                                        </h3>
+                                        <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
+                                            <FollowToggleButton
+                                                className="followToggleButton"
+                                                followed={mentor.followed}
+                                                loading={actionMentorId === mentor.id}
+                                                onClick={() => void toggleFollow(mentor)}
+                                            />
+                                        </div>
                                     </div>
-
-                                    <h3 className="mentorName">
-                                        {mentor.Chinese_name}
-                                        {mentor.is_private && (
-                                            <span className="privateBadge">我的私有导师</span>
-                                        )}
-                                    </h3>
                                     {mentor.English_name && (
                                         <p className="mentorMeta">英文名：{mentor.English_name}</p>
                                     )}
@@ -628,9 +629,8 @@ const FollowsPage = () => {
                 }
 
                 .mentorCard {
-                    position: relative;
                     min-height: 158px;
-                    padding: 14px 14px 14px 14px;
+                    padding: 14px;
                     border: 1px solid #ccc;
                     border-radius: 8px;
                     cursor: pointer;
@@ -646,10 +646,16 @@ const FollowsPage = () => {
                     transform: translateY(-1px);
                 }
 
+                .mentorCardHeader {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin-bottom: 8px;
+                }
+
                 .followButtonShell {
-                    position: absolute;
-                    top: 8px;
-                    right: 8px;
+                    flex-shrink: 0;
                 }
 
                 .followToggleButton {
@@ -681,8 +687,9 @@ const FollowsPage = () => {
                 }
 
                 .mentorName {
-                    margin: 52px 0 8px;
+                    margin: 0;
                     font-size: 18px;
+                    line-height: 1.35;
                 }
 
                 .privateBadge {
@@ -693,7 +700,7 @@ const FollowsPage = () => {
                 }
 
                 .mentorMeta {
-                    margin: 4px 0;
+                    margin: 4px 0 0;
                     color: #333;
                     line-height: 1.45;
                 }
