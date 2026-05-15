@@ -201,10 +201,10 @@ describe("follow confirmation", () => {
 
         await screen.findByRole("heading", { name: "张三" });
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "取消关注" })).toBeEnabled();
+            expect(screen.getByRole("button", { name: "已关注" })).toBeEnabled();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
+        fireEvent.click(screen.getByRole("button", { name: "已关注" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
@@ -246,7 +246,7 @@ describe("follow confirmation", () => {
         resolveFollow?.({ followed: true });
 
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "取消关注" })).toBeEnabled();
+            expect(screen.getByRole("button", { name: "已关注" })).toBeEnabled();
         });
     });
 });
