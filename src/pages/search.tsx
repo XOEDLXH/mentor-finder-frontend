@@ -2,6 +2,7 @@ import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
+import FollowToggleButton from "../components/FollowToggleButton";
 import LatexText from "../components/LatexText";
 import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
@@ -141,6 +142,7 @@ const SearchScreen = () => {
     const authRole = useSelector((state: RootState) => state.auth.role);
     const isLoggedIn = authToken.trim() !== "";
     const isAdmin = authRole === "admin";
+    const canFollowMentor = isLoggedIn && authRole === "student";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
     const [matchMode, setMatchMode] = useState<SearchMatchMode>("fuzzy");
@@ -164,6 +166,8 @@ const SearchScreen = () => {
     const [paperDeleteTarget, setPaperDeleteTarget] = useState<PaperDeleteTarget | undefined>(undefined);
     const [paperDeleteSubmitting, setPaperDeleteSubmitting] = useState(false);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
+    const [followedMentorIds, setFollowedMentorIds] = useState<Set<number>>(new Set());
+    const [followToggleMentorId, setFollowToggleMentorId] = useState<number | undefined>(undefined);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
     const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
     const [privateMentorSaving, setPrivateMentorSaving] = useState(false);
@@ -617,6 +621,64 @@ const SearchScreen = () => {
     useEffect(() => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
+
+    const fetchFollowedMentors = useCallback(async () => {
+        if (!canFollowMentor) {
+            setFollowedMentorIds(new Set());
+            return;
+        }
+
+        try {
+            const res = await request<{ mentors?: SearchMentorResult[] }>(
+                "/api/follow/mentors",
+                "GET",
+                true,
+            );
+            const list = Array.isArray(res.mentors) ? res.mentors : [];
+            setFollowedMentorIds(new Set(list.map((mentor) => mentor.id)));
+        }
+        catch {
+            setFollowedMentorIds(new Set());
+        }
+    }, [canFollowMentor]);
+
+    useEffect(() => {
+        void fetchFollowedMentors();
+    }, [fetchFollowedMentors]);
+
+    const toggleMentorFollow = useCallback(async (mentorId: number) => {
+        if (!canFollowMentor) {
+            return;
+        }
+
+        const wasFollowed = followedMentorIds.has(mentorId);
+        setFollowToggleMentorId(mentorId);
+        setErrorMessage("");
+
+        try {
+            const res = await request<{ followed?: boolean }>(
+                `/api/follow/mentors/${mentorId}`,
+                wasFollowed ? "DELETE" : "POST",
+                true,
+            );
+            setFollowedMentorIds((prev) => {
+                const next = new Set(prev);
+                if (Boolean(res.followed)) {
+                    next.add(mentorId);
+                }
+                else {
+                    next.delete(mentorId);
+                }
+                return next;
+            });
+        }
+        catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setFollowToggleMentorId(undefined);
+        }
+    }, [canFollowMentor, followedMentorIds]);
 
     useEffect(() => {
         activeSearchStateRef.current = activeSearchState;
@@ -1830,24 +1892,59 @@ const SearchScreen = () => {
                             key={mentor.id}
                             style={{ position: "relative", padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            {isLoggedIn && privateMentorIdSet.has(mentor.id) && (
-                                <button
-                                    onClick={() => openDeleteMentorDialog(mentor)}
-                                    disabled={adminSaving}
+                            {(canFollowMentor || (isLoggedIn && privateMentorIdSet.has(mentor.id))) && (
+                                <div
                                     style={{
                                         position: "absolute",
                                         top: 8,
                                         right: 8,
-                                        border: "1px solid #cf222e",
-                                        borderRadius: 8,
-                                        background: "#ffffff",
-                                        color: "#cf222e",
-                                        fontWeight: 600,
-                                        padding: "4px 12px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        zIndex: 1,
                                     }}
                                 >
-                                    删除
-                                </button>
+                                    {canFollowMentor && (
+                                        <FollowToggleButton
+                                            followed={followedMentorIds.has(mentor.id)}
+                                            loading={followToggleMentorId === mentor.id}
+                                            onClick={() => void toggleMentorFollow(mentor.id)}
+                                            style={{
+                                                position: "relative",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                minWidth: 76,
+                                                minHeight: 28,
+                                                border: "1px solid #d0d7de",
+                                                borderRadius: 999,
+                                                background: "#ffffff",
+                                                color: "#1f2328",
+                                                padding: "0 12px",
+                                                fontWeight: 600,
+                                                fontSize: 13,
+                                                overflow: "hidden",
+                                                cursor: "pointer",
+                                            }}
+                                        />
+                                    )}
+                                    {isLoggedIn && privateMentorIdSet.has(mentor.id) && (
+                                        <button
+                                            onClick={() => openDeleteMentorDialog(mentor)}
+                                            disabled={adminSaving}
+                                            style={{
+                                                border: "1px solid #cf222e",
+                                                borderRadius: 8,
+                                                background: "#ffffff",
+                                                color: "#cf222e",
+                                                fontWeight: 600,
+                                                padding: "4px 12px",
+                                            }}
+                                        >
+                                            删除
+                                        </button>
+                                    )}
+                                </div>
                             )}
                             <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
                                 {mentor.Chinese_name}
