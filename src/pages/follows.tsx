@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
@@ -30,6 +30,30 @@ interface FollowedMentorCardState extends SearchMentorResult {
 
 type FollowCategory = "mentor" | "user";
 type FollowView = "following" | "followers";
+
+const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
+    position: "relative",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 72,
+    minHeight: 28,
+    border: "0 solid transparent",
+    borderRadius: 6,
+    padding: "0 12px",
+    backgroundColor: followed ? "rgba(246, 248, 250, 0.96)" : "rgb(8, 109, 177)",
+    color: followed ? "#000000" : "#ffffff",
+    fontSize: 14,
+    fontWeight: 500,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    cursor: "pointer",
+    boxShadow: "none",
+    transition: "none",
+    appearance: "none",
+    opacity: 1,
+});
 
 const FollowsPage = () => {
     const router = useRouter();
@@ -313,8 +337,10 @@ const FollowsPage = () => {
                                             <FollowToggleButton
                                                 className="followToggleButton"
                                                 followed={mentor.followed}
+                                                followedLabel="已关注"
                                                 loading={actionMentorId === mentor.id}
                                                 onClick={() => void toggleFollow(mentor)}
+                                                style={buildSearchLikeMentorFollowButtonStyle(mentor.followed)}
                                             />
                                         </div>
                                     </div>
@@ -663,21 +689,43 @@ const FollowsPage = () => {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    min-width: 92px;
-                    min-height: 36px;
-                    border: 1px solid #ddd;
-                    border-radius: 999px;
-                    background: #fff;
-                    color: #1f2328;
-                    padding: 0 16px;
-                    font-weight: 600;
+                    min-width: 72px;
+                    min-height: 28px;
+                    border: 0 solid transparent;
+                    border-radius: 6px;
+                    background: rgb(8, 109, 177);
+                    color: #ffffff;
+                    padding: 0 12px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    line-height: 1;
+                    white-space: nowrap;
                     overflow: hidden;
+                    cursor: pointer;
+                    box-shadow: none;
+                    transition: none;
+                    appearance: none;
+                    opacity: 1;
                 }
 
-                .followToggleButton:hover,
-                .followToggleButton:focus {
-                    background: #f6f8fa;
-                    outline: none;
+                .followToggleButton span {
+                    color: inherit;
+                }
+
+                .followToggleButton:hover:not(:disabled),
+                .followToggleButton:focus-visible {
+                    transform: none;
+                    box-shadow: none;
+                }
+
+                .followToggleButton:focus-visible {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
+                }
+
+                .followToggleButton:disabled {
+                    opacity: 1;
+                    cursor: not-allowed;
                 }
 
                 :global(.followToggleButtonOverlay) {

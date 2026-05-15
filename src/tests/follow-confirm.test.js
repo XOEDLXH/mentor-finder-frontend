@@ -82,9 +82,9 @@ describe("follow confirmation", () => {
         expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
         const mentorCardHeader = screen.getByTestId("mentor-card-header-7");
         expect(within(mentorCardHeader).getByRole("heading", { name: "张三" })).toBeInTheDocument();
-        expect(within(mentorCardHeader).getByRole("button", { name: "取消关注" })).toBeInTheDocument();
+        expect(within(mentorCardHeader).getByRole("button", { name: "已关注" })).toBeInTheDocument();
 
-        const followButton = screen.getByRole("button", { name: "取消关注" });
+        const followButton = screen.getByRole("button", { name: "已关注" });
         fireEvent.click(followButton);
 
         await waitFor(() => {
@@ -111,7 +111,7 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
+        fireEvent.click(screen.getByRole("button", { name: "已关注" }));
 
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "关注" })).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe("follow confirmation", () => {
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "POST", true);
         });
-        expect(screen.getByRole("button", { name: "取消关注" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "已关注" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
     });
 
@@ -141,11 +141,11 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        const followButton = screen.getByRole("button", { name: "取消关注" });
+        const followButton = screen.getByRole("button", { name: "已关注" });
         fireEvent.click(followButton);
 
         expect(followButton).toBeDisabled();
-        expect(within(followButton).getByText("取消关注")).toBeInTheDocument();
+        expect(within(followButton).getByText("已关注")).toBeInTheDocument();
         expect(followButton.querySelector(".followToggleButtonOverlay")).not.toBeNull();
 
         resolveFollow?.({ followed: false });
