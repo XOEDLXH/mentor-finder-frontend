@@ -2120,6 +2120,14 @@ const SearchScreen = () => {
                                                 收起
                                             </button>
                                         )}
+                                        <button
+                                            type="button"
+                                            onClick={() => void router.push(`/mentors/${mentor.id}`)}
+                                            className="searchMentorInlineLinkButton searchMentorInlineLinkButtonSpaced"
+                                            data-testid={`mentor-homepage-button-${mentor.id}`}
+                                        >
+                                            前往主页
+                                        </button>
                                     </span>
                                 ) : (
                                     <span className="searchMentorMetaText">
@@ -2137,6 +2145,15 @@ const SearchScreen = () => {
                                                 </button>
                                             </>
                                         )}
+                                        {" "}
+                                        <button
+                                            type="button"
+                                            onClick={() => void router.push(`/mentors/${mentor.id}`)}
+                                            className={`searchMentorInlineLinkButton${hasProfileMore ? " searchMentorInlineLinkButtonSpaced" : ""}`}
+                                            data-testid={`mentor-homepage-button-${mentor.id}`}
+                                        >
+                                            前往主页
+                                        </button>
                                     </span>
                                 )}
                             </p>
@@ -2456,6 +2473,10 @@ const SearchScreen = () => {
                 .searchMentorInlineLinkButtonBlock {
                     display: inline-block;
                     margin-top: 0;
+                }
+
+                .searchMentorInlineLinkButtonSpaced {
+                    margin-left: 8px;
                 }
 
                 .searchMentorInlineLinkButtonPaperFooter {
