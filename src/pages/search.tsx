@@ -2147,16 +2147,18 @@ const SearchScreen = () => {
                                         </button>
                                     </li>
                                 ))}
+                                {hasPaperMore && (
+                                    <li className="searchMentorPaperFooter">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleMentorPaperExpand(mentor.id)}
+                                            className="searchMentorInlineLinkButton searchMentorInlineLinkButtonPaperFooter"
+                                        >
+                                            {isPaperExpanded ? "收起" : "展开"}
+                                        </button>
+                                    </li>
+                                )}
                             </ul>
-                            {hasPaperMore && (
-                                <button
-                                    type="button"
-                                    onClick={() => toggleMentorPaperExpand(mentor.id)}
-                                    style={{ marginTop: 8, fontSize: "14px" }}
-                                >
-                                    {isPaperExpanded ? "收起" : "查看更多"}
-                                </button>
-                            )}
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditMentor(mentor)} disabled={adminSaving}>修改导师</button>
@@ -2438,6 +2440,17 @@ const SearchScreen = () => {
 
                 .searchMentorInlineLinkButtonBlock {
                     display: inline-block;
+                    margin-top: 0;
+                }
+
+                .searchMentorInlineLinkButtonPaperFooter {
+                    display: inline-block;
+                    margin-top: 6px;
+                    margin-left: 0;
+                }
+
+                .searchMentorPaperFooter {
+                    padding-left: 0;
                     margin-top: 0;
                 }
 

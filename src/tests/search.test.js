@@ -1376,9 +1376,11 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
             expect(screen.getByText("论文12")).toBeInTheDocument();
+            const paperButtons = screen.getAllByRole("button", { name: "展开" });
+            expect(paperButtons.length).toBeGreaterThanOrEqual(1);
         });
 
         Object.defineProperty(window, "scrollY", {
@@ -1506,7 +1508,7 @@ describe("SearchScreen", () => {
             expect(screen.getByText(longProfile)).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
@@ -1614,7 +1616,7 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("button", { name: "展开" })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByRole("button", { name: "展开" }));
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
