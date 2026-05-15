@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import FollowToggleButton from "../../components/FollowToggleButton";
+import LatexText from "../../components/LatexText";
 import { FAILURE_PREFIX } from "../../constants/string";
 import { RootState } from "../../redux/store";
 import { request } from "../../utils/network";
@@ -273,18 +274,49 @@ const MentorDetailPage = () => {
                     导师画像：{mentor.profile || "暂无导师画像"}
                 </p>
 
-                <p style={{ margin: "8px 0 4px" }}>关联论文：</p>
+                <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                 {mentor.paper_ids.length > 0 ? (
-                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                         {mentor.paper_ids.map((paper) => (
                             <li key={paper.id}>
-                                {paper.title}
-                                {paper.publish_date ? `（${paper.publish_date}）` : ""}
+                                {paper.arxiv_url ? (
+                                    <a
+                                        href={paper.arxiv_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="mentorPaperLink"
+                                    >
+                                        <img
+                                            src="/arxiv.ico"
+                                            alt=""
+                                            aria-hidden="true"
+                                            className="mentorPaperLinkIcon"
+                                        />
+                                        <span className="mentorPaperLinkText">
+                                            <LatexText text={paper.title} forceInlineMath />
+                                        </span>
+                                    </a>
+                                ) : (
+                                    <span
+                                        className="mentorPaperLink"
+                                        style={{ color: "#1f2328", cursor: "default" }}
+                                    >
+                                        <img
+                                            src="/arxiv.ico"
+                                            alt=""
+                                            aria-hidden="true"
+                                            className="mentorPaperLinkIcon"
+                                        />
+                                        <span className="mentorPaperLinkText">
+                                            <LatexText text={paper.title} forceInlineMath />
+                                        </span>
+                                    </span>
+                                )}
                             </li>
                         ))}
                     </ul>
                 ) : (
-                    <p style={{ margin: "4px 0" }}>暂无关联论文</p>
+                    <p style={{ margin: "4px 0" }}>暂无相关论文</p>
                 )}
                 
                 <div style={{ marginTop: 8 }}>

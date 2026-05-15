@@ -17,6 +17,8 @@ export interface PrivateMentorPaper {
     abstract?: string;
     publish_date?: string;
     author_names: string;
+    arxiv_id?: string;
+    arxiv_url?: string;
 }
 
 export interface PrivateMentorResult {

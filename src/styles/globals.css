@@ -69,7 +69,7 @@ select:disabled {
   opacity: 0.65;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--surface-panel);
@@ -78,7 +78,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):hover:not(:disabled) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
@@ -98,6 +98,63 @@ button.searchMentorFollowButton:focus-visible {
 button.searchMentorFollowButton:disabled {
   opacity: 1;
   cursor: not-allowed;
+}
+
+.mentorPaperLink,
+.searchMentorPaperLinkButton {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: rgb(8, 109, 177);
+  transition: color 0.16s ease;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+}
+
+button.mentorPaperLink:hover,
+button.mentorPaperLink:focus-visible,
+button.searchMentorPaperLinkButton:hover,
+button.searchMentorPaperLinkButton:focus-visible,
+a.mentorPaperLink:hover,
+a.mentorPaperLink:focus-visible {
+  color: rgb(45, 45, 45);
+  outline: none;
+}
+
+.mentorPaperLinkText,
+.searchMentorPaperLinkText {
+  color: inherit;
+  text-decoration: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.16s ease;
+}
+
+button.mentorPaperLink:hover .mentorPaperLinkText,
+button.mentorPaperLink:focus-visible .mentorPaperLinkText,
+button.searchMentorPaperLinkButton:hover .searchMentorPaperLinkText,
+button.searchMentorPaperLinkButton:focus-visible .searchMentorPaperLinkText,
+a.mentorPaperLink:hover .mentorPaperLinkText,
+a.mentorPaperLink:focus-visible .mentorPaperLinkText {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: currentColor;
+}
+
+.mentorPaperLinkIcon,
+.searchMentorPaperLinkIcon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .followToggleButtonOverlay {

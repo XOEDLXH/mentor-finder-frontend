@@ -26,7 +26,17 @@ describe("MentorDetailPage search return", () => {
         email: "test@example.com",
         profile: "导师画像",
         is_private: false,
-        paper_ids: [],
+        paper_ids: [{
+            id: 1,
+            title: "Test Paper With Link",
+            author_names: "测试导师",
+            arxiv_id: "1234.5678",
+            arxiv_url: "https://arxiv.org/abs/1234.5678",
+        }, {
+            id: 2,
+            title: "Test Paper Without Link",
+            author_names: "测试导师",
+        }],
     };
 
     const renderWithStore = () => {
@@ -108,5 +118,50 @@ describe("MentorDetailPage search return", () => {
             expect(mockPush).toHaveBeenCalledWith("/search");
         });
         expect(mockBack).not.toHaveBeenCalled();
+    });
+
+    it("renders related papers with arxiv links and plain-text fallback", async () => {
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+
+        expect(screen.getByText("相关论文：")).toBeInTheDocument();
+        expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
+
+        const linkedPaper = screen.getByRole("link", { name: /Test Paper With Link/ });
+        expect(linkedPaper).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
+        expect(linkedPaper).toHaveAttribute("target", "_blank");
+        expect(linkedPaper).toHaveAttribute("rel", "noreferrer");
+
+        const linkedPaperIcon = linkedPaper.querySelector("img");
+        expect(linkedPaperIcon).not.toBeNull();
+        expect(linkedPaperIcon).toHaveAttribute("src", "/arxiv.ico");
+
+        expect(screen.getByText("Test Paper Without Link")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /Test Paper Without Link/ })).not.toBeInTheDocument();
+    });
+
+    it("renders empty related-paper state when the mentor has no papers", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/88" && method === "GET") {
+                return {
+                    mentor: {
+                        ...mentor,
+                        paper_ids: [],
+                    },
+                };
+            }
+
+            if (url === "/api/follow/mentors" && method === "GET") {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        await screen.findByRole("heading", { name: "测试导师" });
+        expect(screen.getByText("暂无相关论文")).toBeInTheDocument();
     });
 });
