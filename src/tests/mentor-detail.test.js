@@ -100,7 +100,12 @@ describe("MentorDetailPage search return", () => {
         renderWithStore();
 
         await screen.findByRole("heading", { name: "测试导师" });
-        fireEvent.click(screen.getByRole("button", { name: "返回检索" }));
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        const returnButton = screen.getByRole("button", { name: "返回检索" });
+        expect(returnButton.querySelector('img[src="/return_back_arrow.ico"]')).not.toBeNull();
+        expect(screen.getAllByRole("button", { name: "返回检索" })).toHaveLength(1);
+        expect(within(sidebar).queryByRole("button", { name: "返回检索" })).not.toBeInTheDocument();
+        fireEvent.click(returnButton);
 
         await waitFor(() => {
             expect(mockBack).toHaveBeenCalledTimes(1);
@@ -112,7 +117,12 @@ describe("MentorDetailPage search return", () => {
         renderWithStore();
 
         await screen.findByRole("heading", { name: "测试导师" });
-        fireEvent.click(screen.getByRole("button", { name: "返回检索" }));
+        const sidebar = screen.getByRole("complementary", { name: "导师信息" });
+        const returnButton = screen.getByRole("button", { name: "返回检索" });
+        expect(returnButton.querySelector('img[src="/return_back_arrow.ico"]')).not.toBeNull();
+        expect(screen.getAllByRole("button", { name: "返回检索" })).toHaveLength(1);
+        expect(within(sidebar).queryByRole("button", { name: "返回检索" })).not.toBeInTheDocument();
+        fireEvent.click(returnButton);
 
         await waitFor(() => {
             expect(mockPush).toHaveBeenCalledWith("/search");

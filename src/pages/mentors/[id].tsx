@@ -231,8 +231,6 @@ const MentorDetailPage = () => {
 
     return (
         <div style={mentorPageShellStyle} className="mentorDetailPageWide">
-            <button onClick={() => void returnToSearch()}>返回检索</button>
-
             <div className="mentorDetailLayout">
                 <aside
                     aria-label="AI 分析"
@@ -360,36 +358,52 @@ const MentorDetailPage = () => {
                     </div>
                 </div>
 
-                <aside
-                    aria-label="导师信息"
-                    className="mentorDetailSidebar"
-                >
-                    <h3 className="mentorDetailSidebarTitle">导师信息</h3>
+                <div className="mentorDetailRightColumn">
+                    <aside
+                        aria-label="导师信息"
+                        className="mentorDetailSidebar"
+                    >
+                        <h3 className="mentorDetailSidebarTitle">导师信息</h3>
 
-                    <section className="mentorDetailSidebarItem">
-                        <div className="mentorDetailSidebarLabel">
-                            <img src="/English_Name.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
-                            <span>英文名</span>
-                        </div>
-                        <p className="mentorDetailSidebarValue">{mentor.English_name?.trim() || "暂无英文名"}</p>
-                    </section>
+                        <section className="mentorDetailSidebarItem">
+                            <div className="mentorDetailSidebarLabel">
+                                <img src="/English_Name.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                                <span>英文名</span>
+                            </div>
+                            <p className="mentorDetailSidebarValue">{mentor.English_name?.trim() || "暂无英文名"}</p>
+                        </section>
 
-                    <section className="mentorDetailSidebarItem">
-                        <div className="mentorDetailSidebarLabel">
-                            <img src="/Reseach_Direction.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
-                            <span>研究方向</span>
-                        </div>
-                        <p className="mentorDetailSidebarValue">{mentor.research_direction || "暂无研究方向"}</p>
-                    </section>
+                        <section className="mentorDetailSidebarItem">
+                            <div className="mentorDetailSidebarLabel">
+                                <img src="/Reseach_Direction.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                                <span>研究方向</span>
+                            </div>
+                            <p className="mentorDetailSidebarValue">{mentor.research_direction || "暂无研究方向"}</p>
+                        </section>
 
-                    <section className="mentorDetailSidebarItem">
-                        <div className="mentorDetailSidebarLabel">
-                            <img src="/Email.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
-                            <span>邮箱</span>
-                        </div>
-                        <p className="mentorDetailSidebarValue">{mentor.email || "暂无邮箱"}</p>
-                    </section>
-                </aside>
+                        <section className="mentorDetailSidebarItem">
+                            <div className="mentorDetailSidebarLabel">
+                                <img src="/Email.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                                <span>邮箱</span>
+                            </div>
+                            <p className="mentorDetailSidebarValue">{mentor.email || "暂无邮箱"}</p>
+                        </section>
+                    </aside>
+
+                    <button
+                        type="button"
+                        onClick={() => void returnToSearch()}
+                        className="mentorDetailReturnButton"
+                    >
+                        <img
+                            src="/return_back_arrow.ico"
+                            alt=""
+                            aria-hidden="true"
+                            className="mentorDetailReturnButtonIcon"
+                        />
+                        <span className="mentorDetailReturnButtonText">返回检索</span>
+                    </button>
+                </div>
             </div>
 
             <style jsx>{`
@@ -410,6 +424,12 @@ const MentorDetailPage = () => {
                     border-radius: 6px;
                     background: #ffffff;
                     padding: 12px;
+                }
+
+                .mentorDetailRightColumn {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
                 }
 
                 .mentorDetailSidebarTitle {
@@ -475,6 +495,26 @@ const MentorDetailPage = () => {
                     white-space: normal;
                 }
 
+                .mentorDetailReturnButton {
+                    width: 100%;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                }
+
+                .mentorDetailReturnButtonIcon {
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
+                }
+
+                .mentorDetailReturnButtonText {
+                    display: inline-block;
+                }
+
                 @media (max-width: 1440px) {
                     .mentorDetailLayout {
                         grid-template-columns: minmax(0, 1fr);
@@ -485,6 +525,10 @@ const MentorDetailPage = () => {
                     }
 
                     .mentorDetailSidebar {
+                        order: 2;
+                    }
+
+                    .mentorDetailRightColumn {
                         order: 2;
                     }
                 }
