@@ -257,12 +257,18 @@ const TimelinePage = () => {
                                 <p style={{ marginTop: 0, color: "#666" }}>
                                     共 {totalPapers} 篇，第 {page} / {Math.max(totalPages, 1)} 页
                                 </p>
-                                <Pagination
-                                    currentPage={page}
-                                    totalPages={totalPages}
-                                    loading={loadingPapers}
-                                    onPageChange={setPage}
-                                />
+                                <div style={{ marginBottom: 16 }}>
+                                    <Pagination
+                                        currentPage={page}
+                                        totalPages={totalPages}
+                                        loading={loadingPapers}
+                                        centered
+                                        controlHeight={33.77}
+                                        jumpInputWidth={120}
+                                        activePageHighlightColor="rgb(8, 109, 177)"
+                                        onPageChange={setPage}
+                                    />
+                                </div>
                             </>
                         )}
 
@@ -349,6 +355,10 @@ const TimelinePage = () => {
                                     currentPage={page}
                                     totalPages={totalPages}
                                     loading={loadingPapers}
+                                    centered
+                                    controlHeight={33.77}
+                                    jumpInputWidth={120}
+                                    activePageHighlightColor="rgb(8, 109, 177)"
                                     onPageChange={setPage}
                                 />
                             </div>
