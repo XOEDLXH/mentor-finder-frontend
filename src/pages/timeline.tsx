@@ -141,6 +141,361 @@ const TimelinePage = () => {
         });
     };
 
+    const setLoadingFlag = (mode: TimelineLoadMode, loading: boolean) => {
+        if (mode === "replace") {
+            setLoadingInitial(loading);
+            return;
+        }
+
+        if (mode === "prepend") {
+            setLoadingPrevious(loading);
+            return;
+        }
+
+        setLoadingNext(loading);
+    };
+
+    const hasAnyFeedLoadInFlight = () => (
+        inFlightRef.current.replace || inFlightRef.current.prepend || inFlightRef.current.append
+    );
+
+    const applyFeedResponse = (response: TimelinePapersResponse, mode: TimelineLoadMode) => {
+        const normalizedOffset = Math.max(0, Number(response.offset) || 0);
+        const normalizedLimit = Math.max(1, Number(response.limit) || DEFAULT_TIMELINE_LIMIT);
+        const nextPapers = Array.isArray(response.papers) ? response.papers : [];
+        const nextTotal = Number(response.total_papers) > 0 ? Number(response.total_papers) : 0;
+
+        setTotalPapers(nextTotal);
+
+        if (mode === "replace") {
+            pendingScrollAdjustmentRef.current = null;
+            setPapers(nextPapers);
+            setWindowStartOffset(normalizedOffset);
+            setHasMoreBefore(Boolean(response.has_previous));
+            setHasMoreAfter(Boolean(response.has_next));
+            return;
+        }
+
+        const currentPapers = papersRef.current;
+        const currentStartOffset = windowStartOffsetRef.current;
+        const existingIds = new Set(currentPapers.map((paper) => paper.id));
+
+        if (mode === "append") {
+            const uniqueIncoming = nextPapers.filter((paper) => !existingIds.has(paper.id));
+            const mergedPapers = [...currentPapers, ...uniqueIncoming];
+            const overflow = Math.max(mergedPapers.length - MAX_RENDERED_PAPERS, 0);
+            const trimmedHead = overflow > 0 ? mergedPapers.slice(0, overflow) : [];
+            const removedHeight = trimmedHead.reduce((sum, paper) => (
+                sum + (paperRefs.current[paper.id]?.offsetHeight || 0)
+            ), 0);
+            const visiblePapers = overflow > 0 ? mergedPapers.slice(overflow) : mergedPapers;
+            const nextStartOffset = currentStartOffset + trimmedHead.length;
+
+            pendingScrollAdjustmentRef.current = removedHeight > 0
+                ? { type: "append-trim", removedHeight, direction: "down" }
+                : null;
+
+            setPapers(visiblePapers);
+            setWindowStartOffset(nextStartOffset);
+            setHasMoreBefore(Boolean(response.has_previous) || nextStartOffset > 0);
+            setHasMoreAfter(Boolean(response.has_next));
+            return;
+        }
+
+        const uniqueIncoming = nextPapers.filter((paper) => !existingIds.has(paper.id));
+        const mergedPapers = [...uniqueIncoming, ...currentPapers];
+        const overflow = Math.max(mergedPapers.length - MAX_RENDERED_PAPERS, 0);
+        const visiblePapers = overflow > 0 ? mergedPapers.slice(0, mergedPapers.length - overflow) : mergedPapers;
+
+        pendingScrollAdjustmentRef.current = uniqueIncoming.length > 0
+            ? {
+                type: "prepend",
+                addedIds: uniqueIncoming.map((paper) => paper.id),
+                direction: "up",
+            }
+            : null;
+
+        setPapers(visiblePapers);
+        setWindowStartOffset(normalizedOffset);
+        setHasMoreBefore(Boolean(response.has_previous));
+        setHasMoreAfter(Boolean(response.has_next) || hasMoreAfterRef.current || overflow > 0 || normalizedLimit < currentPapers.length);
+    };
+
+    const fetchTimelineSlice = async (
+        direction: string,
+        offset: number,
+        limit: number,
+        mode: TimelineLoadMode,
+        generation: number,
+    ) => {
+        if (hasAnyFeedLoadInFlight()) {
+            return;
+        }
+
+        inFlightRef.current[mode] = true;
+        setLoadingFlag(mode, true);
+        setErrorMessage("");
+
+        try {
+            const query = new URLSearchParams({
+                direction,
+                offset: String(offset),
+                limit: String(limit),
+            }).toString();
+            const response = await request<TimelinePapersResponse>(`/api/timeline?${query}`, "GET", false);
+
+            if (generation !== directionGenerationRef.current || activeDirectionRef.current !== direction) {
+                return;
+            }
+
+            applyFeedResponse(response, mode);
+        }
+        catch (err) {
+            if (generation !== directionGenerationRef.current || activeDirectionRef.current !== direction) {
+                return;
+            }
+
+            if (mode === "replace") {
+                setPapers([]);
+                setWindowStartOffset(0);
+                setTotalPapers(0);
+                setHasMoreBefore(false);
+                setHasMoreAfter(false);
+            }
+
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            inFlightRef.current[mode] = false;
+            if (generation === directionGenerationRef.current) {
+                setLoadingFlag(mode, false);
+            }
+        }
+    };
+
+    useEffect(() => {
+        const fetchDirectionOverview = async () => {
+            setLoadingDirections(true);
+            setErrorMessage("");
+
+            try {
+                const res = await request<TimelineDirectionsResponse>("/api/timeline", "GET", false);
+                const nextDirections = Array.isArray(res.directions) ? res.directions : [];
+
+                setDirections(nextDirections);
+                setActiveDirection((currentDirection) => {
+                    if (currentDirection !== "" && nextDirections.some((group) => group.direction === currentDirection)) {
+                        return currentDirection;
+                    }
+
+                    if (res.default_direction !== "" && nextDirections.some((group) => group.direction === res.default_direction)) {
+                        return res.default_direction;
+                    }
+
+                    return nextDirections[0]?.direction || "";
+                });
+            }
+            catch (err) {
+                setDirections([]);
+                setPapers([]);
+                setActiveDirection("");
+                setTotalPapers(0);
+                setWindowStartOffset(0);
+                setHasMoreBefore(false);
+                setHasMoreAfter(false);
+                setErrorMessage(FAILURE_PREFIX + String(err));
+            }
+            finally {
+                setLoadingDirections(false);
+            }
+        };
+
+        void fetchDirectionOverview();
+    }, []);
+
+    useEffect(() => {
+        if (activeDirection === "") {
+            setPapers([]);
+            setTotalPapers(0);
+            setWindowStartOffset(0);
+            setHasMoreBefore(false);
+            setHasMoreAfter(false);
+            return;
+        }
+
+        directionGenerationRef.current += 1;
+        const generation = directionGenerationRef.current;
+        inFlightRef.current = {
+            replace: false,
+            prepend: false,
+            append: false,
+        };
+        pendingScrollAdjustmentRef.current = null;
+        setLoadingPrevious(false);
+        setLoadingNext(false);
+        setPapers([]);
+        setWindowStartOffset(0);
+        setTotalPapers(0);
+        setHasMoreBefore(false);
+        setHasMoreAfter(false);
+        papersRef.current = [];
+        windowStartOffsetRef.current = 0;
+        hasMoreBeforeRef.current = false;
+        hasMoreAfterRef.current = false;
+        lastFeedScrollTopRef.current = 0;
+        scrollDirectionRef.current = "down";
+        if (feedViewportRef.current !== null) {
+            feedViewportRef.current.scrollTop = 0;
+        }
+        void fetchTimelineSlice(activeDirection, 0, INITIAL_BATCH_SIZE, "replace", generation);
+    }, [activeDirection]);
+
+    const activeDirectionSummary = useMemo(
+        () => directions.find((group) => group.direction === activeDirection),
+        [activeDirection, directions],
+    );
+
+    const visibleStart = papers.length > 0 ? windowStartOffset + 1 : 0;
+    const visibleEnd = papers.length > 0 ? windowStartOffset + papers.length : 0;
+
+    const loadPreviousBatch = () => {
+        if (
+            activeDirectionRef.current === ""
+            || !hasMoreBeforeRef.current
+            || hasAnyFeedLoadInFlight()
+            || windowStartOffsetRef.current <= 0
+        ) {
+            return;
+        }
+
+        const limit = Math.min(WINDOW_BATCH_SIZE, windowStartOffsetRef.current);
+        const offset = Math.max(0, windowStartOffsetRef.current - limit);
+        void fetchTimelineSlice(activeDirectionRef.current, offset, limit, "prepend", directionGenerationRef.current);
+    };
+
+    const loadNextBatch = () => {
+        if (
+            activeDirectionRef.current === ""
+            || !hasMoreAfterRef.current
+            || hasAnyFeedLoadInFlight()
+        ) {
+            return;
+        }
+
+        void fetchTimelineSlice(
+            activeDirectionRef.current,
+            windowStartOffsetRef.current + papersRef.current.length,
+            WINDOW_BATCH_SIZE,
+            "append",
+            directionGenerationRef.current,
+        );
+    };
+
+    const maybeLoadNextFromViewport = () => {
+        const viewport = feedViewportRef.current;
+        if (
+            viewport === null
+            || !hasMoreAfterRef.current
+            || hasAnyFeedLoadInFlight()
+            || scrollDirectionRef.current !== "down"
+        ) {
+            return;
+        }
+
+        if (viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 160) {
+            loadNextBatch();
+        }
+    };
+
+    const handleFeedViewportScroll = () => {
+        const viewport = feedViewportRef.current;
+        if (viewport === null) {
+            return;
+        }
+
+        const currentTop = viewport.scrollTop;
+        const previousTop = lastFeedScrollTopRef.current;
+
+        if (skipNextScrollEventRef.current) {
+            skipNextScrollEventRef.current = false;
+            lastFeedScrollTopRef.current = currentTop;
+            return;
+        }
+
+        if (currentTop !== previousTop) {
+            scrollDirectionRef.current = currentTop > previousTop ? "down" : "up";
+        }
+
+        lastFeedScrollTopRef.current = currentTop;
+
+        if (currentTop <= 0) {
+            if (previousTop > 0 && scrollDirectionRef.current === "up") {
+                loadPreviousBatch();
+            }
+            return;
+        }
+
+        maybeLoadNextFromViewport();
+    };
+
+    useIsomorphicLayoutEffect(() => {
+        const pendingAdjustment = pendingScrollAdjustmentRef.current;
+        const viewport = feedViewportRef.current;
+        if (pendingAdjustment === null || viewport === null) {
+            return;
+        }
+
+        pendingScrollAdjustmentRef.current = null;
+
+        if (pendingAdjustment.type === "prepend") {
+            const addedHeight = pendingAdjustment.addedIds.reduce((sum, id) => (
+                sum + (paperRefs.current[id]?.offsetHeight || 0)
+            ), 0);
+
+            if (addedHeight > 0) {
+                skipNextScrollEventRef.current = true;
+                viewport.scrollTop += addedHeight;
+                lastFeedScrollTopRef.current = viewport.scrollTop;
+                scrollDirectionRef.current = pendingAdjustment.direction;
+            }
+
+            return;
+        }
+
+        if (pendingAdjustment.removedHeight > 0) {
+            skipNextScrollEventRef.current = true;
+            viewport.scrollTop = Math.max(0, viewport.scrollTop - pendingAdjustment.removedHeight);
+            lastFeedScrollTopRef.current = viewport.scrollTop;
+            scrollDirectionRef.current = pendingAdjustment.direction;
+        }
+    }, [papers]);
+
+    const renderSkeletonStack = (count: number, position: "top" | "initial" | "bottom") => (
+        <div
+            className={`timelineSkeletonStack timelineSkeletonStack${position[0].toUpperCase()}${position.slice(1)}`}
+            data-testid={`timeline-skeleton-${position}`}
+        >
+            {createSkeletonKeys(count, position).map((key) => (
+                <article key={key} className="timelineSkeletonCard" aria-hidden="true">
+                    <div className="timelineSkeletonLine timelineSkeletonLineSm" />
+                    <div className="timelineSkeletonLine timelineSkeletonLineLg" />
+                    <div className="timelineSkeletonTagRow">
+                        <span className="timelineSkeletonTag" />
+                        <span className="timelineSkeletonTag" />
+                    </div>
+                    <div className="timelineSkeletonMeta">
+                        <div className="timelineSkeletonLine timelineSkeletonLineMd" />
+                        <div className="timelineSkeletonLine timelineSkeletonLineMd" />
+                    </div>
+                    <div className="timelineSkeletonParagraph">
+                        <div className="timelineSkeletonLine timelineSkeletonLineFull" />
+                        <div className="timelineSkeletonLine timelineSkeletonLineFull" />
+                        <div className="timelineSkeletonLine timelineSkeletonLineShort" />
+                    </div>
+                </article>
+            ))}
+        </div>
+    );
 
     return (
         <div className="timelinePageShell">
