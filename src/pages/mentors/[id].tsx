@@ -442,6 +442,10 @@ const MentorDetailPage = () => {
                     width: min(1412px, calc(100% - 32px));
                 }
 
+                .mentorDetailPageWide {
+                    --mentor-detail-sticky-top: 80px;
+                }
+
                 .mentorDetailLayout {
                     display: grid;
                     grid-template-columns: 300px 794px 270px;
@@ -461,6 +465,11 @@ const MentorDetailPage = () => {
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
+                    position: sticky;
+                    top: var(--mentor-detail-sticky-top);
+                    align-self: start;
+                    max-height: calc(100vh - var(--mentor-detail-sticky-top) - 16px);
+                    overflow-y: auto;
                 }
 
                 .mentorDetailSidebarTitle {
@@ -470,6 +479,11 @@ const MentorDetailPage = () => {
 
                 .mentorDetailAiSidebar {
                     font-size: 14px;
+                    position: sticky;
+                    top: var(--mentor-detail-sticky-top);
+                    align-self: start;
+                    max-height: calc(100vh - var(--mentor-detail-sticky-top) - 16px);
+                    overflow-y: auto;
                 }
 
                 .mentorDetailAiSidebar :global(button) {
@@ -570,6 +584,10 @@ const MentorDetailPage = () => {
 
                     .mentorDetailAiSidebar {
                         order: 3;
+                        position: static;
+                        top: auto;
+                        max-height: none;
+                        overflow: visible;
                     }
 
                     .mentorDetailSidebar {
@@ -578,6 +596,10 @@ const MentorDetailPage = () => {
 
                     .mentorDetailRightColumn {
                         order: 2;
+                        position: static;
+                        top: auto;
+                        max-height: none;
+                        overflow: visible;
                     }
                 }
             `}</style>
