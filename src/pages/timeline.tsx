@@ -78,7 +78,6 @@ const TimelinePage = () => {
     useEffect(() => {
         activeDirectionRef.current = activeDirection;
     }, [activeDirection]);
-
     const buildTimelinePdfUrl = (arxivUrl?: string) => {
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
             return "";
@@ -269,13 +268,18 @@ const TimelinePage = () => {
             inFlightRef.current[mode] = false;
             if (generation === directionGenerationRef.current) {
                 setLoadingFlag(mode, false);
+                if (mode === "replace") {
+                    setHasResolvedInitialFeed(true);
+                }
             }
+            finishInitialSkeletonPhase(mode, generation);
         }
     };
 
     useEffect(() => {
         const fetchDirectionOverview = async () => {
             setLoadingDirections(true);
+            setHasResolvedInitialFeed(false);
             setErrorMessage("");
 
             try {
@@ -475,25 +479,53 @@ const TimelinePage = () => {
             className={`timelineSkeletonStack timelineSkeletonStack${position[0].toUpperCase()}${position.slice(1)}`}
             data-testid={`timeline-skeleton-${position}`}
         >
-            {createSkeletonKeys(count, position).map((key) => (
-                <article key={key} className="timelineSkeletonCard" aria-hidden="true">
-                    <div className="timelineSkeletonLine timelineSkeletonLineSm" />
-                    <div className="timelineSkeletonLine timelineSkeletonLineLg" />
-                    <div className="timelineSkeletonTagRow">
-                        <span className="timelineSkeletonTag" />
-                        <span className="timelineSkeletonTag" />
-                    </div>
-                    <div className="timelineSkeletonMeta">
-                        <div className="timelineSkeletonLine timelineSkeletonLineMd" />
-                        <div className="timelineSkeletonLine timelineSkeletonLineMd" />
-                    </div>
-                    <div className="timelineSkeletonParagraph">
-                        <div className="timelineSkeletonLine timelineSkeletonLineFull" />
-                        <div className="timelineSkeletonLine timelineSkeletonLineFull" />
-                        <div className="timelineSkeletonLine timelineSkeletonLineShort" />
-                    </div>
-                </article>
-            ))}
+            {createSkeletonKeys(count, position).map((key, idx) => {
+                const blueprint = TIMELINE_SKELETON_BLUEPRINTS[idx % TIMELINE_SKELETON_BLUEPRINTS.length];
+
+                return (
+                    <article key={key} className="timelineSkeletonCard" aria-hidden="true">
+                        <div className="timelineSkeletonHeaderRow">
+                            <div
+                                className="timelineSkeletonBlock timelineSkeletonLine timelineSkeletonLineEyebrow"
+                                style={{ width: blueprint.eyebrow }}
+                            />
+                            <div className="timelineSkeletonChipRow">
+                                {blueprint.tags.map((width, tagIdx) => (
+                                    <span
+                                        key={`${key}-tag-${tagIdx}`}
+                                        className="timelineSkeletonBlock timelineSkeletonTag"
+                                        style={{ width }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <div
+                            className="timelineSkeletonBlock timelineSkeletonLine timelineSkeletonLineTitle"
+                            style={{ width: blueprint.title }}
+                        />
+                        <div className="timelineSkeletonMetaRows">
+                            {blueprint.meta.map((width, metaIdx) => (
+                                <div key={`${key}-meta-${metaIdx}`} className="timelineSkeletonMetaRow">
+                                    <span className="timelineSkeletonBlock timelineSkeletonMetaLabel" />
+                                    <span
+                                        className="timelineSkeletonBlock timelineSkeletonLine timelineSkeletonLineMeta"
+                                        style={{ width }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="timelineSkeletonParagraph">
+                            {blueprint.paragraph.map((width, lineIdx) => (
+                                <div
+                                    key={`${key}-line-${lineIdx}`}
+                                    className="timelineSkeletonBlock timelineSkeletonLine timelineSkeletonLineParagraph"
+                                    style={{ width }}
+                                />
+                            ))}
+                        </div>
+                    </article>
+                );
+            })}
         </div>
     );
 
@@ -510,61 +542,73 @@ const TimelinePage = () => {
                 </div>
             </div>
 
-            {loadingDirections && (
-                <div style={{ padding: 12, border: "1px dashed #ccc" }}>
-                    正在加载时间线方向...
-                </div>
-            )}
-
             {!loadingDirections && errorMessage !== "" && (
                 <div className="timelineErrorBanner">
                     {errorMessage}
                 </div>
             )}
 
-            {!loadingDirections && directions.length > 0 && (
+            {shouldRenderTimelineShell && (
                 <div className="timelineContentLayout">
                     <aside className="timelineDirectionsPanel">
-                        <h3 style={{ marginTop: 0 }}>研究方向</h3>
-                        <div className="timelineDirectionList" aria-label="研究方向列表">
-                            {directions.map((group) => (
-                                <button
-                                    key={group.direction}
-                                    onClick={() => {
-                                        if (group.direction === activeDirection) {
-                                        if (feedViewportRef.current !== undefined) {
-                                            lastFeedScrollTopRef.current = 0;
-                                            scrollDirectionRef.current = "down";
-                                            feedViewportRef.current.scrollTop = 0;
+                        <h3 className="timelineDirectionsPanelTitle">研究方向</h3>
+                        {shouldRenderDirectionSkeletons ? (
+                            renderDirectionSkeletonList()
+                        ) : (
+                            <div className="timelineDirectionList" aria-label="研究方向列表">
+                                {directions.map((group) => (
+                                    <button
+                                        key={group.direction}
+                                        onClick={() => {
+                                            if (group.direction === activeDirection) {
+                                            if (feedViewportRef.current !== undefined) {
+                                                lastFeedScrollTopRef.current = 0;
+                                                scrollDirectionRef.current = "down";
+                                                feedViewportRef.current.scrollTop = 0;
+                                                }
+                                                return;
                                             }
-                                            return;
-                                        }
 
-                                        scrollDirectionRef.current = "down";
-                                        setActiveDirection(group.direction);
-                                    }}
-                                    className={`timelineDirectionButton${group.direction === activeDirection ? " timelineDirectionButtonActive" : ""}`}
-                                >
-                                    <div style={{ fontWeight: 600 }}>{group.direction}</div>
-                                    <div className="timelineDirectionCount">{group.paper_count} 篇论文</div>
-                                </button>
-                            ))}
-                        </div>
+                                            scrollDirectionRef.current = "down";
+                                            setActiveDirection(group.direction);
+                                        }}
+                                        className={`timelineDirectionButton${group.direction === activeDirection ? " timelineDirectionButtonActive" : ""}`}
+                                    >
+                                        <div style={{ fontWeight: 600 }}>{group.direction}</div>
+                                        <div className="timelineDirectionCount">{group.paper_count} 篇论文</div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </aside>
 
                     <section className="timelineMainPanel">
-                        <div className="timelineFeedHeader">
-                            <div>
-                                <h3 style={{ margin: "0 0 6px" }}>{activeDirection || "未选择研究方向"}</h3>
-                                <p className="timelineFeedSummaryText">
-                                    {activeDirectionSummary ? `${activeDirectionSummary.paper_count} 篇归档论文` : "按时间倒序浏览最新论文"}
-                                </p>
+                        {shouldRenderFeedHeaderSkeleton ? (
+                            renderFeedHeaderSkeleton()
+                        ) : (
+                            <div className="timelineFeedHeader">
+                                <div>
+                                    <h3 style={{ margin: "0 0 6px" }}>{activeDirection || "未选择研究方向"}</h3>
+                                    <p className="timelineFeedSummaryText">
+                                        {activeDirectionSummary ? `${activeDirectionSummary.paper_count} 篇归档论文` : "按时间倒序浏览最新论文"}
+                                    </p>
+                                </div>
+                                <div className="timelineFeedStats">
+                                    {shouldRenderFeedStatsSkeleton ? (
+                                        <div className="timelineFeedStatsSkeleton" aria-hidden="true">
+                                            <span className="timelineSkeletonBlock timelineFeedStatsSkeletonLine" />
+                                            <span className="timelineSkeletonBlock timelineFeedStatsSkeletonLine timelineFeedStatsSkeletonLineWide" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span>共 {totalPapers} 篇</span>
+                                            <span>{papers.length > 0 ? `当前显示第 ${visibleStart}-${visibleEnd} 篇` : "等待加载"}</span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                            <div className="timelineFeedStats">
-                                <span>共 {totalPapers} 篇</span>
-                                <span>{papers.length > 0 ? `当前显示第 ${visibleStart}-${visibleEnd} 篇` : "等待加载"}</span>
-                            </div>
-                        </div>
+                        )}
+                        {shouldRenderFeedPreviewSkeletons && renderFeedPreviewCards()}
                         <div
                             ref={(element) => {
                                 feedViewportRef.current = element ?? undefined;
@@ -573,11 +617,10 @@ const TimelinePage = () => {
                             data-testid="timeline-feed-viewport"
                             onScroll={handleFeedViewportScroll}
                         >
-                            {loadingInitial && papers.length === 0 && renderSkeletonStack(INITIAL_BATCH_SIZE, "initial")}
                             {!loadingInitial && loadingPrevious && renderSkeletonStack(WINDOW_BATCH_SIZE, "top")}
 
-                            {!loadingInitial && papers.length > 0 && (
-                                <div className="timelineFeedList">
+                            {shouldRenderResolvedFeed && (
+                                <div className="timelineFeedList timelineFeedListReveal" key={feedRevealKey}>
                                     {papers.map((paper) => {
                                         const subjectTags = parseTimelineSubjects(paper.subjects);
 
@@ -638,7 +681,7 @@ const TimelinePage = () => {
                                 </div>
                             )}
 
-                            {!loadingInitial && papers.length === 0 && (
+                            {shouldRenderEmptyFeedState && (
                                 <div className="timelineEmptyState">
                                     当前研究方向下暂无论文数据。
                                 </div>
@@ -646,7 +689,7 @@ const TimelinePage = () => {
 
                             {!loadingInitial && loadingNext && renderSkeletonStack(WINDOW_BATCH_SIZE, "bottom")}
 
-                            {!loadingInitial && papers.length > 0 && (
+                            {shouldRenderResolvedFeed && (
                                 <div className="timelineFeedHint">
                                     {hasMoreBefore || hasMoreAfter
                                         ? "继续滚动以加载更多；向上滑到顶部会立即补回更早加载过的论文。"
@@ -699,10 +742,13 @@ const TimelinePage = () => {
                 }
 
                 .timelineDirectionsPanel {
-                    border: 1px solid transparent;
-                    border-radius: 8px;
-                    padding: 12px;
-                    background: transparent;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                    border: 1px solid var(--timeline-border);
+                    border-radius: 20px;
+                    padding: 18px 16px;
+                    background: var(--timeline-surface);
                     box-shadow: none;
                     position: static;
                     align-self: stretch;
@@ -710,6 +756,10 @@ const TimelinePage = () => {
                     max-height: none;
                     overflow-y: auto;
                     overscroll-behavior: contain;
+                }
+
+                .timelineDirectionsPanelTitle {
+                    margin: 0;
                 }
 
                 .timelineDirectionList {
@@ -783,7 +833,6 @@ const TimelinePage = () => {
                     font-size: 13px;
                     white-space: nowrap;
                 }
-
                 .timelineFeedViewport {
                     flex: 1;
                     min-height: 0;
@@ -921,66 +970,194 @@ const TimelinePage = () => {
                 .timelineSkeletonCard {
                     overflow: hidden;
                     position: relative;
-                    background:
-                        linear-gradient(90deg, rgba(240, 244, 248, 0.9) 0%, rgba(227, 233, 240, 0.95) 50%, rgba(240, 244, 248, 0.9) 100%);
-                    background-size: 200% 100%;
-                    animation: timelineSkeletonShimmer 1.4s linear infinite;
+                    background: #fff;
+                    padding: 18px 20px;
+                }
+
+                .timelineSkeletonBlock {
+                    position: relative;
+                    overflow: hidden;
+                    background: #e3e9f0;
+                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
+                }
+
+                .timelineSkeletonBlock::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: -60%;
+                    width: 60%;
+                    transform: translateX(-100%);
+                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
+                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    will-change: transform;
                 }
 
                 .timelineSkeletonLine,
                 .timelineSkeletonTag {
                     display: block;
                     border-radius: 999px;
-                    background: rgba(255, 255, 255, 0.86);
                 }
 
                 .timelineSkeletonLine {
                     height: 12px;
                 }
 
-                .timelineSkeletonLineSm {
-                    width: 96px;
-                    margin-bottom: 16px;
-                }
-
-                .timelineSkeletonLineLg {
-                    width: 72%;
-                    height: 20px;
-                    margin-bottom: 18px;
-                }
-
-                .timelineSkeletonLineMd {
-                    width: 52%;
-                }
-
-                .timelineSkeletonLineFull {
-                    width: 100%;
-                }
-
-                .timelineSkeletonLineShort {
-                    width: 64%;
-                }
-
-                .timelineSkeletonTagRow {
+                .timelineSkeletonHeaderRow {
                     display: flex;
-                    gap: 10px;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
                     margin-bottom: 18px;
                 }
 
-                .timelineSkeletonTag {
-                    width: 64px;
-                    height: 22px;
+                .timelineSkeletonChipRow {
+                    display: inline-flex;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    flex: 1;
                 }
 
-                .timelineSkeletonMeta,
-                .timelineSkeletonParagraph {
+                .timelineSkeletonLineEyebrow {
+                    height: 11px;
+                    border-radius: 999px;
+                    flex: 0 0 auto;
+                }
+
+                .timelineSkeletonLineTitle {
+                    height: 22px;
+                    border-radius: 999px;
+                    margin-bottom: 18px;
+                }
+
+                .timelineSkeletonMetaRows {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
+                    margin-bottom: 18px;
                 }
 
-                .timelineSkeletonMeta {
-                    margin-bottom: 18px;
+                .timelineSkeletonMetaLabel {
+                    width: 42px;
+                    height: 12px;
+                    border-radius: 999px;
+                    flex: 0 0 auto;
+                }
+
+                .timelineSkeletonLineMeta {
+                    height: 12px;
+                    border-radius: 999px;
+                    flex: 0 0 auto;
+                }
+
+                .timelineSkeletonParagraph {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .timelineSkeletonLineParagraph {
+                    height: 11px;
+                    border-radius: 999px;
+                }
+
+                .timelineDirectionSkeletonList {
+                    width: 100%;
+                }
+
+                .timelineDirectionLoadingCard {
+                    cursor: default;
+                    pointer-events: none;
+                    opacity: 1;
+                }
+
+                .timelineDirectionLoadingBar {
+                    display: block;
+                    border-radius: 999px;
+                    position: relative;
+                    z-index: 1;
+                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
+                }
+
+                .timelineDirectionLoadingBar::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: -60%;
+                    width: 60%;
+                    transform: translateX(-100%);
+                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
+                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    will-change: transform;
+                }
+
+                .timelineFeedHeaderLoadingBar {
+                    display: block;
+                    border-radius: 999px;
+                    position: relative;
+                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
+                }
+
+                .timelineFeedHeaderLoadingBar::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: -60%;
+                    width: 60%;
+                    transform: translateX(-100%);
+                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
+                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    will-change: transform;
+                }
+
+                .timelineFeedHeaderSkeleton {
+                    align-items: center;
+                }
+
+                .timelineFeedHeaderPrimarySkeleton,
+                .timelineFeedHeaderSecondarySkeleton {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .timelineFeedHeaderPrimarySkeleton {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .timelineFeedHeaderSecondarySkeleton {
+                    align-items: flex-end;
+                    flex: 0 0 auto;
+                }
+
+                .timelineFeedHeaderSkeletonTitle {
+                    display: block;
+                    width: min(240px, 56%);
+                    height: 24px;
+                    border-radius: 999px;
+                }
+
+                .timelineFeedHeaderSkeletonSummary {
+                    display: block;
+                    width: min(320px, 74%);
+                    height: 14px;
+                    border-radius: 999px;
+                }
+
+                .timelineFeedHeaderSkeletonStat {
+                    display: block;
+                    width: 96px;
+                    height: 12px;
+                    border-radius: 999px;
+                }
+
+                .timelineFeedHeaderSkeletonStatShort {
+                    width: 132px;
                 }
 
                 .timelineEmptyState,
@@ -1009,11 +1186,21 @@ const TimelinePage = () => {
                 }
 
                 @keyframes timelineSkeletonShimmer {
-                    0% {
+                    from {
+                        transform: translateX(-100%);
+                    }
+
+                    to {
+                        transform: translateX(260%);
+                    }
+                }
+
+                @keyframes timelinePreviewBarShimmer {
+                    from {
                         background-position: 200% 0;
                     }
 
-                    100% {
+                    to {
                         background-position: -200% 0;
                     }
                 }
