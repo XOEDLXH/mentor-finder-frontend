@@ -879,6 +879,8 @@ const FollowsPage = () => {
                     margin: 4px 0 0;
                     color: #333;
                     line-height: 1.45;
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
                 }
 
                 @media (max-width: 720px) {
