@@ -252,4 +252,39 @@ describe("follow confirmation", () => {
             expect(screen.getByRole("button", { name: "已关注" })).toBeEnabled();
         });
     });
+
+    it("paginates followed mentor cards at the bottom with 18 cards per page", async () => {
+        const mentorList = Array.from({ length: 19 }, (_, index) => ({
+            ...mentor,
+            id: index + 1,
+            Chinese_name: `导师${index + 1}`,
+            English_name: `Mentor ${index + 1}`,
+            email: `mentor${index + 1}@example.com`,
+        }));
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/mentors") {
+                return { mentors: mentorList };
+            }
+
+            if (url === "/api/follow/users" || url === "/api/follow/followers") {
+                return { users: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "导师1" });
+        expect(screen.getAllByTestId(/mentor-card-header-/)).toHaveLength(18);
+        expect(screen.queryByRole("heading", { name: "导师19" })).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: "跳转" })).toHaveLength(1);
+
+        fireEvent.click(screen.getByRole("button", { name: "2" }));
+
+        await screen.findByRole("heading", { name: "导师19" });
+        expect(screen.getAllByTestId(/mentor-card-header-/)).toHaveLength(1);
+        expect(screen.queryByRole("heading", { name: "导师1" })).not.toBeInTheDocument();
+    });
 });

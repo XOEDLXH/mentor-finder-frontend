@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import FollowToggleButton from "../components/FollowToggleButton";
+import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
@@ -30,6 +31,8 @@ interface FollowedMentorCardState extends SearchMentorResult {
 
 type FollowCategory = "mentor" | "user";
 type FollowView = "following" | "followers";
+
+const FOLLOWED_MENTOR_CARDS_PER_PAGE = 18;
 
 const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
     position: "relative",
@@ -82,6 +85,7 @@ const FollowsPage = () => {
     const [userSearchLoading, setUserSearchLoading] = useState(false);
     const [activeView, setActiveView] = useState<FollowView>("following");
     const [activeCategory, setActiveCategory] = useState<FollowCategory>("mentor");
+    const [mentorCurrentPage, setMentorCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
@@ -260,10 +264,23 @@ const FollowsPage = () => {
     const visibleUserSearchResults = userSearchResults.filter((user) => (
         !user.followed && !followedUserIds.has(user.id)
     ));
+    const mentorTotalPages = Math.max(1, Math.ceil(mentors.length / FOLLOWED_MENTOR_CARDS_PER_PAGE));
+    const safeMentorCurrentPage = Math.min(mentorCurrentPage, mentorTotalPages);
+    const mentorPageStartIndex = (safeMentorCurrentPage - 1) * FOLLOWED_MENTOR_CARDS_PER_PAGE;
+    const paginatedMentors = mentors.slice(
+        mentorPageStartIndex,
+        mentorPageStartIndex + FOLLOWED_MENTOR_CARDS_PER_PAGE,
+    );
 
     useEffect(() => {
         void fetchFollows();
     }, [fetchFollows]);
+
+    useEffect(() => {
+        if (mentorCurrentPage > mentorTotalPages) {
+            setMentorCurrentPage(mentorTotalPages);
+        }
+    }, [mentorCurrentPage, mentorTotalPages]);
 
     if (!isLoggedIn) {
         return (
@@ -337,47 +354,64 @@ const FollowsPage = () => {
                     )}
 
                     {activeCategory === "mentor" && (
-                        <div className="mentorGrid">
-                            {mentors.map((mentor) => (
-                                <div
-                                    key={mentor.id}
-                                    className="mentorCard"
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={`进入${mentor.Chinese_name}导师主页`}
-                                    onClick={() => router.push(`/mentors/${mentor.id}`)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter" || event.key === " ") {
-                                            event.preventDefault();
-                                            void router.push(`/mentors/${mentor.id}`);
-                                        }
-                                    }}
-                                >
-                                    <div className="mentorCardHeader" data-testid={`mentor-card-header-${mentor.id}`}>
-                                        <h3 className="mentorName">
-                                            {mentor.Chinese_name}
-                                            {mentor.is_private && (
-                                                <span className="privateBadge">我的私有导师</span>
-                                            )}
-                                        </h3>
-                                        <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
-                                            <FollowToggleButton
-                                                className="followToggleButton"
-                                                followed={mentor.followed}
-                                                followedLabel="已关注"
-                                                loading={actionMentorId === mentor.id}
-                                                onClick={() => void toggleFollow(mentor)}
-                                                style={buildSearchLikeMentorFollowButtonStyle(mentor.followed)}
-                                            />
+                        <div className="mentorSection">
+                            <div className="mentorGrid">
+                                {paginatedMentors.map((mentor) => (
+                                    <div
+                                        key={mentor.id}
+                                        className="mentorCard"
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`进入${mentor.Chinese_name}导师主页`}
+                                        onClick={() => router.push(`/mentors/${mentor.id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                void router.push(`/mentors/${mentor.id}`);
+                                            }
+                                        }}
+                                    >
+                                        <div className="mentorCardHeader" data-testid={`mentor-card-header-${mentor.id}`}>
+                                            <h3 className="mentorName">
+                                                {mentor.Chinese_name}
+                                                {mentor.is_private && (
+                                                    <span className="privateBadge">我的私有导师</span>
+                                                )}
+                                            </h3>
+                                            <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
+                                                <FollowToggleButton
+                                                    className="followToggleButton"
+                                                    followed={mentor.followed}
+                                                    followedLabel="已关注"
+                                                    loading={actionMentorId === mentor.id}
+                                                    onClick={() => void toggleFollow(mentor)}
+                                                    style={buildSearchLikeMentorFollowButtonStyle(mentor.followed)}
+                                                />
+                                            </div>
                                         </div>
+                                        {mentor.English_name && (
+                                            <p className="mentorMeta">英文名：{mentor.English_name}</p>
+                                        )}
+                                        <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
+                                        <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
                                     </div>
-                                    {mentor.English_name && (
-                                        <p className="mentorMeta">英文名：{mentor.English_name}</p>
-                                    )}
-                                    <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
-                                    <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
+                                ))}
+                            </div>
+
+                            {mentors.length > 0 && (
+                                <div className="mentorPagination">
+                                    <Pagination
+                                        currentPage={safeMentorCurrentPage}
+                                        totalPages={mentorTotalPages}
+                                        loading={loading}
+                                        centered
+                                        controlHeight={33.77}
+                                        jumpInputWidth={120}
+                                        activePageHighlightColor="rgb(8, 109, 177)"
+                                        onPageChange={(newPage) => setMentorCurrentPage(newPage)}
+                                    />
                                 </div>
-                            ))}
+                            )}
                         </div>
                     )}
 
@@ -597,10 +631,21 @@ const FollowsPage = () => {
                     min-width: 0;
                 }
 
+                .mentorSection {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
                 .mentorGrid {
                     display: grid;
                     grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 12px;
+                }
+
+                .mentorPagination {
+                    display: flex;
+                    justify-content: center;
                 }
 
                 .userFollowSection {
