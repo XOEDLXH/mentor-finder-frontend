@@ -21,7 +21,7 @@ type TimelineLoadMode = "replace" | "prepend" | "append";
 type ScrollAdjustment =
     | { type: "prepend"; addedIds: number[]; direction: "up" | "down"; }
     | { type: "append-trim"; removedHeight: number; direction: "up" | "down"; }
-    | null;
+    | undefined;
 
 const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
@@ -41,15 +41,15 @@ const TimelinePage = () => {
     const [loadingPrevious, setLoadingPrevious] = useState(false);
     const [loadingNext, setLoadingNext] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
-    const feedViewportRef = useRef<HTMLDivElement | null>(null);
-    const paperRefs = useRef<Record<number, HTMLArticleElement | null>>({});
+    const feedViewportRef = useRef<HTMLDivElement | undefined>(undefined);
+    const paperRefs = useRef<Record<number, HTMLElement | undefined>>({});
     const papersRef = useRef<TimelinePaper[]>([]);
     const windowStartOffsetRef = useRef(0);
     const hasMoreBeforeRef = useRef(false);
     const hasMoreAfterRef = useRef(false);
     const activeDirectionRef = useRef("");
     const directionGenerationRef = useRef(0);
-    const pendingScrollAdjustmentRef = useRef<ScrollAdjustment>(null);
+    const pendingScrollAdjustmentRef = useRef<ScrollAdjustment>(undefined);
     const inFlightRef = useRef({
         replace: false,
         prepend: false,
@@ -168,7 +168,7 @@ const TimelinePage = () => {
         setTotalPapers(nextTotal);
 
         if (mode === "replace") {
-            pendingScrollAdjustmentRef.current = null;
+            pendingScrollAdjustmentRef.current = undefined;
             setPapers(nextPapers);
             setWindowStartOffset(normalizedOffset);
             setHasMoreBefore(Boolean(response.has_previous));
@@ -193,7 +193,7 @@ const TimelinePage = () => {
 
             pendingScrollAdjustmentRef.current = removedHeight > 0
                 ? { type: "append-trim", removedHeight, direction: "down" }
-                : null;
+                : undefined;
 
             setPapers(visiblePapers);
             setWindowStartOffset(nextStartOffset);
@@ -213,7 +213,7 @@ const TimelinePage = () => {
                 addedIds: uniqueIncoming.map((paper) => paper.id),
                 direction: "up",
             }
-            : null;
+            : undefined;
 
         setPapers(visiblePapers);
         setWindowStartOffset(normalizedOffset);
@@ -330,7 +330,7 @@ const TimelinePage = () => {
             prepend: false,
             append: false,
         };
-        pendingScrollAdjustmentRef.current = null;
+        pendingScrollAdjustmentRef.current = undefined;
         setLoadingPrevious(false);
         setLoadingNext(false);
         setPapers([]);
@@ -344,7 +344,7 @@ const TimelinePage = () => {
         hasMoreAfterRef.current = false;
         lastFeedScrollTopRef.current = 0;
         scrollDirectionRef.current = "down";
-        if (feedViewportRef.current !== null) {
+        if (feedViewportRef.current !== undefined) {
             feedViewportRef.current.scrollTop = 0;
         }
         void fetchTimelineSlice(activeDirection, 0, INITIAL_BATCH_SIZE, "replace", generation);
@@ -394,7 +394,7 @@ const TimelinePage = () => {
     const maybeLoadNextFromViewport = () => {
         const viewport = feedViewportRef.current;
         if (
-            viewport === null
+            viewport === undefined
             || !hasMoreAfterRef.current
             || hasAnyFeedLoadInFlight()
             || scrollDirectionRef.current !== "down"
@@ -409,7 +409,7 @@ const TimelinePage = () => {
 
     const handleFeedViewportScroll = () => {
         const viewport = feedViewportRef.current;
-        if (viewport === null) {
+        if (viewport === undefined) {
             return;
         }
 
@@ -441,11 +441,11 @@ const TimelinePage = () => {
     useIsomorphicLayoutEffect(() => {
         const pendingAdjustment = pendingScrollAdjustmentRef.current;
         const viewport = feedViewportRef.current;
-        if (pendingAdjustment === null || viewport === null) {
+        if (pendingAdjustment === undefined || viewport === undefined) {
             return;
         }
 
-        pendingScrollAdjustmentRef.current = null;
+        pendingScrollAdjustmentRef.current = undefined;
 
         if (pendingAdjustment.type === "prepend") {
             const addedHeight = pendingAdjustment.addedIds.reduce((sum, id) => (
@@ -532,10 +532,10 @@ const TimelinePage = () => {
                                     key={group.direction}
                                     onClick={() => {
                                         if (group.direction === activeDirection) {
-                                            if (feedViewportRef.current !== null) {
-                                                lastFeedScrollTopRef.current = 0;
-                                                scrollDirectionRef.current = "down";
-                                                feedViewportRef.current.scrollTop = 0;
+                                        if (feedViewportRef.current !== undefined) {
+                                            lastFeedScrollTopRef.current = 0;
+                                            scrollDirectionRef.current = "down";
+                                            feedViewportRef.current.scrollTop = 0;
                                             }
                                             return;
                                         }
@@ -566,7 +566,9 @@ const TimelinePage = () => {
                             </div>
                         </div>
                         <div
-                            ref={feedViewportRef}
+                            ref={(element) => {
+                                feedViewportRef.current = element ?? undefined;
+                            }}
                             className="timelineFeedViewport"
                             data-testid="timeline-feed-viewport"
                             onScroll={handleFeedViewportScroll}
@@ -583,7 +585,7 @@ const TimelinePage = () => {
                                             <article
                                                 key={paper.id}
                                                 ref={(element) => {
-                                                    paperRefs.current[paper.id] = element;
+                                                    paperRefs.current[paper.id] = element ?? undefined;
                                                 }}
                                                 className="timelineFeedCard"
                                                 data-testid={`timeline-paper-${paper.id}`}
