@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 
 import LatexText from "../components/LatexText";
-import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { request } from "../utils/network";
 import {
@@ -12,108 +11,73 @@ import {
     TimelinePapersResponse,
 } from "../utils/types";
 
-//论文时间线页
+const INITIAL_BATCH_SIZE = 6;
+const WINDOW_BATCH_SIZE = 5;
+const MAX_RENDERED_PAPERS = 20;
+const DEFAULT_TIMELINE_LIMIT = 20;
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+type TimelineLoadMode = "replace" | "prepend" | "append";
+type ScrollAdjustment =
+    | { type: "prepend"; addedIds: number[]; direction: "up" | "down"; }
+    | { type: "append-trim"; removedHeight: number; direction: "up" | "down"; }
+    | null;
+
+const createSkeletonKeys = (count: number, prefix: string) => (
+    Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
+);
+
 const TimelinePage = () => {
     const router = useRouter();
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");
     const [papers, setPapers] = useState<TimelinePaper[]>([]);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const [windowStartOffset, setWindowStartOffset] = useState(0);
     const [totalPapers, setTotalPapers] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [hasMoreBefore, setHasMoreBefore] = useState(false);
+    const [hasMoreAfter, setHasMoreAfter] = useState(false);
     const [loadingDirections, setLoadingDirections] = useState(true);
-    const [loadingPapers, setLoadingPapers] = useState(false);
+    const [loadingInitial, setLoadingInitial] = useState(false);
+    const [loadingPrevious, setLoadingPrevious] = useState(false);
+    const [loadingNext, setLoadingNext] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const feedViewportRef = useRef<HTMLDivElement | null>(null);
+    const paperRefs = useRef<Record<number, HTMLArticleElement | null>>({});
+    const papersRef = useRef<TimelinePaper[]>([]);
+    const windowStartOffsetRef = useRef(0);
+    const hasMoreBeforeRef = useRef(false);
+    const hasMoreAfterRef = useRef(false);
+    const activeDirectionRef = useRef("");
+    const directionGenerationRef = useRef(0);
+    const pendingScrollAdjustmentRef = useRef<ScrollAdjustment>(null);
+    const inFlightRef = useRef({
+        replace: false,
+        prepend: false,
+        append: false,
+    });
+    const scrollDirectionRef = useRef<"up" | "down">("down");
+    const lastFeedScrollTopRef = useRef(0);
+    const skipNextScrollEventRef = useRef(false);
 
     useEffect(() => {
-        const fetchDirectionOverview = async () => {
-            setLoadingDirections(true);
-            setErrorMessage("");
-
-            try {
-                const res = await request<TimelineDirectionsResponse>("/api/timeline", "GET", false);
-                const nextDirections = Array.isArray(res.directions) ? res.directions : [];
-                const safePageSize = Number(res.page_size_default) > 0 ? Number(res.page_size_default) : 20;
-
-                setDirections(nextDirections);
-                setPageSize(safePageSize);
-                setPage(1);
-                setActiveDirection((currentDirection) => {
-                    if (currentDirection !== "" && nextDirections.some((group) => group.direction === currentDirection)) {
-                        return currentDirection;
-                    }
-
-                    if (res.default_direction !== "" && nextDirections.some((group) => group.direction === res.default_direction)) {
-                        return res.default_direction;
-                    }
-
-                    return nextDirections[0]?.direction || "";
-                });
-            }
-            catch (err) {
-                setDirections([]);
-                setPapers([]);
-                setActiveDirection("");
-                setTotalPages(0);
-                setTotalPapers(0);
-                setErrorMessage(FAILURE_PREFIX + String(err));
-            }
-            finally {
-                setLoadingDirections(false);
-            }
-        };
-
-        void fetchDirectionOverview();
-    }, []);
+        papersRef.current = papers;
+    }, [papers]);
 
     useEffect(() => {
-        if (activeDirection === "") {
-            setPapers([]);
-            setTotalPages(0);
-            setTotalPapers(0);
-            return;
-        }
+        windowStartOffsetRef.current = windowStartOffset;
+    }, [windowStartOffset]);
 
-        const fetchDirectionPapers = async () => {
-            setLoadingPapers(true);
-            setErrorMessage("");
+    useEffect(() => {
+        hasMoreBeforeRef.current = hasMoreBefore;
+    }, [hasMoreBefore]);
 
-            try {
-                const query = new URLSearchParams({
-                    direction: activeDirection,
-                    page: String(page),
-                    page_size: String(pageSize),
-                }).toString();
-                const res = await request<TimelinePapersResponse>(`/api/timeline?${query}`, "GET", false);
+    useEffect(() => {
+        hasMoreAfterRef.current = hasMoreAfter;
+    }, [hasMoreAfter]);
 
-                setPapers(Array.isArray(res.papers) ? res.papers : []);
-                setTotalPages(Number(res.total_pages) > 0 ? Number(res.total_pages) : 0);
-                setTotalPapers(Number(res.total_papers) > 0 ? Number(res.total_papers) : 0);
-
-                const resolvedPage = Number(res.page);
-                if (resolvedPage > 0 && resolvedPage !== page) {
-                    setPage(resolvedPage);
-                }
-            }
-            catch (err) {
-                setPapers([]);
-                setTotalPages(0);
-                setTotalPapers(0);
-                setErrorMessage(FAILURE_PREFIX + String(err));
-            }
-            finally {
-                setLoadingPapers(false);
-            }
-        };
-
-        void fetchDirectionPapers();
-    }, [activeDirection, page, pageSize]);
-
-    const activeDirectionSummary = useMemo(
-        () => directions.find((group) => group.direction === activeDirection),
-        [activeDirection, directions],
-    );
+    useEffect(() => {
+        activeDirectionRef.current = activeDirection;
+    }, [activeDirection]);
 
     const buildTimelinePdfUrl = (arxivUrl?: string) => {
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
@@ -177,12 +141,13 @@ const TimelinePage = () => {
         });
     };
 
+
     return (
         <div className="timelinePageShell">
             <div className="timelinePageHeader">
                 <div>
                     <h2 style={{ margin: "0 0 8px" }}>论文时间线</h2>
-                    <p style={{ margin: 0 }}>按研究方向查看论文动态，默认展示对应方向下按时间倒序排列的论文。</p>
+                    <p style={{ margin: 0 }}>按研究方向查看最新论文动态，像内容 feed 一样连续向下浏览与回看。</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => router.push("/")}>返回首页</button>
@@ -197,160 +162,141 @@ const TimelinePage = () => {
             )}
 
             {!loadingDirections && errorMessage !== "" && (
-                <div style={{ padding: 12, border: "1px solid #f1aeb5", backgroundColor: "#f8d7da" }}>
+                <div className="timelineErrorBanner">
                     {errorMessage}
                 </div>
             )}
 
-            {!loadingDirections && errorMessage === "" && directions.length > 0 && (
+            {!loadingDirections && directions.length > 0 && (
                 <div className="timelineContentLayout">
-                    <aside
-                        className="timelineDirectionsPanel"
-                    >
+                    <aside className="timelineDirectionsPanel">
                         <h3 style={{ marginTop: 0 }}>研究方向</h3>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div className="timelineDirectionList" aria-label="研究方向列表">
                             {directions.map((group) => (
                                 <button
                                     key={group.direction}
                                     onClick={() => {
+                                        if (group.direction === activeDirection) {
+                                            if (feedViewportRef.current !== null) {
+                                                lastFeedScrollTopRef.current = 0;
+                                                scrollDirectionRef.current = "down";
+                                                feedViewportRef.current.scrollTop = 0;
+                                            }
+                                            return;
+                                        }
+
+                                        scrollDirectionRef.current = "down";
                                         setActiveDirection(group.direction);
-                                        setPage(1);
                                     }}
-                                    style={{
-                                        textAlign: "left",
-                                        padding: "10px 12px",
-                                        borderRadius: 6,
-                                        border: group.direction === activeDirection ? "1px solid #0d6efd" : "1px solid #ccc",
-                                        backgroundColor: group.direction === activeDirection ? "#e7f1ff" : "#fff",
-                                        cursor: "pointer",
-                                    }}
+                                    className={`timelineDirectionButton${group.direction === activeDirection ? " timelineDirectionButtonActive" : ""}`}
                                 >
                                     <div style={{ fontWeight: 600 }}>{group.direction}</div>
-                                        <div style={{ fontSize: 12, color: "#666" }}>{group.paper_count} 篇论文</div>
+                                    <div className="timelineDirectionCount">{group.paper_count} 篇论文</div>
                                 </button>
                             ))}
                         </div>
                     </aside>
 
-                    <section
-                        className="timelineMainPanel"
-                    >
-                        <h3 style={{ marginTop: 0 }}>{activeDirection || "未选择研究方向"}</h3>
-                        {activeDirectionSummary && (
-                            <>
-                                <p style={{ marginTop: 0, color: "#666" }}>
-                                    共 {totalPapers} 篇，第 {page} / {Math.max(totalPages, 1)} 页
+                    <section className="timelineMainPanel">
+                        <div className="timelineFeedHeader">
+                            <div>
+                                <h3 style={{ margin: "0 0 6px" }}>{activeDirection || "未选择研究方向"}</h3>
+                                <p className="timelineFeedSummaryText">
+                                    {activeDirectionSummary ? `${activeDirectionSummary.paper_count} 篇归档论文` : "按时间倒序浏览最新论文"}
                                 </p>
-                                <div style={{ marginBottom: 16 }}>
-                                    <Pagination
-                                        currentPage={page}
-                                        totalPages={totalPages}
-                                        loading={loadingPapers}
-                                        centered
-                                        controlHeight={33.77}
-                                        jumpInputWidth={120}
-                                        activePageHighlightColor="rgb(8, 109, 177)"
-                                        onPageChange={setPage}
-                                    />
+                            </div>
+                            <div className="timelineFeedStats">
+                                <span>共 {totalPapers} 篇</span>
+                                <span>{papers.length > 0 ? `当前显示第 ${visibleStart}-${visibleEnd} 篇` : "等待加载"}</span>
+                            </div>
+                        </div>
+                        <div
+                            ref={feedViewportRef}
+                            className="timelineFeedViewport"
+                            data-testid="timeline-feed-viewport"
+                            onScroll={handleFeedViewportScroll}
+                        >
+                            {loadingInitial && papers.length === 0 && renderSkeletonStack(INITIAL_BATCH_SIZE, "initial")}
+                            {!loadingInitial && loadingPrevious && renderSkeletonStack(WINDOW_BATCH_SIZE, "top")}
+
+                            {!loadingInitial && papers.length > 0 && (
+                                <div className="timelineFeedList">
+                                    {papers.map((paper) => {
+                                        const subjectTags = parseTimelineSubjects(paper.subjects);
+
+                                        return (
+                                            <article
+                                                key={paper.id}
+                                                ref={(element) => {
+                                                    paperRefs.current[paper.id] = element;
+                                                }}
+                                                className="timelineFeedCard"
+                                                data-testid={`timeline-paper-${paper.id}`}
+                                            >
+                                                <div className="timelinePaperHeaderRow">
+                                                    <div className="timelinePaperDate">
+                                                        {paper.publish_date || "未知日期"}
+                                                    </div>
+                                                    {paper.arxiv_url && (
+                                                        <div className="timelinePaperLinks" aria-label="论文外部链接">
+                                                            <span>[</span>
+                                                            <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
+                                                                arxiv
+                                                            </a>
+                                                            <span>, </span>
+                                                            <a href={buildTimelinePdfUrl(paper.arxiv_url)} target="_blank" rel="noreferrer">
+                                                                pdf
+                                                            </a>
+                                                            <span>]</span>
+                                                        </div>
+                                                    )}
+                                                    {subjectTags.length > 0 && (
+                                                        <div className="timelineSubjectTags" aria-label="论文学科分类">
+                                                            {subjectTags.map((subject) => (
+                                                                <span key={subject} className="timelineSubjectTag">
+                                                                    {subject}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <h4 className="timelinePaperTitle">
+                                                    <LatexText text={paper.title} forceInlineMath />
+                                                </h4>
+                                                <div className="timelineMetaRow">
+                                                    <span className="timelineMetaLabel">作者：</span>
+                                                    <div className="timelineMetaContent">
+                                                        {renderPaperAuthors(paper)}
+                                                    </div>
+                                                </div>
+                                                <div className="timelineMetaRow">
+                                                    <span className="timelineMetaLabel">摘要：</span>
+                                                    <div className="timelineMetaContent timelineAbstractContent">
+                                                        <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        );
+                                    })}
                                 </div>
-                            </>
-                        )}
+                            )}
 
-                        {loadingPapers && (
-                            <div style={{ padding: 12, border: "1px dashed #ccc", marginBottom: 12 }}>
-                                正在加载论文列表...
-                            </div>
-                        )}
+                            {!loadingInitial && papers.length === 0 && (
+                                <div className="timelineEmptyState">
+                                    当前研究方向下暂无论文数据。
+                                </div>
+                            )}
 
-                        {!loadingPapers && papers.length > 0 ? (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                {papers.map((paper) => {
-                                    const subjectTags = parseTimelineSubjects(paper.subjects);
+                            {!loadingInitial && loadingNext && renderSkeletonStack(WINDOW_BATCH_SIZE, "bottom")}
 
-                                    return (
-                                        <article
-                                            key={paper.id}
-                                            style={{
-                                                position: "relative",
-                                                padding: 16,
-                                                border: "1px solid #ccc",
-                                                borderRadius: 8,
-                                                backgroundColor: "#fff",
-                                            }}
-                                        >
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                left: -28,
-                                                top: 20,
-                                                width: 12,
-                                                height: 12,
-                                                borderRadius: "50%",
-                                                backgroundColor: "#0d6efd",
-                                            }}
-                                        />
-                                        <div className="timelinePaperHeaderRow">
-                                            <div className="timelinePaperDate">
-                                                {paper.publish_date || "未知日期"}
-                                            </div>
-                                            {paper.arxiv_url && (
-                                                <div className="timelinePaperLinks" aria-label="论文外部链接">
-                                                    <span>[</span>
-                                                    <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
-                                                        arxiv
-                                                    </a>
-                                                    <span>, </span>
-                                                    <a href={buildTimelinePdfUrl(paper.arxiv_url)} target="_blank" rel="noreferrer">
-                                                        pdf
-                                                    </a>
-                                                    <span>]</span>
-                                                </div>
-                                            )}
-                                            {subjectTags.length > 0 && (
-                                                <div className="timelineSubjectTags" aria-label="论文学科分类">
-                                                    {subjectTags.map((subject) => (
-                                                        <span key={subject} className="timelineSubjectTag">
-                                                            {subject}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <h4 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
-                                            <LatexText text={paper.title} forceInlineMath />
-                                        </h4>
-                                        <div className="timelineMetaRow">
-                                            <span className="timelineMetaLabel">作者：</span>
-                                            <div className="timelineMetaContent">
-                                                {renderPaperAuthors(paper)}
-                                            </div>
-                                        </div>
-                                        <div className="timelineMetaRow">
-                                            <span className="timelineMetaLabel">摘要：</span>
-                                            <div className="timelineMetaContent timelineAbstractContent">
-                                                <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
-                                            </div>
-                                        </div>
-                                        </article>
-                                    );
-                                })}
-
-                                <Pagination
-                                    currentPage={page}
-                                    totalPages={totalPages}
-                                    loading={loadingPapers}
-                                    centered
-                                    controlHeight={33.77}
-                                    jumpInputWidth={120}
-                                    activePageHighlightColor="rgb(8, 109, 177)"
-                                    onPageChange={setPage}
-                                />
-                            </div>
-                        ) : (
-                            <div style={{ padding: 12, border: "1px dashed #ccc" }}>
-                                当前研究方向下暂无论文数据。
-                            </div>
-                        )}
+                            {!loadingInitial && papers.length > 0 && (
+                                <div className="timelineFeedHint">
+                                    {hasMoreBefore || hasMoreAfter
+                                        ? "继续滚动以加载更多；向上滑到顶部会立即补回更早加载过的论文。"
+                                        : "这个方向的论文已经浏览到底。"}
+                                </div>
+                            )}
+                        </div>
                     </section>
                 </div>
             )}
@@ -364,11 +310,18 @@ const TimelinePage = () => {
             <style jsx>{`
                 .timelinePageShell {
                     --timeline-sticky-top: 64px;
+                    --timeline-surface: #ffffff;
+                    --timeline-surface-muted: #f6f8fb;
+                    --timeline-border: #d8dee6;
+                    --timeline-text-muted: #687384;
+                    --timeline-accent: #0c63a6;
+                    --timeline-accent-soft: #ebf5ff;
                     display: flex;
                     flex-direction: column;
-                    gap: 16px;
-                    max-width: 1080px;
-                    min-height: calc(100vh - 158px);
+                    gap: 20px;
+                    max-width: 1160px;
+                    height: calc(100vh - 158px);
+                    overflow: hidden;
                 }
 
                 .timelinePageHeader {
@@ -381,29 +334,137 @@ const TimelinePage = () => {
                 .timelineContentLayout {
                     display: grid;
                     grid-template-columns: 240px minmax(0, 1fr);
-                    gap: 16px;
-                    align-items: start;
+                    gap: 24px;
+                    align-items: stretch;
                     flex: 1;
                     min-height: 0;
+                    overflow: hidden;
                 }
 
                 .timelineDirectionsPanel {
                     border: 1px solid transparent;
                     border-radius: 8px;
                     padding: 12px;
-                    position: sticky;
-                    top: var(--timeline-sticky-top);
-                    align-self: start;
-                    max-height: calc((100vh - var(--timeline-sticky-top) - 16px) * 1.2);
+                    background: transparent;
+                    box-shadow: none;
+                    position: static;
+                    align-self: stretch;
+                    height: 100%;
+                    max-height: none;
                     overflow-y: auto;
                     overscroll-behavior: contain;
                 }
 
+                .timelineDirectionList {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .timelineDirectionButton {
+                    text-align: left;
+                    padding: 10px 12px;
+                    border-radius: 6px;
+                    border: 1px solid #ccc;
+                    background: #fff;
+                    cursor: pointer;
+                    transition: border-color 0.16s ease, background-color 0.16s ease;
+                }
+
+                .timelineDirectionButton:hover,
+                .timelineDirectionButton:focus-visible {
+                    border-color: #0d6efd;
+                    background: #ffffff;
+                    outline: none;
+                }
+
+                .timelineDirectionButtonActive {
+                    border-color: #0d6efd;
+                    background: #e7f1ff;
+                    box-shadow: none;
+                }
+
+                .timelineDirectionCount {
+                    margin-top: 4px;
+                    font-size: 12px;
+                    color: #666;
+                }
+
                 .timelineMainPanel {
-                    border-left: 2px solid #d0d7de;
-                    padding-left: 20px;
-                    padding-right: 8px;
-                    min-height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                    min-height: 0;
+                    height: 100%;
+                    overflow: hidden;
+                }
+
+                .timelineFeedHeader {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 16px;
+                    padding: 18px 20px;
+                    border: 1px solid var(--timeline-border);
+                    border-radius: 20px;
+                    background: #ffffff;
+                    box-shadow: none;
+                }
+
+                .timelineFeedSummaryText {
+                    margin: 0;
+                    color: var(--timeline-text-muted);
+                    font-size: 14px;
+                }
+
+                .timelineFeedStats {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                    align-items: flex-end;
+                    color: var(--timeline-text-muted);
+                    font-size: 13px;
+                    white-space: nowrap;
+                }
+
+                .timelineFeedViewport {
+                    flex: 1;
+                    min-height: 0;
+                    overflow-y: auto;
+                    overscroll-behavior: contain;
+                    padding-right: 4px;
+                }
+
+                .timelineFeedList,
+                .timelineSkeletonStack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .timelineFeedCard,
+                .timelineSkeletonCard {
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    padding: 16px;
+                    background: #fff;
+                    box-shadow: none;
+                }
+
+                .timelineFeedCard {
+                    transition: none;
+                }
+
+                .timelineFeedCard:hover {
+                    transform: none;
+                    box-shadow: none;
+                }
+
+                .timelinePaperTitle {
+                    margin: 0 0 10px;
+                    font-size: 18px;
+                    line-height: 1.45;
+                    color: #1f2328;
                 }
 
                 .timelinePaperHeaderRow {
@@ -417,7 +478,7 @@ const TimelinePage = () => {
                 }
 
                 .timelinePaperDate {
-                    color: #666;
+                    color: var(--timeline-text-muted);
                 }
 
                 .timelinePaperLinks {
@@ -432,7 +493,7 @@ const TimelinePage = () => {
                     align-items: center;
                     gap: 4px;
                     height: 20px;
-                    color: rgb(8, 109, 177);
+                    color: var(--timeline-accent);
                     text-decoration: none;
                     transition: color 0.16s ease, border-color 0.16s ease;
                     border-bottom: 1px dashed transparent;
@@ -491,25 +552,163 @@ const TimelinePage = () => {
                     font-size: 14px;
                 }
 
+                .timelineMetaLabel {
+                    color: #1f2328;
+                    font-weight: 600;
+                }
+
+                .timelineMetaContent {
+                    color: #3f4854;
+                }
+
+                .timelineSkeletonCard {
+                    overflow: hidden;
+                    position: relative;
+                    background:
+                        linear-gradient(90deg, rgba(240, 244, 248, 0.9) 0%, rgba(227, 233, 240, 0.95) 50%, rgba(240, 244, 248, 0.9) 100%);
+                    background-size: 200% 100%;
+                    animation: timelineSkeletonShimmer 1.4s linear infinite;
+                }
+
+                .timelineSkeletonLine,
+                .timelineSkeletonTag {
+                    display: block;
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.86);
+                }
+
+                .timelineSkeletonLine {
+                    height: 12px;
+                }
+
+                .timelineSkeletonLineSm {
+                    width: 96px;
+                    margin-bottom: 16px;
+                }
+
+                .timelineSkeletonLineLg {
+                    width: 72%;
+                    height: 20px;
+                    margin-bottom: 18px;
+                }
+
+                .timelineSkeletonLineMd {
+                    width: 52%;
+                }
+
+                .timelineSkeletonLineFull {
+                    width: 100%;
+                }
+
+                .timelineSkeletonLineShort {
+                    width: 64%;
+                }
+
+                .timelineSkeletonTagRow {
+                    display: flex;
+                    gap: 10px;
+                    margin-bottom: 18px;
+                }
+
+                .timelineSkeletonTag {
+                    width: 64px;
+                    height: 22px;
+                }
+
+                .timelineSkeletonMeta,
+                .timelineSkeletonParagraph {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .timelineSkeletonMeta {
+                    margin-bottom: 18px;
+                }
+
+                .timelineEmptyState,
+                .timelineErrorBanner,
+                .timelineFeedHint {
+                    padding: 14px 16px;
+                    border-radius: 16px;
+                }
+
+                .timelineEmptyState {
+                    border: 1px dashed var(--timeline-border);
+                    background: var(--timeline-surface-muted);
+                    color: var(--timeline-text-muted);
+                }
+
+                .timelineErrorBanner {
+                    border: 1px solid #f1aeb5;
+                    background-color: #f8d7da;
+                }
+
+                .timelineFeedHint {
+                    text-align: center;
+                    color: var(--timeline-text-muted);
+                    font-size: 13px;
+                    margin-top: 14px;
+                }
+
+                @keyframes timelineSkeletonShimmer {
+                    0% {
+                        background-position: 200% 0;
+                    }
+
+                    100% {
+                        background-position: -200% 0;
+                    }
+                }
+
                 @media (max-width: 900px) {
                     .timelinePageHeader {
                         flex-direction: column;
                         align-items: stretch;
                     }
 
+                    .timelinePageShell {
+                        height: calc(100vh - 158px);
+                    }
+
                     .timelineContentLayout {
                         grid-template-columns: minmax(0, 1fr);
+                        grid-template-rows: auto minmax(0, 1fr);
                     }
 
                     .timelineDirectionsPanel,
                     .timelineMainPanel {
-                        max-height: none;
                         min-height: 0;
                     }
 
                     .timelineDirectionsPanel {
-                        position: static;
-                        top: auto;
+                        padding: 14px;
+                        height: auto;
+                        overflow-y: hidden;
+                    }
+
+                    .timelineDirectionList {
+                        flex-direction: row;
+                        overflow-x: auto;
+                        padding-bottom: 2px;
+                    }
+
+                    .timelineDirectionButton {
+                        flex: 0 0 220px;
+                    }
+
+                    .timelineFeedHeader {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+
+                    .timelineFeedStats {
+                        align-items: flex-start;
+                        white-space: normal;
+                    }
+
+                    .timelineFeedViewport {
+                        padding-right: 0;
                     }
                 }
             `}</style>
