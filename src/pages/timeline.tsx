@@ -363,6 +363,7 @@ const TimelinePage = () => {
 
             <style jsx>{`
                 .timelinePageShell {
+                    --timeline-sticky-top: 64px;
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
@@ -387,12 +388,15 @@ const TimelinePage = () => {
                 }
 
                 .timelineDirectionsPanel {
-                    border: 1px solid #ccc;
+                    border: 1px solid transparent;
                     border-radius: 8px;
                     padding: 12px;
+                    position: sticky;
+                    top: var(--timeline-sticky-top);
                     align-self: start;
-                    max-height: calc(100vh - 220px);
+                    max-height: calc((100vh - var(--timeline-sticky-top) - 16px) * 1.2);
                     overflow-y: auto;
+                    overscroll-behavior: contain;
                 }
 
                 .timelineMainPanel {
@@ -501,6 +505,11 @@ const TimelinePage = () => {
                     .timelineMainPanel {
                         max-height: none;
                         min-height: 0;
+                    }
+
+                    .timelineDirectionsPanel {
+                        position: static;
+                        top: auto;
                     }
                 }
             `}</style>
