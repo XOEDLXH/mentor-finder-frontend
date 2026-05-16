@@ -67,6 +67,14 @@ const buildMentorFollowButtonStyle = (followed: boolean) => ({
     opacity: 1,
 });
 
+const mentorProfileHighlightedHeadings = new Set([
+    "教育背景",
+    "社会兼职",
+    "研究领域",
+    "研究概况",
+    "奖励与荣誉",
+]);
+
 const MentorDetailPage = () => {
     const router = useRouter();
     const { id } = router.query;
@@ -229,6 +237,9 @@ const MentorDetailPage = () => {
         );
     }
 
+    const mentorProfileText = mentor.profile || "暂无导师画像";
+    const mentorProfileLines = mentorProfileText.split(/\r?\n/);
+
     return (
         <div style={mentorPageShellStyle} className="mentorDetailPageWide">
             <div className="mentorDetailLayout">
@@ -312,9 +323,23 @@ const MentorDetailPage = () => {
                                 <img src="/Mentor_Profile.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
                                 <span>导师画像</span>
                             </div>
-                            <p className="mentorDetailSidebarValue" style={{ whiteSpace: "pre-wrap" }}>
-                                {mentor.profile || "暂无导师画像"}
-                            </p>
+                            <div className="mentorDetailSidebarValue mentorDetailProfileValue">
+                                {mentorProfileLines.map((line, index) => {
+                                    const trimmedLine = line.trim();
+                                    const isHighlightedHeading = mentorProfileHighlightedHeadings.has(trimmedLine);
+
+                                    return (
+                                        <span key={`${index}-${trimmedLine}`} className="mentorDetailProfileLine">
+                                            <span
+                                                className={isHighlightedHeading ? "mentorDetailProfileHeadingHighlight" : undefined}
+                                                data-highlighted-profile-heading={isHighlightedHeading ? "true" : undefined}
+                                            >
+                                                {line === "" ? "\u00A0" : line}
+                                            </span>
+                                        </span>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
@@ -499,6 +524,23 @@ const MentorDetailPage = () => {
                     color: #1f2328;
                     word-break: break-word;
                     white-space: normal;
+                }
+
+                .mentorDetailProfileValue {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+
+                .mentorDetailProfileLine {
+                    display: block;
+                    white-space: pre-wrap;
+                }
+
+                .mentorDetailProfileHeadingHighlight {
+                    background-color: #fff36d;
+                    padding: 0 2px;
+                    border-radius: 2px;
                 }
 
                 .mentorDetailReturnButton {
