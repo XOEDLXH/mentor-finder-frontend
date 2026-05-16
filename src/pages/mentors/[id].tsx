@@ -307,9 +307,12 @@ const MentorDetailPage = () => {
                             <p style={{ margin: "4px 0", color: "#555" }}>我的私有导师</p>
                         )}
 
-                        <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                            导师画像：{mentor.profile || "暂无导师画像"}
-                        </p>
+                        <div style={{ margin: "4px 0", fontSize: "14px" }}>
+                            <p style={{ margin: 0 }}>导师画像：</p>
+                            <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>
+                                {mentor.profile || "暂无导师画像"}
+                            </p>
+                        </div>
 
                         <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                         {mentor.paper_ids.length > 0 ? (

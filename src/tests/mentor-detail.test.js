@@ -157,7 +157,9 @@ describe("MentorDetailPage search return", () => {
 
         expect(screen.getByText("相关论文：")).toBeInTheDocument();
         expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
-        expect(screen.getByText("导师画像：导师画像")).toBeInTheDocument();
+        expect(screen.getByText("导师画像：")).toBeInTheDocument();
+        expect(screen.getByText(/^导师画像$/)).toBeInTheDocument();
+        expect(screen.queryByText("导师画像：导师画像")).not.toBeInTheDocument();
 
         const linkedPaper = screen.getByRole("link", { name: /Test Paper With Link/ });
         expect(linkedPaper).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
