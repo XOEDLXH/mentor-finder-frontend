@@ -710,6 +710,211 @@ const TimelinePage = () => {
         </div>
     );
 
+    const renderFeedHeaderSkeleton = () => (
+        <div
+            className="timelineFeedHeader timelineFeedHeaderSkeleton"
+            data-testid="timeline-feed-header-skeleton"
+            style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 16,
+                padding: "18px 20px",
+                minHeight: 92,
+                width: "100%",
+                border: "1px solid #d8dee6",
+                borderRadius: 20,
+                background: "#ffffff",
+                boxSizing: "border-box",
+            }}
+        >
+            <div
+                className="timelineFeedHeaderPrimarySkeleton"
+                aria-hidden="true"
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    flex: 1,
+                    minWidth: 0,
+                }}
+            >
+                <span
+                    className="timelineFeedHeaderLoadingBar timelineFeedHeaderLoadingBarPrimary"
+                    style={{
+                        display: "block",
+                        width: "min(360px, 62%)",
+                        height: 24,
+                        borderRadius: 999,
+                        background: "#e3e9f0",
+                        position: "relative",
+                        overflow: "hidden",
+                    }}
+                />
+                <span
+                    className="timelineFeedHeaderLoadingBar timelineFeedHeaderLoadingBarSecondary"
+                    style={{
+                        display: "block",
+                        width: "min(240px, 38%)",
+                        height: 14,
+                        borderRadius: 999,
+                        background: "#e3e9f0",
+                        position: "relative",
+                        overflow: "hidden",
+                    }}
+                />
+            </div>
+            <div
+                className="timelineFeedHeaderSecondarySkeleton"
+                aria-hidden="true"
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    alignItems: "flex-end",
+                    flex: "0 0 auto",
+                }}
+            >
+                <span className="timelineSkeletonBlock timelineFeedHeaderSkeletonStat" />
+                <span className="timelineSkeletonBlock timelineFeedHeaderSkeletonStat timelineFeedHeaderSkeletonStatShort" />
+            </div>
+        </div>
+    );
+
+    const renderFeedPreviewCards = () => (
+        <div
+            className="timelineFeedPreviewStack"
+            data-testid="timeline-feed-preview-skeletons"
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 18,
+                width: "100%",
+            }}
+        >
+            {createSkeletonKeys(INITIAL_FEED_PREVIEW_COUNT, "feed-preview").map((key) => (
+                <article
+                    key={key}
+                    className="timelineFeedPreviewCard"
+                    aria-hidden="true"
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                        minHeight: 206,
+                        padding: 16,
+                        border: "1px solid #ccc",
+                        borderRadius: 8,
+                        background: "#fff",
+                        width: "100%",
+                        boxSizing: "border-box",
+                    }}
+                >
+                    <div
+                        className="timelineFeedPreviewHeaderRow"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                        }}
+                    >
+                        <span
+                            className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarDate"
+                            style={createPreviewBarStyle(92, 14)}
+                        />
+                        <div
+                            className="timelineFeedPreviewTagRow"
+                            style={{
+                                display: "inline-flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag"
+                                style={createPreviewBarStyle(54, 22, { borderRadius: 6 })}
+                            />
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag timelineFeedPreviewBarTagWide"
+                                style={createPreviewBarStyle(72, 22, { borderRadius: 6 })}
+                            />
+                        </div>
+                    </div>
+                    <span
+                        className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTitle"
+                        style={createPreviewBarStyle("74%", 26)}
+                    />
+                    <div
+                        className="timelineFeedPreviewMetaRow"
+                        style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 12,
+                        }}
+                    >
+                        <span
+                            className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarLabel"
+                            style={createPreviewBarStyle(44, 14, { flex: "0 0 auto" })}
+                        />
+                        <span
+                            className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarMeta"
+                            style={createPreviewBarStyle("38%", 14, { marginTop: 1 })}
+                        />
+                    </div>
+                    <div
+                        className="timelineFeedPreviewMetaRow"
+                        style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 12,
+                        }}
+                    >
+                        <span
+                            className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarLabel"
+                            style={createPreviewBarStyle(44, 14, { flex: "0 0 auto" })}
+                        />
+                        <div
+                            className="timelineFeedPreviewParagraph"
+                            style={{
+                                display: "flex",
+                                flex: 1,
+                                flexDirection: "column",
+                                gap: 10,
+                            }}
+                        >
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphFull"
+                                style={createPreviewBarStyle("100%", 13)}
+                            />
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphFull"
+                                style={createPreviewBarStyle("100%", 13)}
+                            />
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphShort"
+                                style={createPreviewBarStyle("68%", 13)}
+                            />
+                        </div>
+                    </div>
+                </article>
+            ))}
+        </div>
+    );
+
+    const shouldRenderTimelineShell = loadingDirections || directions.length > 0;
+    const shouldRenderDirectionSkeletons = loadingDirections && directions.length === 0;
+    const shouldRenderFeedHeaderSkeleton = shouldRenderDirectionSkeletons || activeDirection === "";
+    const shouldRenderInitialFeedSkeleton = (
+        shouldRenderDirectionSkeletons
+        || showInitialSkeleton
+        || (!hasResolvedInitialFeed && papers.length === 0)
+    );
+    const shouldRenderFeedPreviewSkeletons = shouldRenderInitialFeedSkeleton;
+    const shouldRenderFeedStatsSkeleton = !shouldRenderFeedHeaderSkeleton && shouldRenderInitialFeedSkeleton;
+    const shouldRenderResolvedFeed = !shouldRenderInitialFeedSkeleton && papers.length > 0;
+    const shouldRenderEmptyFeedState = !shouldRenderInitialFeedSkeleton && !loadingInitial && hasResolvedInitialFeed && papers.length === 0;
+
     return (
         <div className="timelinePageShell">
             <div className="timelinePageHeader">
@@ -1047,6 +1252,119 @@ const TimelinePage = () => {
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
+                }
+
+                .timelineFeedPreviewStack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 18px;
+                }
+
+                .timelineFeedPreviewCard {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                    min-height: 206px;
+                    padding: 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    background: #fff;
+                }
+
+                .timelineFeedPreviewHeaderRow {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .timelineFeedPreviewTagRow {
+                    display: inline-flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+
+                .timelineFeedPreviewMetaRow {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+
+                .timelineFeedPreviewParagraph {
+                    display: flex;
+                    flex: 1;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .timelineFeedPreviewBar {
+                    display: block;
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 999px;
+                    background: #e3e9f0;
+                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
+                }
+
+                .timelineFeedPreviewBar::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: -60%;
+                    width: 60%;
+                    transform: translateX(-100%);
+                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
+                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    will-change: transform;
+                }
+
+                .timelineFeedPreviewBarDate {
+                    width: 92px;
+                    height: 14px;
+                }
+
+                .timelineFeedPreviewBarTag {
+                    width: 54px;
+                    height: 22px;
+                    border-radius: 6px;
+                }
+
+                .timelineFeedPreviewBarTagWide {
+                    width: 72px;
+                }
+
+                .timelineFeedPreviewBarTitle {
+                    width: 74%;
+                    height: 26px;
+                }
+
+                .timelineFeedPreviewBarLabel {
+                    width: 44px;
+                    height: 14px;
+                    flex: 0 0 auto;
+                }
+
+                .timelineFeedPreviewBarMeta {
+                    width: 38%;
+                    height: 14px;
+                    margin-top: 1px;
+                }
+
+                .timelineFeedPreviewBarParagraph {
+                    height: 13px;
+                }
+
+                .timelineFeedPreviewBarParagraphFull {
+                    width: 100%;
+                }
+
+                .timelineFeedPreviewBarParagraphShort {
+                    width: 68%;
+                }
+
+                .timelineFeedListReveal {
+                    animation: timelineFeedFadeIn ${INITIAL_SKELETON_FADE_MS}ms ease-out;
                 }
 
                 .timelineFeedCard,
