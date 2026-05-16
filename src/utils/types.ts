@@ -17,6 +17,8 @@ export interface PrivateMentorPaper {
     abstract?: string;
     publish_date?: string;
     author_names: string;
+    arxiv_id?: string;
+    arxiv_url?: string;
 }
 
 export interface PrivateMentorResult {
@@ -82,11 +84,6 @@ export interface TimelinePaper {
     subjects?: string;
 }
 
-export interface TimelineGroup {
-    direction: string;
-    papers: TimelinePaper[];
-}
-
 export interface TimelineDirectionSummary {
     direction: string;
     paper_count: number;
@@ -108,6 +105,34 @@ export interface WeeklyPushPaper {
     arxivId?: string;
     abstract?: string;
     tldr?: string;
+    mentorNames?: string[];
+}
+
+export interface WeeklyPushMentorGroupPaper {
+    id: number;
+    title: string;
+    publishDate?: string;
+    authorNames: string;
+    mentorId: number;
+    mentorName: string;
+    researchDirection?: string;
+    subjects: string[];
+    abstractPreview?: string;
+}
+
+export interface WeeklyPushMentorGroup {
+    mentorId: number;
+    mentorName: string;
+    mentorEnglishName?: string;
+    mentorResearchDirection?: string;
+    isPrivate: boolean;
+    paperCount: number;
+    papers: WeeklyPushMentorGroupPaper[];
+}
+
+export interface WeeklyPushSubjectDistributionItem {
+    subject: string;
+    count: number;
 }
 
 export interface WeeklyPushItem {
@@ -121,6 +146,10 @@ export interface WeeklyPushItem {
     papers: WeeklyPushPaper[];
     generatedBy: string;
     updatedAt: string;
+    mentorGroups?: WeeklyPushMentorGroup[];
+    subjectDistribution?: WeeklyPushSubjectDistributionItem[];
+    trackedMentorCount?: number;
+    activeMentorCount?: number;
 }
 
 export interface WeeklyPushResponse {
@@ -142,10 +171,9 @@ export interface WeeklyPushHistoryResponse {
 
 export interface TimelinePapersResponse {
     direction: string;
-    page: number;
-    page_size: number;
+    offset: number;
+    limit: number;
     total_papers: number;
-    total_pages: number;
     has_previous: boolean;
     has_next: boolean;
     papers: TimelinePaper[];

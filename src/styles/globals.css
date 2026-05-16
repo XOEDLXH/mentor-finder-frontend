@@ -69,7 +69,7 @@ select:disabled {
   opacity: 0.65;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.searchSegmentButton) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--surface-panel);
@@ -78,10 +78,83 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.searchSegmentButton):hover:not(:disabled) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
+}
+
+button.searchMentorFollowButton:hover:not(:disabled),
+button.searchMentorFollowButton:focus-visible {
+  transform: none;
+  box-shadow: none;
+}
+
+button.searchMentorFollowButton:focus-visible {
+  outline: 2px solid rgba(8, 109, 177, 0.35);
+  outline-offset: 2px;
+}
+
+button.searchMentorFollowButton:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.mentorPaperLink,
+.searchMentorPaperLinkButton {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: rgb(8, 109, 177);
+  transition: color 0.16s ease;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+}
+
+button.mentorPaperLink:hover,
+button.mentorPaperLink:focus-visible,
+button.searchMentorPaperLinkButton:hover,
+button.searchMentorPaperLinkButton:focus-visible,
+a.mentorPaperLink:hover,
+a.mentorPaperLink:focus-visible {
+  color: rgb(45, 45, 45);
+  outline: none;
+}
+
+.mentorPaperLinkText,
+.searchMentorPaperLinkText {
+  color: inherit;
+  text-decoration: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.16s ease;
+}
+
+button.mentorPaperLink:hover .mentorPaperLinkText,
+button.mentorPaperLink:focus-visible .mentorPaperLinkText,
+button.searchMentorPaperLinkButton:hover .searchMentorPaperLinkText,
+button.searchMentorPaperLinkButton:focus-visible .searchMentorPaperLinkText,
+a.mentorPaperLink:hover .mentorPaperLinkText,
+a.mentorPaperLink:focus-visible .mentorPaperLinkText {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: currentColor;
+}
+
+.mentorPaperLinkIcon,
+.searchMentorPaperLinkIcon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .followToggleButtonOverlay {
@@ -432,6 +505,130 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   display: block;
   margin: 12px 0;
   text-align: center;
+}
+
+.homePageShell {
+  width: 100%;
+  max-width: 1180px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.homePageLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.homePageSidebar {
+  min-width: 0;
+}
+
+.homePersonalizedPanel {
+  margin-top: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 42%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.homePersonalizedPanelHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.homePersonalizedPanelHint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #59636e;
+}
+
+.homePersonalizedButton {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #0d6efd 0%, #3b82f6 100%);
+  color: #fff;
+  border-color: #0d6efd;
+}
+
+.homePersonalizedButton:hover:not(:disabled) {
+  border-color: #0b5ed7;
+}
+
+.homePersonalizedPlaceholder,
+.homePersonalizedStatusCard,
+.homePersonalizedErrorCard {
+  border-radius: 8px;
+  padding: 12px;
+  line-height: 1.6;
+  background: #f6f8fa;
+  color: #59636e;
+}
+
+.homePersonalizedStatusCard {
+  background: #eef6ff;
+  color: #0b5394;
+}
+
+.homePersonalizedErrorCard {
+  background: #fff3f3;
+  color: #b42318;
+}
+
+.homePersonalizedStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.homePersonalizedStatItem {
+  border: 1px solid #d9e6f7;
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.homePersonalizedStatItem span {
+  font-size: 12px;
+  color: #59636e;
+}
+
+.homePersonalizedStatItem strong {
+  font-size: 18px;
+  color: #1f2328;
+}
+
+.homePersonalizedSummaryStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.homePersonalizedSummaryBlock {
+  border-radius: 8px;
+  padding: 12px;
+  background: #f6f8fa;
+}
+
+.homePersonalizedSummaryBlockAccent {
+  background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(15, 92, 77, 0.1) 100%);
+}
+
+.homePersonalizedSummaryLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #59636e;
+  margin-bottom: 6px;
 }
 
 .loginAuthPage {
@@ -960,6 +1157,41 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   box-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
 }
 
+.registerAuthEmailRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.registerAuthEmailRow input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.registerAuthSendCodeButton {
+  flex: 0 0 auto;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #f6f8fa;
+  color: #1f2328;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.registerAuthSendCodeButton:hover:not(:disabled) {
+  background: #eaeef2;
+  border-color: #afb8c1;
+}
+
+.registerAuthSendCodeButton:disabled {
+  color: #8c959f;
+  background: #f6f8fa;
+  cursor: not-allowed;
+}
+
 .registerAuthField input:focus-visible {
   outline: 3px solid rgba(9, 105, 218, 0.2);
   outline-offset: 0;
@@ -1143,5 +1375,21 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 
   .registerAuthFormTitle {
     font-size: 30px;
+  }
+
+  .homePageLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .homePersonalizedStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .homePersonalizedPanelHeader {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
   }
 }

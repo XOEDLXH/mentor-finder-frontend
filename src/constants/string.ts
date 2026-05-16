@@ -20,3 +20,11 @@ export const REGISTER_PASSWORD_MISMATCH = "The two passwords do not match.";
 export const REGISTER_PASSWORD_WEAK =
   "Password must be at least 8 characters long and contain both letters and numbers.";
 export const REGISTER_EMAIL_INVALID = "Invalid email format.";
+export const REGISTER_CODE_REQUIRED = "Please enter the verification code sent to your email.";
+export const REGISTER_CODE_INVALID = "Verification code is invalid or has expired.";
+export const REGISTER_CODE_SENT = "Verification code sent. Please check your inbox.";
+export const REGISTER_CODE_SEND_FAILED = "Failed to send verification code. Please try again later.";
+export const REGISTER_CODE_COOLDOWN = "Please wait a moment before requesting another code.";
+export const REGISTER_CODE_BYPASS_HINT = "Bypass email detected. Verification code is not required.";
+export const REGISTER_SEND_CODE_BUTTON = "Send code";
+export const REGISTER_SEND_CODE_RESEND = "Resend";

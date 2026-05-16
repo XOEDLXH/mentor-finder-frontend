@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import FollowToggleButton from "../components/FollowToggleButton";
+import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
@@ -31,6 +32,46 @@ interface FollowedMentorCardState extends SearchMentorResult {
 type FollowCategory = "mentor" | "user";
 type FollowView = "following" | "followers";
 
+const FOLLOWED_MENTOR_CARDS_PER_PAGE = 18;
+
+const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
+    position: "relative",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 72,
+    minHeight: 28,
+    border: "0 solid transparent",
+    borderRadius: 6,
+    padding: "0 12px",
+    backgroundColor: followed ? "rgba(246, 248, 250, 0.96)" : "rgb(8, 109, 177)",
+    color: followed ? "#000000" : "#ffffff",
+    fontSize: 14,
+    fontWeight: 500,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    cursor: "pointer",
+    boxShadow: "none",
+    transition: "none",
+    appearance: "none",
+    opacity: 1,
+});
+
+const formatViewSwitchCount = (value: number) => {
+    const safeValue = Math.max(0, Math.floor(value));
+
+    if (safeValue < 1000) {
+        return String(safeValue);
+    }
+
+    if (safeValue >= 99950) {
+        return "99.9k";
+    }
+
+    return `${(safeValue / 1000).toFixed(1)}k`;
+};
+
 const FollowsPage = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -44,6 +85,7 @@ const FollowsPage = () => {
     const [userSearchLoading, setUserSearchLoading] = useState(false);
     const [activeView, setActiveView] = useState<FollowView>("following");
     const [activeCategory, setActiveCategory] = useState<FollowCategory>("mentor");
+    const [mentorCurrentPage, setMentorCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
@@ -220,13 +262,27 @@ const FollowsPage = () => {
     const followedUserIds = new Set(
         users.filter((user) => user.followed).map((user) => user.id),
     );
+    const followingCount = mentors.filter((mentor) => mentor.followed).length + users.filter((user) => user.followed).length;
     const visibleUserSearchResults = userSearchResults.filter((user) => (
         !user.followed && !followedUserIds.has(user.id)
     ));
+    const mentorTotalPages = Math.max(1, Math.ceil(mentors.length / FOLLOWED_MENTOR_CARDS_PER_PAGE));
+    const safeMentorCurrentPage = Math.min(mentorCurrentPage, mentorTotalPages);
+    const mentorPageStartIndex = (safeMentorCurrentPage - 1) * FOLLOWED_MENTOR_CARDS_PER_PAGE;
+    const paginatedMentors = mentors.slice(
+        mentorPageStartIndex,
+        mentorPageStartIndex + FOLLOWED_MENTOR_CARDS_PER_PAGE,
+    );
 
     useEffect(() => {
         void fetchFollows();
     }, [fetchFollows]);
+
+    useEffect(() => {
+        if (mentorCurrentPage > mentorTotalPages) {
+            setMentorCurrentPage(mentorTotalPages);
+        }
+    }, [mentorCurrentPage, mentorTotalPages]);
 
     if (!isLoggedIn) {
         return (
@@ -240,23 +296,35 @@ const FollowsPage = () => {
             <div className="followsPage">
                 <div className="pageHeader">
                     <h2 className="pageTitle">{activeView === "following" ? "我的关注" : "我的粉丝"}</h2>
-                    <div className="viewSwitch" aria-label="关注页面切换">
-                        <button
-                            className={activeView === "following" ? "viewSwitchButton viewSwitchButtonActive" : "viewSwitchButton"}
-                            type="button"
-                            onClick={() => setActiveView("following")}
-                        >
-                            我的关注
-                            <span>{mentors.filter((mentor) => mentor.followed).length + users.filter((user) => user.followed).length}</span>
-                        </button>
-                        <button
-                            className={activeView === "followers" ? "viewSwitchButton viewSwitchButtonActive" : "viewSwitchButton"}
-                            type="button"
-                            onClick={() => setActiveView("followers")}
-                        >
-                            我的粉丝
-                            <span>{followers.length}</span>
-                        </button>
+                    <div className="viewSwitchGroup" role="group" aria-label="关注页面切换">
+                        <div className="viewSwitch">
+                            <span
+                                className={activeView === "following" ? "viewSwitchThumb" : "viewSwitchThumb viewSwitchThumbFollowers"}
+                                aria-hidden="true"
+                            />
+                            <button
+                                className={activeView === "following" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
+                                type="button"
+                                aria-pressed={activeView === "following"}
+                                onClick={() => setActiveView("following")}
+                            >
+                                <span className="viewSwitchButtonLabel">我的关注</span>
+                                <span className="viewSwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(followingCount)}
+                                </span>
+                            </button>
+                            <button
+                                className={activeView === "followers" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
+                                type="button"
+                                aria-pressed={activeView === "followers"}
+                                onClick={() => setActiveView("followers")}
+                            >
+                                <span className="viewSwitchButtonLabel">我的粉丝</span>
+                                <span className="viewSwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(followers.length)}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -288,44 +356,64 @@ const FollowsPage = () => {
                     )}
 
                     {activeCategory === "mentor" && (
-                        <div className="mentorGrid">
-                            {mentors.map((mentor) => (
-                                <div
-                                    key={mentor.id}
-                                    className="mentorCard"
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={`进入${mentor.Chinese_name}导师主页`}
-                                    onClick={() => router.push(`/mentors/${mentor.id}`)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter" || event.key === " ") {
-                                            event.preventDefault();
-                                            void router.push(`/mentors/${mentor.id}`);
-                                        }
-                                    }}
-                                >
-                                    <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
-                                        <FollowToggleButton
-                                            className="followToggleButton"
-                                            followed={mentor.followed}
-                                            loading={actionMentorId === mentor.id}
-                                            onClick={() => void toggleFollow(mentor)}
-                                        />
-                                    </div>
-
-                                    <h3 className="mentorName">
-                                        {mentor.Chinese_name}
-                                        {mentor.is_private && (
-                                            <span className="privateBadge">我的私有导师</span>
+                        <div className="mentorSection">
+                            <div className="mentorGrid">
+                                {paginatedMentors.map((mentor) => (
+                                    <div
+                                        key={mentor.id}
+                                        className="mentorCard"
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`进入${mentor.Chinese_name}导师主页`}
+                                        onClick={() => router.push(`/mentors/${mentor.id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                void router.push(`/mentors/${mentor.id}`);
+                                            }
+                                        }}
+                                    >
+                                        <div className="mentorCardHeader" data-testid={`mentor-card-header-${mentor.id}`}>
+                                            <h3 className="mentorName">
+                                                {mentor.Chinese_name}
+                                                {mentor.is_private && (
+                                                    <span className="privateBadge">我的私有导师</span>
+                                                )}
+                                            </h3>
+                                            <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
+                                                <FollowToggleButton
+                                                    className="followToggleButton"
+                                                    followed={mentor.followed}
+                                                    followedLabel="已关注"
+                                                    loading={actionMentorId === mentor.id}
+                                                    onClick={() => void toggleFollow(mentor)}
+                                                    style={buildSearchLikeMentorFollowButtonStyle(mentor.followed)}
+                                                />
+                                            </div>
+                                        </div>
+                                        {mentor.English_name && (
+                                            <p className="mentorMeta">英文名：{mentor.English_name}</p>
                                         )}
-                                    </h3>
-                                    {mentor.English_name && (
-                                        <p className="mentorMeta">英文名：{mentor.English_name}</p>
-                                    )}
-                                    <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
-                                    <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
+                                        <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
+                                        <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {mentors.length > 0 && (
+                                <div className="mentorPagination">
+                                    <Pagination
+                                        currentPage={safeMentorCurrentPage}
+                                        totalPages={mentorTotalPages}
+                                        loading={loading}
+                                        centered
+                                        controlHeight={33.77}
+                                        jumpInputWidth={120}
+                                        activePageHighlightColor="rgb(8, 109, 177)"
+                                        onPageChange={(newPage) => setMentorCurrentPage(newPage)}
+                                    />
                                 </div>
-                            ))}
+                            )}
                         </div>
                     )}
 
@@ -394,11 +482,16 @@ const FollowsPage = () => {
             )}
 
             <style jsx>{`
+                :global(.appMain:has(.followsPage)) {
+                    width: min(1510px, calc(100% - 32px));
+                }
+
                 .followsPage {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
-                    max-width: 1040px;
+                    width: 100%;
+                    max-width: 1477px;
                 }
 
                 .pageHeader {
@@ -412,41 +505,92 @@ const FollowsPage = () => {
                     margin: 0;
                 }
 
+                .viewSwitchGroup {
+                    min-width: 260px;
+                }
+
                 .viewSwitch {
                     position: relative;
                     display: grid;
                     grid-template-columns: repeat(2, minmax(0, 1fr));
-                    gap: 4px;
-                    min-width: 260px;
+                    align-items: stretch;
+                    width: 100%;
+                    height: 44px;
                     border: 1px solid #d0d7de;
-                    border-radius: 999px;
-                    background: #f6f8fa;
-                    padding: 4px;
+                    border-radius: 16px;
+                    background: rgba(246, 248, 250, 0.96);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 2px rgba(15, 23, 42, 0.04);
+                    overflow: hidden;
+                }
+
+                .viewSwitchThumb {
+                    position: absolute;
+                    top: 2px;
+                    bottom: 2px;
+                    left: 2px;
+                    width: calc((100% - 4px) / 2);
+                    border-radius: 14px;
+                    background: rgb(8, 109, 177);
+                    border: 1px solid rgb(8, 109, 177);
+                    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+                    transform: translateX(0);
+                    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+                    will-change: transform;
+                }
+
+                .viewSwitchThumbFollowers {
+                    transform: translateX(100%);
                 }
 
                 .viewSwitchButton {
+                    position: relative;
+                    z-index: 1;
                     display: inline-flex;
-                    min-height: 36px;
+                    min-height: 44px;
                     align-items: center;
                     justify-content: center;
                     gap: 6px;
                     border: 0;
-                    border-radius: 999px;
+                    border-radius: 16px;
                     background: transparent;
-                    color: #57606a;
-                    padding: 0 12px;
-                    font-weight: 800;
+                    box-shadow: none;
+                    color: #59636e;
+                    padding: 0 16px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    appearance: none;
+                    -webkit-appearance: none;
+                    transition: color 180ms ease;
                 }
 
-                .viewSwitchButton span {
+                .viewSwitchButtonLabel,
+                .viewSwitchButtonCount {
                     color: inherit;
-                    font-size: 12px;
+                }
+
+                .viewSwitchButtonCount {
+                    display: inline-flex;
+                    min-width: 5ch;
+                    justify-content: flex-end;
+                    font-size: 14px;
+                    font-weight: 700;
+                    font-variant-numeric: tabular-nums;
                 }
 
                 .viewSwitchButtonActive {
-                    background: #0969da;
+                    font-weight: 700;
                     color: #fff;
-                    box-shadow: 0 3px 10px rgba(9, 105, 218, 0.22);
+                }
+
+                .viewSwitchButton:hover,
+                .viewSwitchButton:focus-visible {
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .viewSwitchButton:focus-visible {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
                 }
 
                 .content {
@@ -489,10 +633,21 @@ const FollowsPage = () => {
                     min-width: 0;
                 }
 
+                .mentorSection {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
                 .mentorGrid {
                     display: grid;
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 12px;
+                }
+
+                .mentorPagination {
+                    display: flex;
+                    justify-content: center;
                 }
 
                 :global(.userFollowSection) {
@@ -643,9 +798,8 @@ const FollowsPage = () => {
                 }
 
                 .mentorCard {
-                    position: relative;
                     min-height: 158px;
-                    padding: 14px 14px 14px 14px;
+                    padding: 14px;
                     border: 1px solid #ccc;
                     border-radius: 8px;
                     cursor: pointer;
@@ -661,10 +815,16 @@ const FollowsPage = () => {
                     transform: translateY(-1px);
                 }
 
+                .mentorCardHeader {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin-bottom: 8px;
+                }
+
                 .followButtonShell {
-                    position: absolute;
-                    top: 8px;
-                    right: 8px;
+                    flex-shrink: 0;
                 }
 
                 .followToggleButton {
@@ -672,21 +832,43 @@ const FollowsPage = () => {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    min-width: 92px;
-                    min-height: 36px;
-                    border: 1px solid #ddd;
-                    border-radius: 999px;
-                    background: #fff;
-                    color: #1f2328;
-                    padding: 0 16px;
-                    font-weight: 600;
+                    min-width: 72px;
+                    min-height: 28px;
+                    border: 0 solid transparent;
+                    border-radius: 6px;
+                    background: rgb(8, 109, 177);
+                    color: #ffffff;
+                    padding: 0 12px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    line-height: 1;
+                    white-space: nowrap;
                     overflow: hidden;
+                    cursor: pointer;
+                    box-shadow: none;
+                    transition: none;
+                    appearance: none;
+                    opacity: 1;
                 }
 
-                .followToggleButton:hover,
-                .followToggleButton:focus {
-                    background: #f6f8fa;
-                    outline: none;
+                .followToggleButton span {
+                    color: inherit;
+                }
+
+                .followToggleButton:hover:not(:disabled),
+                .followToggleButton:focus-visible {
+                    transform: none;
+                    box-shadow: none;
+                }
+
+                .followToggleButton:focus-visible {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
+                }
+
+                .followToggleButton:disabled {
+                    opacity: 1;
+                    cursor: not-allowed;
                 }
 
                 :global(.followToggleButtonOverlay) {
@@ -696,8 +878,9 @@ const FollowsPage = () => {
                 }
 
                 .mentorName {
-                    margin: 52px 0 8px;
+                    margin: 0;
                     font-size: 18px;
+                    line-height: 1.35;
                 }
 
                 .privateBadge {
@@ -708,9 +891,11 @@ const FollowsPage = () => {
                 }
 
                 .mentorMeta {
-                    margin: 4px 0;
+                    margin: 4px 0 0;
                     color: #333;
                     line-height: 1.45;
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
                 }
 
                 @media (max-width: 720px) {

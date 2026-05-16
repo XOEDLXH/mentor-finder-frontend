@@ -52,6 +52,7 @@ describe("TopNav", () => {
         useDispatch.mockReturnValue(mockDispatch);
         useSelector.mockImplementation((selector) => selector({ auth: mockAuthState }));
         globalThis.open = jest.fn();
+        window.scrollTo = jest.fn();
     });
 
     afterEach(() => {
@@ -83,6 +84,18 @@ describe("TopNav", () => {
         fireEvent.click(screen.getByRole("button", { name: "Follows" }));
 
         expect(mockPush).toHaveBeenCalledWith("/login?redirect=%2Ffollows");
+    });
+
+    it("scrolls to the top instead of pushing again when clicking Timeline on the current timeline page", () => {
+        mockRouter.pathname = "/timeline";
+        mockRouter.asPath = "/timeline";
+
+        renderTopNav();
+
+        fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+
+        expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "auto" });
+        expect(mockPush).not.toHaveBeenCalled();
     });
 
     it("redirects unauthenticated users to login when they click profile", () => {

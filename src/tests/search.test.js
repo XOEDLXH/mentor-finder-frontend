@@ -17,11 +17,13 @@ jest.mock("../utils/network", () => ({
 describe("SearchScreen", () => {
     const mockPush = jest.fn();
     const mockReplace = jest.fn();
+    const mockBack = jest.fn();
     let beforePopStateHandler = () => true;
     let historyKeyCounter = 0;
     const mockRouter = {
         push: mockPush,
         replace: mockReplace,
+        back: mockBack,
         beforePopState: jest.fn((handler) => {
             beforePopStateHandler = handler;
         }),
@@ -96,6 +98,7 @@ describe("SearchScreen", () => {
     beforeEach(() => {
         mockPush.mockReset();
         mockReplace.mockReset();
+        mockBack.mockReset();
         mockRouter.beforePopState.mockClear();
         request.mockReset();
         historyKeyCounter = 0;
@@ -119,7 +122,15 @@ describe("SearchScreen", () => {
 
         mockRouter.query = {};
         mockPush.mockImplementation(async (url) => {
-            syncHistoryState();
+            const nextPath = String(url);
+            if (nextPath.startsWith("/search")) {
+                syncHistoryState();
+                applyUrlToRouter(nextPath);
+                return true;
+            }
+
+            const nextHistoryKey = `test-history-${historyKeyCounter++}`;
+            window.history.replaceState({ key: nextHistoryKey }, "", nextPath);
             applyUrlToRouter(url);
             return true;
         });
@@ -127,10 +138,21 @@ describe("SearchScreen", () => {
             applyUrlToRouter(url);
             return true;
         });
+        mockBack.mockImplementation(async () => true);
         syncHistoryState("test-history-initial");
         useRouter.mockReturnValue(mockRouter);
         window.sessionStorage.clear();
-        window.scrollTo = jest.fn();
+        window.scrollTo = jest.fn((optionsOrX, y) => {
+            const nextScrollY = typeof optionsOrX === "object" && optionsOrX !== undefined
+                ? Number(optionsOrX.top ?? 0)
+                : Number(y ?? 0);
+
+            Object.defineProperty(window, "scrollY", {
+                value: Number.isFinite(nextScrollY) ? nextScrollY : 0,
+                writable: true,
+                configurable: true,
+            });
+        });
         window.requestAnimationFrame = (callback) => window.setTimeout(() => callback(0), 0);
     });
 
@@ -142,7 +164,7 @@ describe("SearchScreen", () => {
     });
 
     it("does not render private mentor management module in search page", async () => {
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
@@ -342,7 +364,7 @@ describe("SearchScreen", () => {
     });
 
     it("auto loads all mentors when entering search page with empty keyword", async () => {
-        renderWithStore();
+        const view = renderWithStore();
         await waitForMineRequest();
 
         await waitFor(() => {
@@ -473,12 +495,16 @@ describe("SearchScreen", () => {
         });
 
         expect(screen.getByRole("heading", { name: "张三" })).toBeInTheDocument();
-        expect(screen.getByText("英文名：Zhang San")).toBeInTheDocument();
-        expect(screen.getByText("研究方向：机器学习")).toBeInTheDocument();
-        expect(screen.getByText("邮箱：zhangsan@example.com")).toBeInTheDocument();
-        expect(screen.getByText("导师画像：主要研究机器学习与数据挖掘。")).toBeInTheDocument();
+        expect(screen.getByText("Zhang San")).toBeInTheDocument();
+        expect(screen.getByText("机器学习")).toBeInTheDocument();
+        expect(screen.getByText("zhangsan@example.com")).toBeInTheDocument();
+        expect(screen.getByText("主要研究机器学习与数据挖掘。")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/English_Name.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/Reseach_Direction.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/Email.ico"]')).not.toBeNull();
+        expect(container.querySelector('img.searchMentorMetaIcon[src="/Mentor_Profile.ico"]')).not.toBeNull();
         expect(container.querySelectorAll('img.searchMentorPaperLinkIcon[src="/arxiv.ico"]')).toHaveLength(2);
     });
 
@@ -625,16 +651,77 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
         });
 
-        expect(screen.queryByText(`导师画像：${longProfile}`)).not.toBeInTheDocument();
+        expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "查看更多" })).toBeInTheDocument();
+        expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        expect(screen.getByTestId("mentor-paper-toggle-88")).toHaveTextContent("展开");
+        expect(screen.getByTestId("mentor-homepage-button-88")).toHaveTextContent("前往主页");
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
 
         await waitFor(() => {
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
-            expect(screen.getByText("论文12")).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "收起" })).toBeInTheDocument();
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+            expect(screen.queryByText("论文12")).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("收起");
+            expect(screen.getByTestId("mentor-homepage-button-88")).toHaveTextContent("前往主页");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-homepage-button-88"));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/mentors/88");
+        });
+    });
+
+    it("shows mentor homepage button for short profiles without expand toggle", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return {
+                    mentors: [{
+                        id: 66,
+                        Chinese_name: "短画像导师",
+                        English_name: "Short Profile Mentor",
+                        research_direction: "计算机视觉",
+                        email: "short@example.com",
+                        profile: "简短导师画像",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "短画像" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "短画像导师" })).toBeInTheDocument();
+        });
+
+        expect(screen.queryByTestId("mentor-profile-toggle-66")).not.toBeInTheDocument();
+        expect(screen.getByTestId("mentor-homepage-button-66")).toHaveTextContent("前往主页");
+
+        fireEvent.click(screen.getByTestId("mentor-homepage-button-66"));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/mentors/66");
         });
     });
 
@@ -700,6 +787,84 @@ describe("SearchScreen", () => {
         expect(screen.getByText("作者：").closest(".timelineMetaRow")).not.toBeNull();
         expect(screen.getAllByAltText("清华导师").length).toBe(2);
         // 作者列表现在会把数据库中存在的导师名字渲染为可点击按钮
+    });
+
+    it("renders the search mentor follow button in bilibili style and toggles between follow states", async () => {
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/follow/mentors") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=&search_mode=fuzzy") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "张三",
+                        English_name: "Zhang San",
+                        research_direction: "机器学习",
+                        email: "zhangsan@example.com",
+                        profile: "主要研究机器学习。",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            if (url === "/api/follow/mentors/1" && method === "POST") {
+                return { followed: true };
+            }
+
+            if (url === "/api/follow/mentors/1" && method === "DELETE") {
+                return { followed: false };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        const followButton = await screen.findByRole("button", { name: "关注" });
+        expect(followButton).toHaveStyle({
+            backgroundColor: "rgb(8, 109, 177)",
+            color: "rgb(255, 255, 255)",
+            fontSize: "14px",
+            border: "0px solid transparent",
+        });
+
+        fireEvent.click(followButton);
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/follow/mentors/1", "POST", true);
+        });
+
+        const followedButton = await screen.findByRole("button", { name: "已关注" });
+        expect(followedButton).toHaveStyle({
+            backgroundColor: "rgba(246, 248, 250, 0.96)",
+            color: "rgb(0, 0, 0)",
+            fontSize: "14px",
+            border: "0px solid transparent",
+        });
+
+        fireEvent.click(followedButton);
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/follow/mentors/1", "DELETE", true);
+        });
+
+        expect(await screen.findByRole("button", { name: "关注" })).toBeInTheDocument();
     });
 
     it("renders inline LaTeX in paper search result abstracts", async () => {
@@ -1341,10 +1506,22 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+            expect(screen.queryByText("论文12")).not.toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+        await waitFor(() => {
             expect(screen.getByText("论文12")).toBeInTheDocument();
+            expect(screen.getByTestId("mentor-paper-toggle-88")).toHaveTextContent("收起");
         });
 
         Object.defineProperty(window, "scrollY", {
@@ -1467,16 +1644,22 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
         await waitFor(() => {
-            expect(screen.getByText(`导师画像：${longProfile}`)).toBeInTheDocument();
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
 
         const expandedSourceEntryKey = window.history.state.key;
         const expandedSourceViewState = JSON.parse(
             window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
         );
-        expect(expandedSourceViewState.expandedMentorIds).toEqual([88]);
+        expect(expandedSourceViewState.expandedProfileMentorIds).toEqual([88]);
+        expect(expandedSourceViewState.expandedPaperMentorIds).toEqual([88]);
 
         Object.defineProperty(window, "scrollY", {
             value: 460,
@@ -1500,7 +1683,8 @@ describe("SearchScreen", () => {
 
         expect(sourceViewState.scrollY).toBe(460);
         expect(targetViewState.scrollY).toBe(0);
-        expect(targetViewState.expandedMentorIds).toEqual([]);
+        expect(targetViewState.expandedProfileMentorIds).toEqual([]);
+        expect(targetViewState.expandedPaperMentorIds).toEqual([]);
     });
 
     it("does not overwrite the saved mentor scroll state when the browser resets scroll before pop restore", async () => {
@@ -1561,7 +1745,19 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "查看更多" }));
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        await waitFor(() => {
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("收起");
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        await waitFor(() => {
+            expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
+            expect(screen.getByTestId("mentor-profile-toggle-88")).toHaveTextContent("展开");
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
         });
@@ -1630,6 +1826,269 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(window.scrollTo).toHaveBeenCalledWith({ left: 0, top: 13, behavior: "auto" });
+        });
+    });
+
+    it("restores scroll position and expanded mentor cards after visiting mentor homepage with the homepage button", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        const view = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+
+        await waitFor(() => {
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        Object.defineProperty(window, "scrollY", {
+            value: 460,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+        const mentorSearchEntryKey = window.history.state.key;
+
+        fireEvent.click(screen.getByTestId("mentor-homepage-button-88"));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/mentors/88");
+        });
+
+        act(() => {
+            mockRouter.query = {
+                keyword: "测试",
+                mode: "mentor",
+                search_mode: "fuzzy",
+            };
+            window.history.replaceState({ key: mentorSearchEntryKey }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
+            view.unmount();
+        });
+
+        renderWithStore();
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+
+        await waitFor(() => {
+            expect(window.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 460, behavior: "auto" });
+        });
+        expect(screen.getByText(longProfile)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
+    });
+
+    it("restores scroll position and expanded mentor cards after visiting mentor homepage from the mentor name link", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        const view = renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+
+        await waitFor(() => {
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        Object.defineProperty(window, "scrollY", {
+            value: 320,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+        const mentorSearchEntryKey = window.history.state.key;
+
+        fireEvent.click(screen.getByRole("link", { name: "测试导师" }));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/mentors/88");
+        });
+
+        act(() => {
+            mockRouter.query = {
+                keyword: "测试",
+                mode: "mentor",
+                search_mode: "fuzzy",
+            };
+            window.history.replaceState({ key: mentorSearchEntryKey }, "", "/search?keyword=%E6%B5%8B%E8%AF%95&mode=mentor&search_mode=fuzzy");
+            view.unmount();
+        });
+
+        renderWithStore();
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy",
+                "GET",
+                true,
+            );
+        });
+
+        await waitFor(() => {
+            expect(window.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 320, behavior: "auto" });
+        });
+        expect(screen.getByText(longProfile)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
+    });
+
+    it("stores mentor homepage navigation return markers without overwriting the mentor result entry", async () => {
+        const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
+        const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
+
+        request.mockImplementation(async (url) => {
+            const urlStr = String(url);
+
+            if (urlStr === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (urlStr === "/api/search/mentors?keyword=%E6%B5%8B%E8%AF%95&search_mode=fuzzy") {
+                return {
+                    mentors: [{
+                        id: 88,
+                        Chinese_name: "测试导师",
+                        English_name: "Test Mentor",
+                        research_direction: "知识工程",
+                        email: "test@example.com",
+                        profile: longProfile,
+                        paperTitles: longPaperTitles,
+                    }],
+                    total: 1,
+                    total_pages: 1,
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "测试" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId("mentor-profile-toggle-88"));
+        fireEvent.click(screen.getByTestId("mentor-paper-toggle-88"));
+
+        await waitFor(() => {
+            expect(screen.getByText(longProfile)).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "论文12" })).toBeInTheDocument();
+        });
+
+        Object.defineProperty(window, "scrollY", {
+            value: 215,
+            writable: true,
+            configurable: true,
+        });
+        fireEvent.scroll(window);
+
+        const sourceEntryKey = window.history.state.key;
+        fireEvent.click(screen.getByTestId("mentor-homepage-button-88"));
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith("/mentors/88");
+        });
+
+        const targetEntryKey = window.history.state.key;
+        expect(targetEntryKey).not.toBe(sourceEntryKey);
+
+        const sourceViewState = JSON.parse(window.sessionStorage.getItem(`search-view-state:${sourceEntryKey}`));
+        expect(sourceViewState.scrollY).toBe(215);
+        expect(sourceViewState.expandedProfileMentorIds).toEqual([88]);
+        expect(sourceViewState.expandedPaperMentorIds).toEqual([88]);
+
+        const returnMarker = JSON.parse(window.sessionStorage.getItem("search-mentor-return-marker"));
+        expect(returnMarker).toMatchObject({
+            mentorId: 88,
+            sourceEntryKey,
+            targetEntryKey,
+            sourcePath: "/search",
         });
     });
 
@@ -1906,11 +2365,15 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
         });
 
+        expect(screen.getByRole("link", { name: "张三" })).toHaveAttribute("href", "/mentors/1");
+        expect(screen.queryByRole("button", { name: "查看导师主页" })).not.toBeInTheDocument();
+        expect(document.querySelector('img.searchMentorMetaIcon[src="/Mentor_Profile.ico"]')).not.toBeNull();
+
         ["1", "2", "3", "4", "5"].forEach((pageLabel) => {
             expect(screen.getAllByRole("button", { name: pageLabel }).length).toBeGreaterThan(0);
         });
 
-        fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]);
+        fireEvent.click(screen.getAllByRole("button", { name: "下一页" })[0]);
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -1924,6 +2387,9 @@ describe("SearchScreen", () => {
             expect(screen.getByRole("heading", { name: "Showing 6 results for all: 张" })).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "张六", level: 3 })).toBeInTheDocument();
         });
+
+        expect(screen.getByRole("link", { name: "张六" })).toHaveAttribute("href", "/mentors/2");
+        expect(screen.queryByRole("button", { name: "查看导师主页" })).not.toBeInTheDocument();
 
         expect(mockPush).toHaveBeenCalledWith(
             "/search?keyword=%E5%BC%A0&mode=mentor&search_mode=fuzzy&page=2",

@@ -80,8 +80,11 @@ describe("follow confirmation", () => {
 
         await screen.findByRole("heading", { name: "张三" });
         expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
+        const mentorCardHeader = screen.getByTestId("mentor-card-header-7");
+        expect(within(mentorCardHeader).getByRole("heading", { name: "张三" })).toBeInTheDocument();
+        expect(within(mentorCardHeader).getByRole("button", { name: "已关注" })).toBeInTheDocument();
 
-        const followButton = screen.getByRole("button", { name: "取消关注" });
+        const followButton = screen.getByRole("button", { name: "已关注" });
         fireEvent.click(followButton);
 
         await waitFor(() => {
@@ -108,7 +111,7 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
+        fireEvent.click(screen.getByRole("button", { name: "已关注" }));
 
         await waitFor(() => {
             expect(screen.getByRole("button", { name: "关注" })).toBeInTheDocument();
@@ -119,7 +122,7 @@ describe("follow confirmation", () => {
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "POST", true);
         });
-        expect(screen.getByRole("button", { name: "取消关注" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "已关注" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
     });
 
@@ -138,11 +141,11 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
-        const followButton = screen.getByRole("button", { name: "取消关注" });
+        const followButton = screen.getByRole("button", { name: "已关注" });
         fireEvent.click(followButton);
 
         expect(followButton).toBeDisabled();
-        expect(within(followButton).getByText("取消关注")).toBeInTheDocument();
+        expect(within(followButton).getByText("已关注")).toBeInTheDocument();
         expect(followButton.querySelector(".followToggleButtonOverlay")).not.toBeNull();
 
         resolveFollow?.({ followed: false });
@@ -171,8 +174,8 @@ describe("follow confirmation", () => {
 
         renderWithStore(<FollowsPage />);
 
-        await screen.findByRole("button", { name: "我的粉丝 1" });
-        fireEvent.click(screen.getByRole("button", { name: "我的粉丝 1" }));
+        const viewSwitch = await screen.findByRole("group", { name: "关注页面切换" });
+        fireEvent.click(within(viewSwitch).getByRole("button", { name: /我的粉丝/i }));
 
         expect(screen.getByRole("heading", { name: "我的粉丝" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "粉丝用户" })).toBeInTheDocument();
@@ -201,10 +204,10 @@ describe("follow confirmation", () => {
 
         await screen.findByRole("heading", { name: "张三" });
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "取消关注" })).toBeEnabled();
+            expect(screen.getByRole("button", { name: "已关注" })).toBeEnabled();
         });
 
-        fireEvent.click(screen.getByRole("button", { name: "取消关注" }));
+        fireEvent.click(screen.getByRole("button", { name: "已关注" }));
 
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/follow/mentors/7", "DELETE", true);
@@ -246,7 +249,42 @@ describe("follow confirmation", () => {
         resolveFollow?.({ followed: true });
 
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "取消关注" })).toBeEnabled();
+            expect(screen.getByRole("button", { name: "已关注" })).toBeEnabled();
         });
+    });
+
+    it("paginates followed mentor cards at the bottom with 18 cards per page", async () => {
+        const mentorList = Array.from({ length: 19 }, (_, index) => ({
+            ...mentor,
+            id: index + 1,
+            Chinese_name: `导师${index + 1}`,
+            English_name: `Mentor ${index + 1}`,
+            email: `mentor${index + 1}@example.com`,
+        }));
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/mentors") {
+                return { mentors: mentorList };
+            }
+
+            if (url === "/api/follow/users" || url === "/api/follow/followers") {
+                return { users: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "导师1" });
+        expect(screen.getAllByTestId(/mentor-card-header-/)).toHaveLength(18);
+        expect(screen.queryByRole("heading", { name: "导师19" })).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: "跳转" })).toHaveLength(1);
+
+        fireEvent.click(screen.getByRole("button", { name: "2" }));
+
+        await screen.findByRole("heading", { name: "导师19" });
+        expect(screen.getAllByTestId(/mentor-card-header-/)).toHaveLength(1);
+        expect(screen.queryByRole("heading", { name: "导师1" })).not.toBeInTheDocument();
     });
 });

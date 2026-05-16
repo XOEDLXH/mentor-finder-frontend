@@ -1,7 +1,9 @@
-import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { CSSProperties, KeyboardEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
+import FollowToggleButton from "../components/FollowToggleButton";
 import LatexText from "../components/LatexText";
 import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
@@ -17,6 +19,11 @@ import {
     SearchPaperSortMode,
     SearchQueryState,
 } from "../utils/searchQuery";
+import {
+    clearPendingMentorSearchReturn,
+    readPendingMentorSearchReturn,
+    writePendingMentorSearchReturn,
+} from "../utils/searchNavigation";
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 type MentorResultFilter = SearchMentorVisibility;
 
@@ -81,7 +88,9 @@ interface SegmentedOption<TValue extends string> {
 
 interface SearchHistoryViewState {
     scrollY: number;
-    expandedMentorIds: number[];
+    expandedProfileMentorIds: number[];
+    expandedPaperMentorIds: number[];
+    expandedMentorIds?: number[];
 }
 
 type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
@@ -89,8 +98,32 @@ type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 let pendingSearchPopRestore:
     | {
         entryKey: string;
+        transitionId: number;
     }
     | undefined;
+
+const getWindowHistoryEntryKey = () => {
+    if (typeof window === "undefined") {
+        return INITIAL_HISTORY_ENTRY_KEY;
+    }
+
+    const historyState = window.history.state as { key?: unknown } | undefined;
+    const historyKey = historyState?.key;
+    if (typeof historyKey === "string" && historyKey.trim() !== "") {
+        return historyKey;
+    }
+
+    return INITIAL_HISTORY_ENTRY_KEY;
+};
+
+const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
+    return event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey;
+};
 
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
@@ -109,6 +142,28 @@ const parseTimelineLikeSubjects = (subjects?: string) => {
         .split(",")
         .map((subject) => subject.trim())
         .filter((subject) => subject !== "");
+};
+
+const normalizeHistoryMentorIds = (values?: Iterable<number> | ArrayLike<number>) => {
+    return Array.from(values ?? [])
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0);
+};
+
+const buildSearchHistoryViewState = (
+    scrollY: number,
+    expandedProfileMentorIds: Iterable<number> | ArrayLike<number>,
+    expandedPaperMentorIds: Iterable<number> | ArrayLike<number>,
+) => {
+    const normalizedProfileMentorIds = normalizeHistoryMentorIds(expandedProfileMentorIds);
+    const normalizedPaperMentorIds = normalizeHistoryMentorIds(expandedPaperMentorIds);
+
+    return {
+        scrollY: Number.isFinite(scrollY) ? scrollY : 0,
+        expandedProfileMentorIds: normalizedProfileMentorIds,
+        expandedPaperMentorIds: normalizedPaperMentorIds,
+        expandedMentorIds: Array.from(new Set([...normalizedProfileMentorIds, ...normalizedPaperMentorIds])),
+    };
 };
 
 const SEARCH_MODE_OPTIONS: SegmentedOption<SearchMode>[] = [
@@ -133,7 +188,29 @@ const MENTOR_FILTER_OPTIONS: SegmentedOption<MentorResultFilter>[] = [
     { label: "公共", value: "public" },
 ];
 
-const SEARCH_LOGIC_HELP_TEXT = "注意：AND 的优先级高于 OR；若括号不匹配则会将括号理解为关键词的一部分。";
+const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
+    position: "relative",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 72,
+    minHeight: 28,
+    border: "0 solid transparent",
+    borderRadius: 6,
+    padding: "0 12px",
+    backgroundColor: followed ? "rgba(246, 248, 250, 0.96)" : "rgb(8, 109, 177)",
+    color: followed ? "#000000" : "#ffffff",
+    fontSize: 14,
+    fontWeight: 500,
+    lineHeight: 1,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    cursor: "pointer",
+    boxShadow: "none",
+    transition: "none",
+    appearance: "none",
+    opacity: 1,
+});
 
 const SearchScreen = () => {
     const router = useRouter();
@@ -141,6 +218,7 @@ const SearchScreen = () => {
     const authRole = useSelector((state: RootState) => state.auth.role);
     const isLoggedIn = authToken.trim() !== "";
     const isAdmin = authRole === "admin";
+    const canFollowMentor = isLoggedIn && authRole === "student";
 
     const [mode, setMode] = useState<SearchMode>("mentor");
     const [matchMode, setMatchMode] = useState<SearchMatchMode>("fuzzy");
@@ -164,8 +242,11 @@ const SearchScreen = () => {
     const [paperDeleteTarget, setPaperDeleteTarget] = useState<PaperDeleteTarget | undefined>(undefined);
     const [paperDeleteSubmitting, setPaperDeleteSubmitting] = useState(false);
     const [privateMentors, setPrivateMentors] = useState<PrivateMentorResult[]>([]);
+    const [followedMentorIds, setFollowedMentorIds] = useState<Set<number>>(new Set());
+    const [followToggleMentorId, setFollowToggleMentorId] = useState<number | undefined>(undefined);
     const [mentorResultFilter, setMentorResultFilter] = useState<MentorResultFilter>("all");
-    const [expandedMentorIds, setExpandedMentorIds] = useState<Set<number>>(new Set());
+    const [expandedProfileMentorIds, setExpandedProfileMentorIds] = useState<Set<number>>(new Set());
+    const [expandedPaperMentorIds, setExpandedPaperMentorIds] = useState<Set<number>>(new Set());
     const [privateMentorSaving, setPrivateMentorSaving] = useState(false);
     const [privateMentorMsg, setPrivateMentorMsg] = useState("");
     const [customMentorChineseName, setCustomMentorChineseName] = useState("");
@@ -191,18 +272,42 @@ const SearchScreen = () => {
     const [activeSearchState, setActiveSearchState] = useState<SearchQueryState>(DEFAULT_SEARCH_QUERY_STATE);
 
     const activeSearchStateRef = useRef<SearchQueryState>(DEFAULT_SEARCH_QUERY_STATE);
-    const expandedMentorIdsRef = useRef<Set<number>>(new Set());
+    const expandedProfileMentorIdsRef = useRef<Set<number>>(new Set());
+    const expandedPaperMentorIdsRef = useRef<Set<number>>(new Set());
     const navigationIntentRef = useRef<SearchNavigationIntent>("init");
+    const navigationTransitionIdRef = useRef(0);
     const hasLoadedRouteStateRef = useRef(false);
-    const pendingPushRestoreRef = useRef<{ targetEntryKey?: string }>({});
+    const pendingPushRestoreRef = useRef<{ transitionId?: number; targetEntryKey?: string }>({});
     const blockAutoPersistRef = useRef(false);
+    const hasCheckedCrossPageRestoreRef = useRef(false);
+
+    if (!hasCheckedCrossPageRestoreRef.current) {
+        hasCheckedCrossPageRestoreRef.current = true;
+
+        if (typeof window !== "undefined" && pendingSearchPopRestore === undefined) {
+            const pendingMentorSearchReturn = readPendingMentorSearchReturn();
+            const currentEntryKey = getWindowHistoryEntryKey();
+
+            if (pendingMentorSearchReturn?.sourceEntryKey === currentEntryKey) {
+                const transitionId = navigationTransitionIdRef.current + 1;
+                navigationTransitionIdRef.current = transitionId;
+                blockAutoPersistRef.current = true;
+                pendingSearchPopRestore = {
+                    entryKey: currentEntryKey,
+                    transitionId,
+                };
+                navigationIntentRef.current = "pop";
+            }
+        }
+    }
 
     const resetResults = (clearExpandedMentors = true) => {
         setErrorMessage("");
         setMentors([]);
         setPapers([]);
         if (clearExpandedMentors) {
-            setExpandedMentorIds(new Set());
+            setExpandedProfileMentorIds(new Set());
+            setExpandedPaperMentorIds(new Set());
         }
         setCurrentPage(1);
         setTotalResults(0);
@@ -250,17 +355,7 @@ const SearchScreen = () => {
     };
 
     const getHistoryEntryKey = () => {
-        if (typeof window === "undefined") {
-            return INITIAL_HISTORY_ENTRY_KEY;
-        }
-
-        const historyState = window.history.state as { key?: unknown } | undefined;
-        const historyKey = historyState?.key;
-        if (typeof historyKey === "string" && historyKey.trim() !== "") {
-            return historyKey;
-        }
-
-        return INITIAL_HISTORY_ENTRY_KEY;
+        return getWindowHistoryEntryKey();
     };
 
     const readHistoryViewState = (entryKey: string) => {
@@ -275,15 +370,21 @@ const SearchScreen = () => {
             }
 
             const parsedValue = JSON.parse(rawValue) as Partial<SearchHistoryViewState>;
-            const expandedIds = Array.isArray(parsedValue.expandedMentorIds)
-                ? parsedValue.expandedMentorIds
-                    .map((value) => Number(value))
-                    .filter((value) => Number.isInteger(value) && value > 0)
+            const legacyExpandedIds = Array.isArray(parsedValue.expandedMentorIds)
+                ? normalizeHistoryMentorIds(parsedValue.expandedMentorIds)
                 : [];
+            const expandedProfileIds = Array.isArray(parsedValue.expandedProfileMentorIds)
+                ? normalizeHistoryMentorIds(parsedValue.expandedProfileMentorIds)
+                : legacyExpandedIds;
+            const expandedPaperIds = Array.isArray(parsedValue.expandedPaperMentorIds)
+                ? normalizeHistoryMentorIds(parsedValue.expandedPaperMentorIds)
+                : legacyExpandedIds;
 
             return {
                 scrollY: Number.isFinite(parsedValue.scrollY) ? Number(parsedValue.scrollY) : 0,
-                expandedMentorIds: expandedIds,
+                expandedProfileMentorIds: expandedProfileIds,
+                expandedPaperMentorIds: expandedPaperIds,
+                expandedMentorIds: Array.from(new Set([...expandedProfileIds, ...expandedPaperIds])),
             } satisfies SearchHistoryViewState;
         }
         catch {
@@ -318,12 +419,14 @@ const SearchScreen = () => {
 
         const nextViewState = {
             scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
-            expandedMentorIds: Array.from(expandedMentorIdsRef.current),
+            expandedProfileMentorIds: Array.from(expandedProfileMentorIdsRef.current),
+            expandedPaperMentorIds: Array.from(expandedPaperMentorIdsRef.current),
         };
-        writeHistoryViewState(entryKey, {
-            scrollY: nextViewState.scrollY,
-            expandedMentorIds: nextViewState.expandedMentorIds,
-        });
+        writeHistoryViewState(entryKey, buildSearchHistoryViewState(
+            nextViewState.scrollY,
+            nextViewState.expandedProfileMentorIds,
+            nextViewState.expandedPaperMentorIds,
+        ));
     }, []);
 
     const scrollWindowTo = useCallback((scrollY: number) => {
@@ -437,43 +540,64 @@ const SearchScreen = () => {
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
             const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
-            setExpandedMentorIds(new Set());
+            const transitionId = pendingPushRestoreRef.current.transitionId ?? navigationTransitionIdRef.current;
+            setExpandedProfileMentorIds(new Set());
+            setExpandedPaperMentorIds(new Set());
+            writeHistoryViewState(targetEntryKey, buildSearchHistoryViewState(0, [], []));
             scheduleAfterPaint(() => {
                 scrollWindowTo(0);
-                writeHistoryViewState(targetEntryKey, {
-                    scrollY: 0,
-                    expandedMentorIds: [],
-                });
                 scheduleAfterPaint(() => {
+                    if (navigationTransitionIdRef.current !== transitionId) {
+                        return;
+                    }
+                    writeHistoryViewState(targetEntryKey, buildSearchHistoryViewState(0, [], []));
                     blockAutoPersistRef.current = false;
-                    persistCurrentViewState(targetEntryKey, true);
+                    if (pendingPushRestoreRef.current.transitionId === transitionId) {
+                        pendingPushRestoreRef.current = {};
+                    }
                 });
             });
-            pendingPushRestoreRef.current = {};
             return;
         }
 
         if (intent === "pop") {
             const entryKey = pendingSearchPopRestore?.entryKey ?? getHistoryEntryKey();
+            const transitionId = pendingSearchPopRestore?.transitionId ?? navigationTransitionIdRef.current;
             const savedViewState = readHistoryViewState(entryKey);
-            const restoredExpandedIds = state.mode === "mentor"
-                ? new Set(savedViewState?.expandedMentorIds ?? [])
+            const restoredProfileExpandedIds = state.mode === "mentor"
+                ? new Set(savedViewState?.expandedProfileMentorIds ?? [])
                 : new Set<number>();
-            setExpandedMentorIds(restoredExpandedIds);
+            const restoredPaperExpandedIds = state.mode === "mentor"
+                ? new Set(savedViewState?.expandedPaperMentorIds ?? [])
+                : new Set<number>();
+            setExpandedProfileMentorIds(restoredProfileExpandedIds);
+            setExpandedPaperMentorIds(restoredPaperExpandedIds);
             scheduleAfterPaint(() => {
                 scrollWindowTo(savedViewState?.scrollY ?? 0);
                 scheduleAfterPaint(() => {
+                    if (navigationTransitionIdRef.current !== transitionId) {
+                        return;
+                    }
                     blockAutoPersistRef.current = false;
                     persistCurrentViewState(entryKey, true);
-                    pendingSearchPopRestore = undefined;
+                    if (readPendingMentorSearchReturn()?.sourceEntryKey === entryKey) {
+                        clearPendingMentorSearchReturn();
+                    }
+                    if (pendingSearchPopRestore?.transitionId === transitionId) {
+                        pendingSearchPopRestore = undefined;
+                    }
                 });
             });
             return;
         }
 
         blockAutoPersistRef.current = false;
-        if (state.mode !== "mentor" && expandedMentorIdsRef.current.size > 0) {
-            setExpandedMentorIds(new Set());
+        if (
+            state.mode !== "mentor" &&
+            (expandedProfileMentorIdsRef.current.size > 0 || expandedPaperMentorIdsRef.current.size > 0)
+        ) {
+            setExpandedProfileMentorIds(new Set());
+            setExpandedPaperMentorIds(new Set());
         }
     }, [persistCurrentViewState, scheduleAfterPaint, scrollWindowTo]);
 
@@ -546,8 +670,11 @@ const SearchScreen = () => {
             return;
         }
 
+        const transitionId = navigationTransitionIdRef.current + 1;
+        navigationTransitionIdRef.current = transitionId;
         pendingSearchPopRestore = undefined;
-        expandedMentorIdsRef.current = new Set(expandedMentorIds);
+        expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
+        expandedPaperMentorIdsRef.current = new Set(expandedPaperMentorIds);
         const sourceEntryKey = getHistoryEntryKey();
         persistCurrentViewState(sourceEntryKey, true);
         blockAutoPersistRef.current = true;
@@ -559,13 +686,22 @@ const SearchScreen = () => {
             { shallow: true, scroll: false },
         );
         pendingPushRestoreRef.current = {
+            transitionId,
             targetEntryKey: getHistoryEntryKey(),
         };
 
         if (!areSearchStatesEqual(activeSearchStateRef.current, nextState)) {
             await loadSearchState(nextState, "push");
         }
-    }, [areSearchStatesEqual, expandedMentorIds, loadSearchState, persistCurrentViewState, refreshCurrentSearch, router]);
+    }, [
+        areSearchStatesEqual,
+        expandedPaperMentorIds,
+        expandedProfileMentorIds,
+        loadSearchState,
+        persistCurrentViewState,
+        refreshCurrentSearch,
+        router,
+    ]);
 
     const switchMode = (nextMode: SearchMode) => {
         if (nextMode === mode) {
@@ -618,33 +754,91 @@ const SearchScreen = () => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
 
+    const fetchFollowedMentors = useCallback(async () => {
+        if (!canFollowMentor) {
+            setFollowedMentorIds(new Set());
+            return;
+        }
+
+        try {
+            const res = await request<{ mentors?: SearchMentorResult[] }>(
+                "/api/follow/mentors",
+                "GET",
+                true,
+            );
+            const list = Array.isArray(res.mentors) ? res.mentors : [];
+            setFollowedMentorIds(new Set(list.map((mentor) => mentor.id)));
+        }
+        catch {
+            setFollowedMentorIds(new Set());
+        }
+    }, [canFollowMentor]);
+
+    useEffect(() => {
+        void fetchFollowedMentors();
+    }, [fetchFollowedMentors]);
+
+    const toggleMentorFollow = useCallback(async (mentorId: number) => {
+        if (!canFollowMentor) {
+            return;
+        }
+
+        const wasFollowed = followedMentorIds.has(mentorId);
+        setFollowToggleMentorId(mentorId);
+        setErrorMessage("");
+
+        try {
+            const res = await request<{ followed?: boolean }>(
+                `/api/follow/mentors/${mentorId}`,
+                wasFollowed ? "DELETE" : "POST",
+                true,
+            );
+            setFollowedMentorIds((prev) => {
+                const next = new Set(prev);
+                if (Boolean(res.followed)) {
+                    next.add(mentorId);
+                }
+                else {
+                    next.delete(mentorId);
+                }
+                return next;
+            });
+        }
+        catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setFollowToggleMentorId(undefined);
+        }
+    }, [canFollowMentor, followedMentorIds]);
+
     useEffect(() => {
         activeSearchStateRef.current = activeSearchState;
     }, [activeSearchState]);
 
     useEffect(() => {
-        expandedMentorIdsRef.current = expandedMentorIds;
-    }, [expandedMentorIds]);
+        expandedProfileMentorIdsRef.current = expandedProfileMentorIds;
+        expandedPaperMentorIdsRef.current = expandedPaperMentorIds;
+    }, [expandedPaperMentorIds, expandedProfileMentorIds]);
 
     useEffect(() => {
         if (typeof window === "undefined") {
             return;
         }
 
-        const markPendingPopRestore = (entryKey: string) => {
-            blockAutoPersistRef.current = true;
-            pendingSearchPopRestore = {
-                entryKey,
-            };
-            navigationIntentRef.current = "pop";
-        };
-
         const handlePopState = () => {
             if (pendingSearchPopRestore !== undefined) {
                 return;
             }
 
-            markPendingPopRestore(getHistoryEntryKey());
+            const transitionId = navigationTransitionIdRef.current + 1;
+            navigationTransitionIdRef.current = transitionId;
+            blockAutoPersistRef.current = true;
+            pendingSearchPopRestore = {
+                entryKey: getHistoryEntryKey(),
+                transitionId,
+            };
+            navigationIntentRef.current = "pop";
         };
 
         const hasBeforePopState = typeof router.beforePopState === "function";
@@ -654,7 +848,14 @@ const SearchScreen = () => {
                 const entryKey = typeof stateLike?.key === "string" && stateLike.key.trim() !== ""
                     ? stateLike.key
                     : getHistoryEntryKey();
-                markPendingPopRestore(entryKey);
+                const transitionId = navigationTransitionIdRef.current + 1;
+                navigationTransitionIdRef.current = transitionId;
+                blockAutoPersistRef.current = true;
+                pendingSearchPopRestore = {
+                    entryKey,
+                    transitionId,
+                };
+                navigationIntentRef.current = "pop";
                 return true;
             });
         }
@@ -685,7 +886,7 @@ const SearchScreen = () => {
 
     useEffect(() => {
         persistCurrentViewState();
-    }, [expandedMentorIds, persistCurrentViewState]);
+    }, [expandedPaperMentorIds, expandedProfileMentorIds, persistCurrentViewState]);
 
     const privateMentorIdSet = useMemo(() => {
         return new Set(privateMentors.map((mentor) => mentor.id));
@@ -848,8 +1049,52 @@ const SearchScreen = () => {
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
-    const toggleMentorExpand = (mentorId: number) => {
-        setExpandedMentorIds((prev) => {
+    const navigateToMentorHomepage = useCallback(async (mentorId: number) => {
+        expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
+        expandedPaperMentorIdsRef.current = new Set(expandedPaperMentorIds);
+        const sourceEntryKey = getHistoryEntryKey();
+        persistCurrentViewState(sourceEntryKey, true);
+        writePendingMentorSearchReturn({
+            mentorId,
+            sourceEntryKey,
+            targetEntryKey: sourceEntryKey,
+            sourcePath: "/search",
+        });
+
+        try {
+            await router.push(`/mentors/${mentorId}`);
+            const targetEntryKey = getHistoryEntryKey();
+            writePendingMentorSearchReturn({
+                mentorId,
+                sourceEntryKey,
+                targetEntryKey,
+                sourcePath: "/search",
+            });
+        }
+        catch {
+            clearPendingMentorSearchReturn();
+        }
+    }, [
+        expandedPaperMentorIds,
+        expandedProfileMentorIds,
+        persistCurrentViewState,
+        router,
+    ]);
+
+    const handleMentorHomepageLinkClick = useCallback((
+        event: MouseEvent<HTMLAnchorElement>,
+        mentorId: number,
+    ) => {
+        if (isModifiedNavigationClick(event)) {
+            return;
+        }
+
+        event.preventDefault();
+        void navigateToMentorHomepage(mentorId);
+    }, [navigateToMentorHomepage]);
+
+    const toggleMentorProfileExpand = (mentorId: number) => {
+        setExpandedProfileMentorIds((prev) => {
             const next = new Set(prev);
             if (next.has(mentorId)) {
                 next.delete(mentorId);
@@ -857,11 +1102,37 @@ const SearchScreen = () => {
             else {
                 next.add(mentorId);
             }
-            expandedMentorIdsRef.current = next;
-            writeHistoryViewState(getHistoryEntryKey(), {
-                scrollY: typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
-                expandedMentorIds: Array.from(next),
-            });
+            expandedProfileMentorIdsRef.current = next;
+            writeHistoryViewState(
+                getHistoryEntryKey(),
+                buildSearchHistoryViewState(
+                    typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
+                    next,
+                    expandedPaperMentorIdsRef.current,
+                ),
+            );
+            return next;
+        });
+    };
+
+    const toggleMentorPaperExpand = (mentorId: number) => {
+        setExpandedPaperMentorIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(mentorId)) {
+                next.delete(mentorId);
+            }
+            else {
+                next.add(mentorId);
+            }
+            expandedPaperMentorIdsRef.current = next;
+            writeHistoryViewState(
+                getHistoryEntryKey(),
+                buildSearchHistoryViewState(
+                    typeof window === "undefined" || !Number.isFinite(window.scrollY) ? 0 : window.scrollY,
+                    expandedProfileMentorIdsRef.current,
+                    next,
+                ),
+            );
             return next;
         });
     };
@@ -1171,7 +1442,7 @@ const SearchScreen = () => {
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto", padding: "0 12px", boxSizing: "border-box" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto", boxSizing: "border-box" }}>
             {mentorDeleteTarget !== undefined && (
                 <div
                     aria-label="删除导师确认弹窗遮罩"
@@ -1798,8 +2069,6 @@ const SearchScreen = () => {
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
-                            showPrevious={false}
-                            nextLabel="Next"
                             centered
                             controlHeight={33.77}
                             jumpInputWidth={120}
@@ -1817,57 +2086,167 @@ const SearchScreen = () => {
                     )}
 
                     {mentors.map((mentor) => {
-                        const isExpanded = expandedMentorIds.has(mentor.id);
+                        const isProfileExpanded = expandedProfileMentorIds.has(mentor.id);
+                        const isPaperExpanded = expandedPaperMentorIds.has(mentor.id);
                         const profileText = mentor.profile || "暂无导师画像";
                         const profilePreview = profileText.length > PROFILE_PREVIEW_LENGTH
                             ? `${profileText.slice(0, PROFILE_PREVIEW_LENGTH)}...`
                             : profileText;
-                        const visiblePaperTitles = isExpanded
+                        const visiblePaperTitles = isPaperExpanded
                             ? mentor.paperTitles
                             : mentor.paperTitles.slice(0, PAPER_TITLES_PREVIEW_COUNT);
-                        const hasMoreDetails = profileText.length > PROFILE_PREVIEW_LENGTH || mentor.paperTitles.length > PAPER_TITLES_PREVIEW_COUNT;
+                        const hasProfileMore = profileText.length > PROFILE_PREVIEW_LENGTH;
+                        const hasPaperMore = mentor.paperTitles.length > PAPER_TITLES_PREVIEW_COUNT;
+
+                        const isFollowed = followedMentorIds.has(mentor.id);
 
                         return (
                         <div
                             key={mentor.id}
                             style={{ position: "relative", padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
-                            {isLoggedIn && privateMentorIdSet.has(mentor.id) && (
-                                <button
-                                    onClick={() => openDeleteMentorDialog(mentor)}
-                                    disabled={adminSaving}
+                            {(canFollowMentor || (isLoggedIn && privateMentorIdSet.has(mentor.id))) && (
+                                <div
                                     style={{
                                         position: "absolute",
                                         top: 8,
                                         right: 8,
-                                        border: "1px solid #cf222e",
-                                        borderRadius: 8,
-                                        background: "#ffffff",
-                                        color: "#cf222e",
-                                        fontWeight: 600,
-                                        padding: "4px 12px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        zIndex: 1,
                                     }}
                                 >
-                                    删除
-                                </button>
+                                    {canFollowMentor && (
+                                        <FollowToggleButton
+                                            className="searchMentorFollowButton"
+                                            followed={isFollowed}
+                                            followedLabel="已关注"
+                                            loading={followToggleMentorId === mentor.id}
+                                            onClick={() => void toggleMentorFollow(mentor.id)}
+                                            style={buildSearchMentorFollowButtonStyle(isFollowed)}
+                                        />
+                                    )}
+                                    {isLoggedIn && privateMentorIdSet.has(mentor.id) && (
+                                        <button
+                                            onClick={() => openDeleteMentorDialog(mentor)}
+                                            disabled={adminSaving}
+                                            style={{
+                                                border: "1px solid #cf222e",
+                                                borderRadius: 8,
+                                                background: "#ffffff",
+                                                color: "#cf222e",
+                                                fontWeight: 600,
+                                                padding: "4px 12px",
+                                            }}
+                                        >
+                                            删除
+                                        </button>
+                                    )}
+                                </div>
                             )}
-                            <h3 style={{ margin: "0 0 8px", fontSize: "17.5px" }}>
-                                {mentor.Chinese_name}
+                            <h3 style={{ margin: "0 0 8px", fontSize: "20px" }}>
+                                <Link
+                                    href={`/mentors/${mentor.id}`}
+                                    className="searchMentorNameLink"
+                                    onClick={(event) => handleMentorHomepageLinkClick(event, mentor.id)}
+                                >
+                                    {mentor.Chinese_name}
+                                </Link>
                                 {privateMentorIdSet.has(mentor.id) && (
                                     <span aria-hidden="true" style={{ marginLeft: 8, fontSize: 12, color: "#555" }}>我的私有导师</span>
                                 )}
                             </h3>
                             {mentor.English_name && (
-                                <p style={{ margin: "4px 0", fontSize: "14px" }}>英文名：{mentor.English_name}</p>
+                                <p className="searchMentorMetaRow">
+                                    <img
+                                        src="/English_Name.ico"
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="searchMentorMetaIcon"
+                                    />
+                                    <span className="searchMentorMetaSrOnly">英文名</span>
+                                    <span className="searchMentorMetaText">{mentor.English_name}</span>
+                                </p>
                             )}
-                            <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                                研究方向：{mentor.research_direction || "暂无研究方向"}
+                            <p className="searchMentorMetaRow">
+                                <img
+                                    src="/Reseach_Direction.ico"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="searchMentorMetaIcon"
+                                />
+                                <span className="searchMentorMetaSrOnly">研究方向</span>
+                                <span className="searchMentorMetaText">{mentor.research_direction || "暂无研究方向"}</span>
                             </p>
-                            <p style={{ margin: "4px 0", fontSize: "14px" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
-                            <p style={{ margin: "4px 0", fontSize: "14px" }}>导师画像：{isExpanded ? profileText : profilePreview}</p>
-                            <button onClick={() => router.push(`/mentors/${mentor.id}`)} style={{ fontSize: "14px" }}>
-                                查看导师主页
-                            </button>
+                            <p className="searchMentorMetaRow">
+                                <img
+                                    src="/Email.ico"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="searchMentorMetaIcon"
+                                />
+                                <span className="searchMentorMetaSrOnly">邮箱</span>
+                                <span className="searchMentorMetaText">{mentor.email || "暂无邮箱"}</span>
+                            </p>
+                            <p className="searchMentorMetaRow">
+                                <img
+                                    src="/Mentor_Profile.ico"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="searchMentorMetaIcon"
+                                />
+                                <span className="searchMentorMetaSrOnly">导师画像</span>
+                                {isProfileExpanded ? (
+                                    <span className="searchMentorMetaText searchMentorMetaTextExpanded">
+                                        <span className="searchMentorProfileFullText">{profileText}</span>
+                                        {hasProfileMore && (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleMentorProfileExpand(mentor.id)}
+                                                className="searchMentorInlineLinkButton searchMentorInlineLinkButtonBlock"
+                                                data-testid={`mentor-profile-toggle-${mentor.id}`}
+                                            >
+                                                收起
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => void navigateToMentorHomepage(mentor.id)}
+                                            className="searchMentorInlineLinkButton searchMentorInlineLinkButtonSpaced"
+                                            data-testid={`mentor-homepage-button-${mentor.id}`}
+                                        >
+                                            前往主页
+                                        </button>
+                                    </span>
+                                ) : (
+                                    <span className="searchMentorMetaText">
+                                        {profilePreview}
+                                        {hasProfileMore && (
+                                            <>
+                                                {" "}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleMentorProfileExpand(mentor.id)}
+                                                    className="searchMentorInlineLinkButton"
+                                                    data-testid={`mentor-profile-toggle-${mentor.id}`}
+                                                >
+                                                    展开
+                                                </button>
+                                            </>
+                                        )}
+                                        {" "}
+                                        <button
+                                            type="button"
+                                            onClick={() => void navigateToMentorHomepage(mentor.id)}
+                                            className={`searchMentorInlineLinkButton${hasProfileMore ? " searchMentorInlineLinkButtonSpaced" : ""}`}
+                                            data-testid={`mentor-homepage-button-${mentor.id}`}
+                                        >
+                                            前往主页
+                                        </button>
+                                    </span>
+                                )}
+                            </p>
                             <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                             <ul style={{ margin: 0, paddingLeft: 0, fontSize: "14px", listStyle: "none" }}>
                                 {visiblePaperTitles.map((title) => (
@@ -1889,15 +2268,19 @@ const SearchScreen = () => {
                                         </button>
                                     </li>
                                 ))}
+                                {hasPaperMore && (
+                                    <li className="searchMentorPaperFooter">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleMentorPaperExpand(mentor.id)}
+                                            className="searchMentorInlineLinkButton searchMentorInlineLinkButtonPaperFooter"
+                                            data-testid={`mentor-paper-toggle-${mentor.id}`}
+                                        >
+                                            {isPaperExpanded ? "收起" : "展开"}
+                                        </button>
+                                    </li>
+                                )}
                             </ul>
-                            {hasMoreDetails && (
-                                <button
-                                    onClick={() => toggleMentorExpand(mentor.id)}
-                                    style={{ marginTop: 8, fontSize: "14px" }}
-                                >
-                                    {isExpanded ? "收起" : "查看更多"}
-                                </button>
-                            )}
                             {isAdmin && (
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                     <button onClick={() => beginEditMentor(mentor)} disabled={adminSaving}>修改导师</button>
@@ -1912,8 +2295,6 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
-                        showPrevious={false}
-                        nextLabel="Next"
                         centered
                         controlHeight={33.77}
                         jumpInputWidth={120}
@@ -1941,8 +2322,6 @@ const SearchScreen = () => {
                             currentPage={currentPage}
                             totalPages={totalPages}
                             loading={loading}
-                            showPrevious={false}
-                            nextLabel="Next"
                             centered
                             controlHeight={33.77}
                             jumpInputWidth={120}
@@ -2061,8 +2440,6 @@ const SearchScreen = () => {
                         currentPage={currentPage}
                         totalPages={totalPages}
                         loading={loading}
-                        showPrevious={false}
-                        nextLabel="Next"
                         centered
                         controlHeight={33.77}
                         jumpInputWidth={120}
@@ -2116,6 +2493,119 @@ const SearchScreen = () => {
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
+                }
+
+                :global(a.searchMentorNameLink) {
+                    color: #000000;
+                    text-decoration: none;
+                    transition: color 0.16s ease;
+                }
+
+                :global(a.searchMentorNameLink:hover),
+                :global(a.searchMentorNameLink:focus-visible) {
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    outline: none;
+                }
+
+                .searchMentorMetaRow {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 6px;
+                    margin: 4px 0;
+                    font-size: 14px;
+                }
+
+                .searchMentorMetaIcon {
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
+                    display: block;
+                    flex: 0 0 auto;
+                    margin-top: 1px;
+                }
+
+                .searchMentorMetaText {
+                    min-width: 0;
+                    white-space: normal;
+                    word-break: break-word;
+                }
+
+                .searchMentorMetaTextExpanded {
+                    display: inline;
+                }
+
+                .searchMentorProfileFullText {
+                    display: block;
+                }
+
+                .searchMentorInlineLinkButton {
+                    display: inline;
+                    margin: 0;
+                    padding: 0;
+                    border: 0;
+                    background: transparent;
+                    appearance: none;
+                    -webkit-appearance: none;
+                    color: rgb(8, 109, 177);
+                    font: inherit;
+                    text-decoration: none;
+                    cursor: pointer;
+                }
+
+                .searchMentorInlineLinkButton:hover,
+                .searchMentorInlineLinkButton:focus-visible {
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                    outline: none;
+                }
+
+                .searchMentorInlineLinkButtonBlock {
+                    display: inline-block;
+                    margin-top: 0;
+                }
+
+                .searchMentorInlineLinkButtonSpaced {
+                    margin-left: 8px;
+                }
+
+                .searchMentorInlineLinkButtonPaperFooter {
+                    display: inline-block;
+                    margin-top: 6px;
+                    margin-left: 0;
+                }
+
+                :global(button.searchMentorFollowButton:hover:not(:disabled)),
+                :global(button.searchMentorFollowButton:focus-visible) {
+                    transform: none;
+                    box-shadow: none;
+                }
+
+                :global(button.searchMentorFollowButton:focus-visible) {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
+                }
+
+                :global(button.searchMentorFollowButton:disabled) {
+                    opacity: 1;
+                    cursor: not-allowed;
+                }
+
+                .searchMentorPaperFooter {
+                    padding-left: 0;
+                    margin-top: 0;
+                }
+
+                .searchMentorMetaSrOnly {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
                 }
 
                 .searchTimelinePaperHeaderRow {
@@ -2211,58 +2701,12 @@ const SearchScreen = () => {
                     font: inherit;
                 }
 
-                :global(button.searchMentorPaperLinkButton) {
-                    display: inline-flex;
-                    align-items: flex-start;
-                    gap: 6px;
-                    border: none;
-                    background: transparent;
-                    padding: 0;
-                    color: rgb(8, 109, 177);
-                    transition: color 0.16s ease;
-                    cursor: pointer;
-                    font: inherit;
-                    text-align: left;
-                    white-space: normal;
-                }
-
-                :global(button.searchMentorPaperLinkButton:hover),
-                :global(button.searchMentorPaperLinkButton:focus-visible) {
-                    color: rgb(45, 45, 45);
-                    outline: none;
-                }
-
-                :global(span.searchMentorPaperLinkText) {
-                    color: inherit;
-                    text-decoration: none;
-                    text-decoration-thickness: 1px;
-                    text-underline-offset: 2px;
-                    text-decoration-color: transparent;
-                    transition: text-decoration-color 0.16s ease;
-                }
-
-                :global(button.searchMentorPaperLinkButton:hover span.searchMentorPaperLinkText),
-                :global(button.searchMentorPaperLinkButton:focus-visible span.searchMentorPaperLinkText) {
-                    text-decoration-line: underline;
-                    text-decoration-style: dashed;
-                    text-decoration-color: currentColor;
-                }
-
                 :global(img.searchTimelineMentorIcon) {
                     width: 14px;
                     height: 14px;
                     object-fit: contain;
                     display: block;
                     flex: 0 0 auto;
-                }
-
-                :global(img.searchMentorPaperLinkIcon) {
-                    width: 16px;
-                    height: 16px;
-                    object-fit: contain;
-                    display: block;
-                    flex: 0 0 auto;
-                    margin-top: 1px;
                 }
 
                 @media (max-width: 820px) {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useRouter } from "next/router";
 
 import { request } from "../utils/network";
@@ -14,51 +14,81 @@ jest.mock("../utils/network", () => ({
 
 describe("TimelinePage LaTeX rendering", () => {
     const mockPush = jest.fn();
+    const createPaper = (id, overrides = {}) => ({
+        id,
+        title: `Compression Paper ${id}`,
+        abstract: "普通摘要。",
+        tldr: "",
+        arxiv_url: "https://arxiv.org/abs/1234.5678",
+        publish_date: `2026-05-${String((id % 28) + 1).padStart(2, "0")}`,
+        author_names: "Alice, Bob",
+        mentor_ids: [1, 0],
+        subjects: "cs.LG",
+        ...overrides,
+    });
+    const timelineResponse = (papers, overrides = {}) => ({
+        direction: "机器学习",
+        offset: 0,
+        limit: 6,
+        total_papers: papers.length,
+        has_previous: false,
+        has_next: false,
+        papers,
+        ...overrides,
+    });
+    const createDeferred = () => {
+        let resolve;
+        let reject;
+        const promise = new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+        });
+        return { promise, resolve, reject };
+    };
 
     beforeEach(() => {
         mockPush.mockReset();
         request.mockReset();
+        Object.defineProperty(window, "scrollY", {
+            configurable: true,
+            writable: true,
+            value: 0,
+        });
+        window.scrollBy = jest.fn();
+        window.scrollTo = jest.fn();
+        Element.prototype.scrollIntoView = jest.fn();
         useRouter.mockReturnValue({
             push: mockPush,
         });
     });
 
+    const mockTimelineOverview = (overrides = {}) => ({
+        directions: [
+            { direction: "机器学习", paper_count: 30 },
+            { direction: "自然语言处理", paper_count: 8 },
+        ],
+        default_direction: "机器学习",
+        page_size_default: 20,
+        page_size_max: 100,
+        ...overrides,
+    });
+
     const mockTimelineApis = ({ summaryText }) => {
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
-                return {
-                    directions: [
-                        { direction: "机器学习", paper_count: 1 },
-                    ],
-                    default_direction: "机器学习",
-                    page_size_default: 20,
-                    page_size_max: 100,
-                };
+                return mockTimelineOverview();
             }
 
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&page=1&page_size=20") {
-                return {
-                    direction: "机器学习",
-                    page: 1,
-                    page_size: 20,
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "Compression Paper",
+                        abstract: summaryText,
+                    }),
+                ], {
                     total_papers: 1,
-                    total_pages: 1,
-                    has_previous: false,
-                    has_next: false,
-                    papers: [
-                        {
-                            id: 1,
-                            title: "Compression Paper",
-                            abstract: summaryText,
-                            tldr: "",
-                            arxiv_url: "https://arxiv.org/abs/1234.5678",
-                            publish_date: "2026-05-01",
-                            author_names: "Alice, Bob",
-                            mentor_ids: [1, 0],
-                            subjects: "cs.LG",
-                        },
-                    ],
-                };
+                    limit: 6,
+                });
             }
 
             return {};
@@ -68,45 +98,245 @@ describe("TimelinePage LaTeX rendering", () => {
     const mockTimelinePaperApi = (paperOverrides = {}) => {
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
-                return {
-                    directions: [
-                        { direction: "机器学习", paper_count: 1 },
-                    ],
-                    default_direction: "机器学习",
-                    page_size_default: 20,
-                    page_size_max: 100,
-                };
+                return mockTimelineOverview();
             }
 
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&page=1&page_size=20") {
-                return {
-                    direction: "机器学习",
-                    page: 1,
-                    page_size: 20,
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "Compression Paper",
+                        ...paperOverrides,
+                    }),
+                ], {
                     total_papers: 1,
-                    total_pages: 1,
-                    has_previous: false,
-                    has_next: false,
-                    papers: [
-                        {
-                            id: 1,
-                            title: "Compression Paper",
-                            abstract: "普通摘要。",
-                            tldr: "",
-                            arxiv_url: "https://arxiv.org/abs/1234.5678",
-                            publish_date: "2026-05-01",
-                            author_names: "Alice, Bob",
-                            mentor_ids: [1, 0],
-                            subjects: "cs.LG",
-                            ...paperOverrides,
-                        },
-                    ],
-                };
+                    limit: 6,
+                });
             }
 
             return {};
         });
     };
+
+    const simulateViewportScroll = (scrollTop) => {
+        const viewport = screen.getByTestId("timeline-feed-viewport");
+        Object.defineProperty(viewport, "scrollTop", {
+            configurable: true,
+            writable: true,
+            value: scrollTop,
+        });
+        Object.defineProperty(viewport, "clientHeight", {
+            configurable: true,
+            value: 400,
+        });
+        Object.defineProperty(viewport, "scrollHeight", {
+            configurable: true,
+            value: 1200,
+        });
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
+    };
+
+    it("loads the first 6 papers via offset-limit and removes old pagination controls", async () => {
+        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 1));
+        const initialDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return initialDeferred.promise;
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        expect(await screen.findByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
+        await act(async () => {
+            initialDeferred.resolve(timelineResponse(firstBatch, {
+                total_papers: 30,
+                has_next: true,
+            }));
+        });
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+
+        expect(request).toHaveBeenCalledWith("/api/timeline", "GET", false);
+        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6", "GET", false);
+        expect(screen.queryByRole("button", { name: "首页" })).toBeNull();
+        expect(screen.getByText("当前显示第 1-6 篇")).toBeInTheDocument();
+    });
+
+    it("renders the timeline shell skeletons before directions and papers resolve", async () => {
+        const overviewDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return overviewDeferred.promise;
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        expect(screen.getByText("论文时间线")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-direction-skeletons")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
+        expect(screen.queryByText("当前研究方向下暂无论文数据。")).toBeNull();
+
+        await act(async () => {
+            overviewDeferred.resolve(mockTimelineOverview());
+        });
+
+        await screen.findByRole("button", { name: /机器学习/ });
+    });
+
+    it("removes the shell skeletons after the first feed batch resolves", async () => {
+        const initialDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return initialDeferred.promise;
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        expect(await screen.findByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
+        expect(await screen.findByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
+
+        await act(async () => {
+            initialDeferred.resolve(timelineResponse([
+                createPaper(1, { title: "Compression Paper" }),
+            ], {
+                total_papers: 1,
+                limit: 6,
+            }));
+        });
+
+        await screen.findByRole("heading", { name: "Compression Paper" });
+        await waitFor(() => {
+            expect(screen.queryByTestId("timeline-feed-header-skeleton")).toBeNull();
+            expect(screen.queryByTestId("timeline-feed-preview-skeletons")).toBeNull();
+        });
+        expect(screen.queryByText("当前研究方向下暂无论文数据。")).toBeNull();
+    });
+
+    it("loads the previous 5 papers immediately after the user scrolls upward to the top of the feed viewport", async () => {
+        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 6));
+        const previousBatch = Array.from({ length: 5 }, (_, idx) => createPaper(idx + 1));
+        const previousDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview({
+                    default_direction: "自然语言处理",
+                });
+            }
+
+            if (url === "/api/timeline?direction=%E8%87%AA%E7%84%B6%E8%AF%AD%E8%A8%80%E5%A4%84%E7%90%86&offset=0&limit=6") {
+                return {
+                    direction: "自然语言处理",
+                    offset: 0,
+                    limit: 6,
+                    total_papers: 8,
+                    has_previous: false,
+                    has_next: true,
+                    papers: Array.from({ length: 6 }, (_, idx) => createPaper(idx + 31, {
+                        title: `NLP Paper ${idx + 1}`,
+                    })),
+                };
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return timelineResponse(firstBatch, {
+                    offset: 5,
+                    limit: 6,
+                    total_papers: 30,
+                    has_previous: true,
+                    has_next: true,
+                });
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=5") {
+                return previousDeferred.promise;
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "NLP Paper 1" });
+        fireEvent.click(screen.getByRole("button", { name: /机器学习/ }));
+        await screen.findByRole("heading", { name: /Compression Paper 6/ });
+
+        simulateViewportScroll(200);
+        simulateViewportScroll(50);
+        expect(screen.queryByTestId("timeline-skeleton-top")).toBeNull();
+
+        simulateViewportScroll(0);
+        expect(screen.getByTestId("timeline-skeleton-top")).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=5", "GET", false);
+        await act(async () => {
+            previousDeferred.resolve(timelineResponse(previousBatch, {
+                offset: 0,
+                limit: 5,
+                total_papers: 30,
+                has_previous: false,
+                has_next: true,
+            }));
+        });
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+    });
+
+    it("does not load the previous batch when the feed viewport returns to the top programmatically", async () => {
+        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 6));
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return timelineResponse(firstBatch, {
+                    offset: 5,
+                    limit: 6,
+                    total_papers: 30,
+                    has_previous: true,
+                    has_next: true,
+                });
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: /Compression Paper 6/ });
+
+        simulateViewportScroll(200);
+        const viewport = screen.getByTestId("timeline-feed-viewport");
+
+        fireEvent.click(screen.getByRole("button", { name: /机器学习/ }));
+
+        Object.defineProperty(viewport, "scrollTop", {
+            configurable: true,
+            writable: true,
+            value: 0,
+        });
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
+
+        expect(request).not.toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=5", "GET", false);
+        expect(screen.queryByTestId("timeline-skeleton-top")).toBeNull();
+    });
+
 
     it("renders inline LaTeX in timeline abstracts", async () => {
         mockTimelineApis({
@@ -325,13 +555,12 @@ describe("TimelinePage LaTeX rendering", () => {
                 };
             }
 
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&page=1&page_size=20") {
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
                 return {
                     direction: "机器学习",
-                    page: 1,
-                    page_size: 20,
+                    offset: 0,
+                    limit: 6,
                     total_papers: 1,
-                    total_pages: 1,
                     has_previous: false,
                     has_next: false,
                     papers: [

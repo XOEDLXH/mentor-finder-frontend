@@ -5,6 +5,7 @@ interface FollowToggleButtonProps {
     loading: boolean;
     disabled?: boolean;
     onClick: () => void;
+    followedLabel?: string;
     className?: string;
     style?: CSSProperties;
 }
@@ -14,10 +15,11 @@ const FollowToggleButton = ({
     loading,
     disabled = false,
     onClick,
+    followedLabel,
     className,
     style,
 }: FollowToggleButtonProps) => {
-    const label = followed ? "取消关注" : "关注";
+    const label = followed ? (followedLabel ?? "取消关注") : "关注";
 
     return (
         <button
