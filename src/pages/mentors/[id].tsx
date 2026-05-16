@@ -67,6 +67,14 @@ const buildMentorFollowButtonStyle = (followed: boolean) => ({
     opacity: 1,
 });
 
+const mentorProfileHighlightedHeadings = new Set([
+    "教育背景",
+    "社会兼职",
+    "研究领域",
+    "研究概况",
+    "奖励与荣誉",
+]);
+
 const MentorDetailPage = () => {
     const router = useRouter();
     const { id } = router.query;
@@ -229,6 +237,9 @@ const MentorDetailPage = () => {
         );
     }
 
+    const mentorProfileText = mentor.profile || "暂无导师画像";
+    const mentorProfileLines = mentorProfileText.split(/\r?\n/);
+
     return (
         <div style={mentorPageShellStyle} className="mentorDetailPageWide">
             <div className="mentorDetailLayout">
@@ -307,9 +318,29 @@ const MentorDetailPage = () => {
                             <p style={{ margin: "4px 0", color: "#555" }}>我的私有导师</p>
                         )}
 
-                        <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                            导师画像：{mentor.profile || "暂无导师画像"}
-                        </p>
+                        <div className="mentorDetailSidebarItem" style={{ margin: "4px 0" }}>
+                            <div className="mentorDetailSidebarLabel">
+                                <img src="/Mentor_Profile.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                                <span>导师画像</span>
+                            </div>
+                            <div className="mentorDetailSidebarValue mentorDetailProfileValue">
+                                {mentorProfileLines.map((line, index) => {
+                                    const trimmedLine = line.trim();
+                                    const isHighlightedHeading = mentorProfileHighlightedHeadings.has(trimmedLine);
+
+                                    return (
+                                        <span key={`${index}-${trimmedLine}`} className="mentorDetailProfileLine">
+                                            <span
+                                                className={isHighlightedHeading ? "mentorDetailProfileHeadingHighlight" : undefined}
+                                                data-highlighted-profile-heading={isHighlightedHeading ? "true" : undefined}
+                                            >
+                                                {line === "" ? "\u00A0" : line}
+                                            </span>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
                         <p style={{ margin: "8px 0 4px", fontSize: "14px" }}>相关论文：</p>
                         {mentor.paper_ids.length > 0 ? (
@@ -411,6 +442,10 @@ const MentorDetailPage = () => {
                     width: min(1412px, calc(100% - 32px));
                 }
 
+                .mentorDetailPageWide {
+                    --mentor-detail-sticky-top: 80px;
+                }
+
                 .mentorDetailLayout {
                     display: grid;
                     grid-template-columns: 300px 794px 270px;
@@ -430,6 +465,11 @@ const MentorDetailPage = () => {
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
+                    position: sticky;
+                    top: var(--mentor-detail-sticky-top);
+                    align-self: start;
+                    max-height: calc(100vh - var(--mentor-detail-sticky-top) - 16px);
+                    overflow-y: auto;
                 }
 
                 .mentorDetailSidebarTitle {
@@ -439,6 +479,11 @@ const MentorDetailPage = () => {
 
                 .mentorDetailAiSidebar {
                     font-size: 14px;
+                    position: sticky;
+                    top: var(--mentor-detail-sticky-top);
+                    align-self: start;
+                    max-height: calc(100vh - var(--mentor-detail-sticky-top) - 16px);
+                    overflow-y: auto;
                 }
 
                 .mentorDetailAiSidebar :global(button) {
@@ -495,6 +540,23 @@ const MentorDetailPage = () => {
                     white-space: normal;
                 }
 
+                .mentorDetailProfileValue {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+
+                .mentorDetailProfileLine {
+                    display: block;
+                    white-space: pre-wrap;
+                }
+
+                .mentorDetailProfileHeadingHighlight {
+                    background-color: #fff36d;
+                    padding: 0 2px;
+                    border-radius: 2px;
+                }
+
                 .mentorDetailReturnButton {
                     width: 100%;
                     display: inline-flex;
@@ -522,6 +584,10 @@ const MentorDetailPage = () => {
 
                     .mentorDetailAiSidebar {
                         order: 3;
+                        position: static;
+                        top: auto;
+                        max-height: none;
+                        overflow: visible;
                     }
 
                     .mentorDetailSidebar {
@@ -530,6 +596,10 @@ const MentorDetailPage = () => {
 
                     .mentorDetailRightColumn {
                         order: 2;
+                        position: static;
+                        top: auto;
+                        max-height: none;
+                        overflow: visible;
                     }
                 }
             `}</style>
