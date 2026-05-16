@@ -17,6 +17,7 @@ const MAX_RENDERED_PAPERS = 20;
 const DEFAULT_TIMELINE_LIMIT = 20;
 const DIRECTION_SKELETON_COUNT = 8;
 const INITIAL_FEED_PREVIEW_COUNT = 4;
+const LOAD_MORE_PREVIEW_COUNT = 3;
 const MIN_INITIAL_SKELETON_MS = 800;
 const INITIAL_SKELETON_FADE_MS = 180;
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -40,9 +41,7 @@ const createPreviewBarStyle = (
     width,
     height,
     borderRadius: 999,
-    background: "linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%)",
-    backgroundSize: "200% 100%",
-    animation: "timelinePreviewBarShimmer 1.15s ease-in-out infinite",
+    background: "linear-gradient(180deg, #eef4fb 0%, #e6edf6 100%)",
     position: "relative" as const,
     overflow: "hidden" as const,
     ...extraStyles,
@@ -781,10 +780,20 @@ const TimelinePage = () => {
         </div>
     );
 
-    const renderFeedPreviewCards = () => (
+    const renderFeedPreviewCards = ({
+        count = INITIAL_FEED_PREVIEW_COUNT,
+        keyPrefix = "feed-preview",
+        stackClassName = "timelineFeedPreviewStack",
+        testId = "timeline-feed-preview-skeletons",
+    }: {
+        count?: number;
+        keyPrefix?: string;
+        stackClassName?: string;
+        testId?: string;
+    } = {}) => (
         <div
-            className="timelineFeedPreviewStack"
-            data-testid="timeline-feed-preview-skeletons"
+            className={stackClassName}
+            data-testid={testId}
             style={{
                 display: "flex",
                 flexDirection: "column",
@@ -792,7 +801,7 @@ const TimelinePage = () => {
                 width: "100%",
             }}
         >
-            {createSkeletonKeys(INITIAL_FEED_PREVIEW_COUNT, "feed-preview").map((key) => (
+            {createSkeletonKeys(count, keyPrefix).map((key) => (
                 <article
                     key={key}
                     className="timelineFeedPreviewCard"
@@ -800,11 +809,11 @@ const TimelinePage = () => {
                     style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 14,
-                        minHeight: 206,
-                        padding: 16,
-                        border: "1px solid #ccc",
-                        borderRadius: 8,
+                        gap: 16,
+                        minHeight: 182,
+                        padding: "18px 16px 20px",
+                        border: "1px solid #d8dee8",
+                        borderRadius: 14,
                         background: "#fff",
                         width: "100%",
                         boxSizing: "border-box",
@@ -833,17 +842,21 @@ const TimelinePage = () => {
                         >
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag"
-                                style={createPreviewBarStyle(54, 22, { borderRadius: 6 })}
+                                style={createPreviewBarStyle(56, 22, { borderRadius: 8 })}
+                            />
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag"
+                                style={createPreviewBarStyle(54, 22, { borderRadius: 8 })}
                             />
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag timelineFeedPreviewBarTagWide"
-                                style={createPreviewBarStyle(72, 22, { borderRadius: 6 })}
+                                style={createPreviewBarStyle(72, 22, { borderRadius: 8 })}
                             />
                         </div>
                     </div>
                     <span
                         className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTitle"
-                        style={createPreviewBarStyle("74%", 26)}
+                        style={createPreviewBarStyle("72%", 28)}
                     />
                     <div
                         className="timelineFeedPreviewMetaRow"
@@ -859,7 +872,7 @@ const TimelinePage = () => {
                         />
                         <span
                             className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarMeta"
-                            style={createPreviewBarStyle("38%", 14, { marginTop: 1 })}
+                            style={createPreviewBarStyle("37%", 14, { marginTop: 1 })}
                         />
                     </div>
                     <div
@@ -885,15 +898,15 @@ const TimelinePage = () => {
                         >
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphFull"
-                                style={createPreviewBarStyle("100%", 13)}
+                                style={createPreviewBarStyle("100%", 14)}
                             />
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphFull"
-                                style={createPreviewBarStyle("100%", 13)}
+                                style={createPreviewBarStyle("100%", 14)}
                             />
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphShort"
-                                style={createPreviewBarStyle("68%", 13)}
+                                style={createPreviewBarStyle("68%", 14)}
                             />
                         </div>
                     </div>
@@ -914,6 +927,8 @@ const TimelinePage = () => {
     const shouldRenderFeedStatsSkeleton = !shouldRenderFeedHeaderSkeleton && shouldRenderInitialFeedSkeleton;
     const shouldRenderResolvedFeed = !shouldRenderInitialFeedSkeleton && papers.length > 0;
     const shouldRenderEmptyFeedState = !shouldRenderInitialFeedSkeleton && !loadingInitial && hasResolvedInitialFeed && papers.length === 0;
+    const shouldRenderLoadMorePreview = shouldRenderResolvedFeed && hasMoreAfter && !loadingNext;
+    const shouldRenderFeedHint = shouldRenderResolvedFeed && !hasMoreAfter;
 
     return (
         <div className="timelinePageShell">
@@ -1064,6 +1079,12 @@ const TimelinePage = () => {
                                             </article>
                                         );
                                     })}
+
+                                    {shouldRenderLoadMorePreview && renderFeedPreviewCards({
+                                        count: LOAD_MORE_PREVIEW_COUNT,
+                                        keyPrefix: "feed-load-more",
+                                        testId: "timeline-feed-load-more-preview",
+                                    })}
                                 </div>
                             )}
 
@@ -1075,10 +1096,10 @@ const TimelinePage = () => {
 
                             {!loadingInitial && loadingNext && renderSkeletonStack(WINDOW_BATCH_SIZE, "bottom")}
 
-                            {shouldRenderResolvedFeed && (
+                            {shouldRenderFeedHint && (
                                 <div className="timelineFeedHint">
-                                    {hasMoreBefore || hasMoreAfter
-                                        ? "继续滚动以加载更多；向上滑到顶部会立即补回更早加载过的论文。"
+                                    {hasMoreBefore
+                                        ? "已到当前方向末尾；向上滑到顶部会立即补回更早加载过的论文。"
                                         : "这个方向的论文已经浏览到底。"}
                                 </div>
                             )}
@@ -1257,18 +1278,19 @@ const TimelinePage = () => {
                 .timelineFeedPreviewStack {
                     display: flex;
                     flex-direction: column;
-                    gap: 18px;
+                    gap: 16px;
                 }
 
                 .timelineFeedPreviewCard {
                     display: flex;
                     flex-direction: column;
-                    gap: 14px;
-                    min-height: 206px;
-                    padding: 16px;
-                    border: 1px solid #ccc;
-                    border-radius: 8px;
+                    gap: 16px;
+                    min-height: 182px;
+                    padding: 18px 16px 20px;
+                    border: 1px solid #d8dee8;
+                    border-radius: 14px;
                     background: #fff;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
                 }
 
                 .timelineFeedPreviewHeaderRow {
@@ -1302,8 +1324,8 @@ const TimelinePage = () => {
                     position: relative;
                     overflow: hidden;
                     border-radius: 999px;
-                    background: #e3e9f0;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
+                    background: linear-gradient(180deg, #eef4fb 0%, #e6edf6 100%);
+                    animation: timelineSkeletonPulse 1.85s ease-in-out infinite;
                 }
 
                 .timelineFeedPreviewBar::after {
@@ -1311,11 +1333,11 @@ const TimelinePage = () => {
                     position: absolute;
                     top: 0;
                     bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    left: -42%;
+                    width: 42%;
+                    transform: translateX(-130%);
+                    background: linear-gradient(100deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.96) 50%, rgba(255, 255, 255, 0) 100%);
+                    animation: timelinePreviewSweep 1.45s linear infinite;
                     will-change: transform;
                 }
 
@@ -1725,16 +1747,6 @@ const TimelinePage = () => {
                     }
                 }
 
-                @keyframes timelinePreviewBarShimmer {
-                    from {
-                        background-position: 200% 0;
-                    }
-
-                    to {
-                        background-position: -200% 0;
-                    }
-                }
-
                 @keyframes timelineSkeletonPulse {
                     0%,
                     100% {
@@ -1743,6 +1755,16 @@ const TimelinePage = () => {
 
                     50% {
                         background-color: #d7e0ea;
+                    }
+                }
+
+                @keyframes timelinePreviewSweep {
+                    from {
+                        transform: translateX(-130%);
+                    }
+
+                    to {
+                        transform: translateX(340%);
                     }
                 }
 
