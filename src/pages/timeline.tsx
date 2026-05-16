@@ -177,11 +177,9 @@ const TimelinePage = () => {
         });
     };
 
-    const panelHeight = "calc(100vh - 220px)";
-
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="timelinePageShell">
+            <div className="timelinePageHeader">
                 <div>
                     <h2 style={{ margin: "0 0 8px" }}>论文时间线</h2>
                     <p style={{ margin: 0 }}>按研究方向查看论文动态，默认展示对应方向下按时间倒序排列的论文。</p>
@@ -205,16 +203,9 @@ const TimelinePage = () => {
             )}
 
             {!loadingDirections && errorMessage === "" && directions.length > 0 && (
-                <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
+                <div className="timelineContentLayout">
                     <aside
-                        style={{
-                            border: "1px solid #ccc",
-                            borderRadius: 8,
-                            padding: 12,
-                            maxHeight: panelHeight,
-                            overflowY: "auto",
-                            overscrollBehavior: "contain",
-                        }}
+                        className="timelineDirectionsPanel"
                     >
                         <h3 style={{ marginTop: 0 }}>研究方向</h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -242,14 +233,7 @@ const TimelinePage = () => {
                     </aside>
 
                     <section
-                        style={{
-                            borderLeft: "2px solid #d0d7de",
-                            paddingLeft: 20,
-                            maxHeight: panelHeight,
-                            overflowY: "auto",
-                            overscrollBehavior: "contain",
-                            paddingRight: 8,
-                        }}
+                        className="timelineMainPanel"
                     >
                         <h3 style={{ marginTop: 0 }}>{activeDirection || "未选择研究方向"}</h3>
                         {activeDirectionSummary && (
@@ -378,6 +362,50 @@ const TimelinePage = () => {
             )}
 
             <style jsx>{`
+                .timelinePageShell {
+                    --timeline-sticky-top: 64px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    max-width: 1080px;
+                    min-height: calc(100vh - 158px);
+                }
+
+                .timelinePageHeader {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 16px;
+                }
+
+                .timelineContentLayout {
+                    display: grid;
+                    grid-template-columns: 240px minmax(0, 1fr);
+                    gap: 16px;
+                    align-items: start;
+                    flex: 1;
+                    min-height: 0;
+                }
+
+                .timelineDirectionsPanel {
+                    border: 1px solid transparent;
+                    border-radius: 8px;
+                    padding: 12px;
+                    position: sticky;
+                    top: var(--timeline-sticky-top);
+                    align-self: start;
+                    max-height: calc((100vh - var(--timeline-sticky-top) - 16px) * 1.2);
+                    overflow-y: auto;
+                    overscroll-behavior: contain;
+                }
+
+                .timelineMainPanel {
+                    border-left: 2px solid #d0d7de;
+                    padding-left: 20px;
+                    padding-right: 8px;
+                    min-height: 100%;
+                }
+
                 .timelinePaperHeaderRow {
                     display: flex;
                     align-items: center;
@@ -461,6 +489,28 @@ const TimelinePage = () => {
                 .timelineMetaLabel,
                 .timelineMetaContent {
                     font-size: 14px;
+                }
+
+                @media (max-width: 900px) {
+                    .timelinePageHeader {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+
+                    .timelineContentLayout {
+                        grid-template-columns: minmax(0, 1fr);
+                    }
+
+                    .timelineDirectionsPanel,
+                    .timelineMainPanel {
+                        max-height: none;
+                        min-height: 0;
+                    }
+
+                    .timelineDirectionsPanel {
+                        position: static;
+                        top: auto;
+                    }
                 }
             `}</style>
         </div>
