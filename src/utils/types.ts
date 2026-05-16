@@ -110,6 +110,34 @@ export interface WeeklyPushPaper {
     arxivId?: string;
     abstract?: string;
     tldr?: string;
+    mentorNames?: string[];
+}
+
+export interface WeeklyPushMentorGroupPaper {
+    id: number;
+    title: string;
+    publishDate?: string;
+    authorNames: string;
+    mentorId: number;
+    mentorName: string;
+    researchDirection?: string;
+    subjects: string[];
+    abstractPreview?: string;
+}
+
+export interface WeeklyPushMentorGroup {
+    mentorId: number;
+    mentorName: string;
+    mentorEnglishName?: string;
+    mentorResearchDirection?: string;
+    isPrivate: boolean;
+    paperCount: number;
+    papers: WeeklyPushMentorGroupPaper[];
+}
+
+export interface WeeklyPushSubjectDistributionItem {
+    subject: string;
+    count: number;
 }
 
 export interface WeeklyPushItem {
@@ -123,6 +151,10 @@ export interface WeeklyPushItem {
     papers: WeeklyPushPaper[];
     generatedBy: string;
     updatedAt: string;
+    mentorGroups?: WeeklyPushMentorGroup[];
+    subjectDistribution?: WeeklyPushSubjectDistributionItem[];
+    trackedMentorCount?: number;
+    activeMentorCount?: number;
 }
 
 export interface WeeklyPushResponse {
