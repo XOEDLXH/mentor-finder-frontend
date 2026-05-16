@@ -84,11 +84,6 @@ export interface TimelinePaper {
     subjects?: string;
 }
 
-export interface TimelineGroup {
-    direction: string;
-    papers: TimelinePaper[];
-}
-
 export interface TimelineDirectionSummary {
     direction: string;
     paper_count: number;
@@ -144,10 +139,9 @@ export interface WeeklyPushHistoryResponse {
 
 export interface TimelinePapersResponse {
     direction: string;
-    page: number;
-    page_size: number;
+    offset: number;
+    limit: number;
     total_papers: number;
-    total_pages: number;
     has_previous: boolean;
     has_next: boolean;
     papers: TimelinePaper[];

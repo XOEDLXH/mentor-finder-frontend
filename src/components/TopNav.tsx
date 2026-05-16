@@ -90,6 +90,12 @@ const TopNav = () => {
 
         setMobileMenuOpen(false);
         setAvatarMenuOpen(false);
+
+        if (href === "/timeline" && router.pathname === href) {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+            return;
+        }
+
         void router.push(targetHref);
     };
 
