@@ -154,7 +154,7 @@ describe("TimelinePage LaTeX rendering", () => {
 
         render(<TimelinePage />);
 
-        expect(await screen.findByTestId("timeline-skeleton-initial")).toBeInTheDocument();
+        expect(await screen.findByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
         await act(async () => {
             initialDeferred.resolve(timelineResponse(firstBatch, {
                 total_papers: 30,
@@ -167,6 +167,67 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6", "GET", false);
         expect(screen.queryByRole("button", { name: "首页" })).toBeNull();
         expect(screen.getByText("当前显示第 1-6 篇")).toBeInTheDocument();
+    });
+
+    it("renders the timeline shell skeletons before directions and papers resolve", async () => {
+        const overviewDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return overviewDeferred.promise;
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        expect(screen.getByText("论文时间线")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-direction-skeletons")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
+        expect(screen.queryByText("当前研究方向下暂无论文数据。")).toBeNull();
+
+        await act(async () => {
+            overviewDeferred.resolve(mockTimelineOverview());
+        });
+
+        await screen.findByRole("button", { name: /机器学习/ });
+    });
+
+    it("removes the shell skeletons after the first feed batch resolves", async () => {
+        const initialDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return initialDeferred.promise;
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        expect(await screen.findByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
+        expect(await screen.findByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
+
+        await act(async () => {
+            initialDeferred.resolve(timelineResponse([
+                createPaper(1, { title: "Compression Paper" }),
+            ], {
+                total_papers: 1,
+                limit: 6,
+            }));
+        });
+
+        await screen.findByRole("heading", { name: "Compression Paper" });
+        await waitFor(() => {
+            expect(screen.queryByTestId("timeline-feed-header-skeleton")).toBeNull();
+            expect(screen.queryByTestId("timeline-feed-preview-skeletons")).toBeNull();
+        });
+        expect(screen.queryByText("当前研究方向下暂无论文数据。")).toBeNull();
     });
 
     it("loads the previous 5 papers immediately after the user scrolls upward to the top of the feed viewport", async () => {
