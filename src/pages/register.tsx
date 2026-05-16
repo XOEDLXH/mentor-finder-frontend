@@ -1,11 +1,19 @@
 import { FormEvent, RefCallback, useEffect, useRef, useState } from "react";
 import {
     FAILURE_PREFIX,
+    REGISTER_CODE_BYPASS_HINT,
+    REGISTER_CODE_COOLDOWN,
+    REGISTER_CODE_INVALID,
+    REGISTER_CODE_REQUIRED,
+    REGISTER_CODE_SEND_FAILED,
+    REGISTER_CODE_SENT,
     REGISTER_EMAIL_INVALID,
     REGISTER_EMAIL_TAKEN,
     REGISTER_FAILED,
     REGISTER_PASSWORD_MISMATCH,
     REGISTER_PASSWORD_WEAK,
+    REGISTER_SEND_CODE_BUTTON,
+    REGISTER_SEND_CODE_RESEND,
     REGISTER_USERNAME_TAKEN,
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
@@ -18,6 +26,11 @@ const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const FEATURE_LIST_CLOSE_ANIMATION_MS = 500;
 const USERNAME_DUPLICATE_ERROR = "duplicate";
+const VERIFICATION_BYPASS_PREFIX = "bypass";
+const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
+
+const isBypassEmail = (emailToCheck: string) =>
+    emailToCheck.trim().toLowerCase().startsWith(VERIFICATION_BYPASS_PREFIX);
 
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
@@ -57,6 +70,12 @@ const RegisterScreen = () => {
     const [confirmPasswordBlurred, setConfirmPasswordBlurred] = useState(false);
     const [email, setEmail] = useState("");
     const [emailBlurred, setEmailBlurred] = useState(false);
+    const [verificationCode, setVerificationCode] = useState("");
+    const [verificationCodeError, setVerificationCodeError] = useState("");
+    const [codeStatusMessage, setCodeStatusMessage] = useState("");
+    const [sendingCode, setSendingCode] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [codeSentForEmail, setCodeSentForEmail] = useState("");
     const [registerErrorMessage, setRegisterErrorMessage] = useState("");
     const [userNameErrorMessage, setUserNameErrorMessage] = useState("");
     const [userNameErrorSource, setUserNameErrorSource] = useState("");
@@ -67,7 +86,9 @@ const RegisterScreen = () => {
     const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const confirmPasswordInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const userNameInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const verificationCodeInputRef = useRef<HTMLInputElement | undefined>(undefined);
     const featureListCloseTimerRef = useRef<number | undefined>(undefined);
+    const resendCooldownTimerRef = useRef<number | undefined>(undefined);
 
     const router = useRouter();
     const dispatch = useDispatch();
@@ -83,14 +104,39 @@ const RegisterScreen = () => {
     const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
         userNameInputRef.current = node ?? undefined;
     };
+    const bindVerificationCodeInputRef: RefCallback<HTMLInputElement> = (node) => {
+        verificationCodeInputRef.current = node ?? undefined;
+    };
 
     useEffect(() => {
         return () => {
             if (featureListCloseTimerRef.current !== undefined) {
                 window.clearTimeout(featureListCloseTimerRef.current);
             }
+            if (resendCooldownTimerRef.current !== undefined) {
+                window.clearInterval(resendCooldownTimerRef.current);
+            }
         };
     }, []);
+
+    const startResendCooldown = (seconds: number) => {
+        if (resendCooldownTimerRef.current !== undefined) {
+            window.clearInterval(resendCooldownTimerRef.current);
+        }
+        setResendCooldown(seconds);
+        resendCooldownTimerRef.current = window.setInterval(() => {
+            setResendCooldown((prev) => {
+                if (prev <= 1) {
+                    if (resendCooldownTimerRef.current !== undefined) {
+                        window.clearInterval(resendCooldownTimerRef.current);
+                        resendCooldownTimerRef.current = undefined;
+                    }
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
 
     const featureItems = [
         {
@@ -173,6 +219,57 @@ const RegisterScreen = () => {
         register();
     };
 
+    const handleSendVerificationCode = () => {
+        setVerificationCodeError("");
+        setCodeStatusMessage("");
+
+        const trimmedEmail = email.trim();
+        if (trimmedEmail === "" || !isEmailValid(trimmedEmail)) {
+            setEmailBlurred(true);
+            emailInputRef.current?.focus();
+            return;
+        }
+        if (sendingCode || resendCooldown > 0) {
+            return;
+        }
+
+        setSendingCode(true);
+        fetch("/api/register/verification-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: trimmedEmail }),
+        })
+            .then((res) => parseJsonSafely(res))
+            .then((res) => {
+                const code = Number(res.code);
+                if (code === 0) {
+                    if (res.bypass === true) {
+                        setCodeStatusMessage(REGISTER_CODE_BYPASS_HINT);
+                        setCodeSentForEmail(trimmedEmail);
+                        return;
+                    }
+                    const cooldownSeconds = typeof res.cooldownSeconds === "number"
+                        ? res.cooldownSeconds
+                        : DEFAULT_RESEND_COOLDOWN_SECONDS;
+                    setCodeStatusMessage(REGISTER_CODE_SENT);
+                    setCodeSentForEmail(trimmedEmail);
+                    startResendCooldown(cooldownSeconds);
+                }
+                else if (code === 4) {
+                    setRegisterErrorMessage(REGISTER_EMAIL_TAKEN);
+                }
+                else if (code === 6) {
+                    setCodeStatusMessage(REGISTER_CODE_COOLDOWN);
+                    startResendCooldown(DEFAULT_RESEND_COOLDOWN_SECONDS);
+                }
+                else {
+                    setVerificationCodeError(REGISTER_CODE_SEND_FAILED);
+                }
+            })
+            .catch((err) => setVerificationCodeError(FAILURE_PREFIX + err))
+            .finally(() => setSendingCode(false));
+    };
+
     const register = () => {
         setRegisterErrorMessage("");
 
@@ -208,6 +305,14 @@ const RegisterScreen = () => {
             return;
         }
 
+        const trimmedEmail = email.trim();
+        const bypassMode = isBypassEmail(trimmedEmail);
+        if (!bypassMode && verificationCode.trim() === "") {
+            setVerificationCodeError(REGISTER_CODE_REQUIRED);
+            verificationCodeInputRef.current?.focus();
+            return;
+        }
+
         setSubmitting(true);
         fetch("/api/register", {
             method: "POST",
@@ -217,7 +322,8 @@ const RegisterScreen = () => {
             body: JSON.stringify({
                 username: normalizedUserName,
                 password,
-                email: email.trim(),
+                email: trimmedEmail,
+                verificationCode: bypassMode ? "" : verificationCode.trim(),
             }),
         })
             .then((res) => parseJsonSafely(res))
@@ -235,6 +341,10 @@ const RegisterScreen = () => {
                 }
                 else if (Number(res.code) === 4) {
                     setRegisterErrorMessage(REGISTER_EMAIL_TAKEN);
+                }
+                else if (Number(res.code) === 5) {
+                    setVerificationCodeError(REGISTER_CODE_INVALID);
+                    verificationCodeInputRef.current?.focus();
                 }
                 else {
                     setRegisterErrorMessage(REGISTER_FAILED);
@@ -392,19 +502,72 @@ const RegisterScreen = () => {
                     <form onSubmit={submitRegister}>
                         <label className="registerAuthField">
                             <span className="registerAuthLabel">Email</span>
-                            <input
-                                ref={bindEmailInputRef}
-                                type="text"
-                                inputMode="email"
-                                autoComplete="email"
-                                placeholder="Email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                onBlur={() => setEmailBlurred(true)}
-                            />
+                            <div className="registerAuthEmailRow">
+                                <input
+                                    ref={bindEmailInputRef}
+                                    type="text"
+                                    inputMode="email"
+                                    autoComplete="email"
+                                    placeholder="Email"
+                                    value={email}
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+                                        if (codeSentForEmail !== "" && codeSentForEmail !== e.target.value.trim()) {
+                                            setCodeStatusMessage("");
+                                        }
+                                    }}
+                                    onBlur={() => setEmailBlurred(true)}
+                                />
+                                <button
+                                    type="button"
+                                    className="registerAuthSendCodeButton"
+                                    onClick={handleSendVerificationCode}
+                                    disabled={
+                                        sendingCode
+                                        || resendCooldown > 0
+                                        || email.trim() === ""
+                                        || isBypassEmail(email)
+                                    }
+                                    aria-label="Send verification code"
+                                >
+                                    {sendingCode
+                                        ? "Sending..."
+                                        : resendCooldown > 0
+                                            ? `${REGISTER_SEND_CODE_RESEND} (${resendCooldown}s)`
+                                            : codeSentForEmail !== ""
+                                                ? REGISTER_SEND_CODE_RESEND
+                                                : REGISTER_SEND_CODE_BUTTON}
+                                </button>
+                            </div>
                         </label>
                         {emailBlurred && isEmailInvalid && (
                             <p className="registerAuthError">{REGISTER_EMAIL_INVALID}</p>
+                        )}
+
+                        <label className="registerAuthField">
+                            <span className="registerAuthLabel">Verification code</span>
+                            <input
+                                ref={bindVerificationCodeInputRef}
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                maxLength={6}
+                                placeholder={isBypassEmail(email) ? "Not required for bypass email" : "Enter the 6-digit code"}
+                                value={verificationCode}
+                                onChange={(e) => {
+                                    setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                                    if (verificationCodeError !== "") {
+                                        setVerificationCodeError("");
+                                    }
+                                }}
+                                disabled={isBypassEmail(email)}
+                            />
+                        </label>
+                        {codeStatusMessage !== "" && (
+                            <p className="registerAuthHelper">{codeStatusMessage}</p>
+                        )}
+                        {verificationCodeError !== "" && (
+                            <p className="registerAuthError">{verificationCodeError}</p>
                         )}
 
                         <label className="registerAuthField">
