@@ -159,7 +159,7 @@ describe("MentorDetailPage search return", () => {
         expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
         expect(screen.getByText("导师画像")).toBeInTheDocument();
         expect(screen.queryByText("导师画像：")).not.toBeInTheDocument();
-        expect(screen.querySelector('img[src="/Mentor_Profile.ico"]')).not.toBeNull();
+        expect(document.querySelector('img[src="/Mentor_Profile.ico"]')).not.toBeNull();
         expect(screen.getByText("本科毕业于测试大学")).toBeInTheDocument();
         expect(screen.getByText("长期从事知识工程研究")).toBeInTheDocument();
         expect(screen.getByText("教育背景")).toHaveAttribute("data-highlighted-profile-heading", "true");
