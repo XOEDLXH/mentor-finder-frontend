@@ -446,11 +446,16 @@ const FollowsPage = () => {
             )}
 
             <style jsx>{`
+                :global(.appMain:has(.followsPage)) {
+                    width: min(1510px, calc(100% - 32px));
+                }
+
                 .followsPage {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
-                    max-width: 1040px;
+                    width: 100%;
+                    max-width: 1477px;
                 }
 
                 .pageHeader {
@@ -594,7 +599,7 @@ const FollowsPage = () => {
 
                 .mentorGrid {
                     display: grid;
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 12px;
                 }
 
