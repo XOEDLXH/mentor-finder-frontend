@@ -24,7 +24,7 @@ describe("MentorDetailPage search return", () => {
         English_name: "Test Mentor",
         research_direction: "知识工程",
         email: "test@example.com",
-        profile: "导师画像",
+        profile: "这里是导师画像内容",
         is_private: false,
         paper_ids: [{
             id: 1,
@@ -157,9 +157,10 @@ describe("MentorDetailPage search return", () => {
 
         expect(screen.getByText("相关论文：")).toBeInTheDocument();
         expect(screen.queryByText("关联论文：")).not.toBeInTheDocument();
-        expect(screen.getByText("导师画像：")).toBeInTheDocument();
-        expect(screen.getByText(/^导师画像$/)).toBeInTheDocument();
-        expect(screen.queryByText("导师画像：导师画像")).not.toBeInTheDocument();
+        expect(screen.getByText("导师画像")).toBeInTheDocument();
+        expect(screen.queryByText("导师画像：")).not.toBeInTheDocument();
+        expect(screen.getByText("这里是导师画像内容")).toBeInTheDocument();
+        expect(screen.querySelector('img[src="/Mentor_Profile.ico"]')).not.toBeNull();
 
         const linkedPaper = screen.getByRole("link", { name: /Test Paper With Link/ });
         expect(linkedPaper).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");

@@ -307,9 +307,12 @@ const MentorDetailPage = () => {
                             <p style={{ margin: "4px 0", color: "#555" }}>我的私有导师</p>
                         )}
 
-                        <div style={{ margin: "4px 0", fontSize: "14px" }}>
-                            <p style={{ margin: 0 }}>导师画像：</p>
-                            <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>
+                        <div className="mentorDetailSidebarItem" style={{ margin: "4px 0" }}>
+                            <div className="mentorDetailSidebarLabel">
+                                <img src="/Mentor_Profile.ico" alt="" aria-hidden="true" className="mentorDetailSidebarIcon" />
+                                <span>导师画像</span>
+                            </div>
+                            <p className="mentorDetailSidebarValue" style={{ whiteSpace: "pre-wrap" }}>
                                 {mentor.profile || "暂无导师画像"}
                             </p>
                         </div>
