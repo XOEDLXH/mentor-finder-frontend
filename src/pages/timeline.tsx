@@ -15,6 +15,10 @@ const INITIAL_BATCH_SIZE = 6;
 const WINDOW_BATCH_SIZE = 5;
 const MAX_RENDERED_PAPERS = 20;
 const DEFAULT_TIMELINE_LIMIT = 20;
+const DIRECTION_SKELETON_COUNT = 8;
+const INITIAL_FEED_PREVIEW_COUNT = 4;
+const MIN_INITIAL_SKELETON_MS = 800;
+const INITIAL_SKELETON_FADE_MS = 180;
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type TimelineLoadMode = "replace" | "prepend" | "append";
@@ -26,6 +30,47 @@ type ScrollAdjustment =
 const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
+
+const createPreviewBarStyle = (
+    width: number | string,
+    height: number,
+    extraStyles: Record<string, string | number> = {},
+) => ({
+    display: "block",
+    width,
+    height,
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%)",
+    backgroundSize: "200% 100%",
+    animation: "timelinePreviewBarShimmer 1.15s ease-in-out infinite",
+    position: "relative" as const,
+    overflow: "hidden" as const,
+    ...extraStyles,
+});
+
+const TIMELINE_SKELETON_BLUEPRINTS = [
+    {
+        eyebrow: "88px",
+        title: "74%",
+        tags: ["54px", "72px", "62px"],
+        meta: ["44%", "33%"],
+        paragraph: ["100%", "96%", "84%", "58%"],
+    },
+    {
+        eyebrow: "96px",
+        title: "81%",
+        tags: ["60px", "68px"],
+        meta: ["48%", "29%"],
+        paragraph: ["98%", "90%", "72%"],
+    },
+    {
+        eyebrow: "78px",
+        title: "69%",
+        tags: ["48px", "76px", "58px"],
+        meta: ["42%", "38%"],
+        paragraph: ["100%", "94%", "88%", "50%"],
+    },
+] as const;
 
 const TimelinePage = () => {
     const router = useRouter();
@@ -40,6 +85,9 @@ const TimelinePage = () => {
     const [loadingInitial, setLoadingInitial] = useState(false);
     const [loadingPrevious, setLoadingPrevious] = useState(false);
     const [loadingNext, setLoadingNext] = useState(false);
+    const [hasResolvedInitialFeed, setHasResolvedInitialFeed] = useState(false);
+    const [showInitialSkeleton, setShowInitialSkeleton] = useState(false);
+    const [feedRevealKey, setFeedRevealKey] = useState(0);
     const [errorMessage, setErrorMessage] = useState("");
     const feedViewportRef = useRef<HTMLDivElement | undefined>(undefined);
     const paperRefs = useRef<Record<number, HTMLElement | undefined>>({});
@@ -50,6 +98,8 @@ const TimelinePage = () => {
     const activeDirectionRef = useRef("");
     const directionGenerationRef = useRef(0);
     const pendingScrollAdjustmentRef = useRef<ScrollAdjustment>(undefined);
+    const initialSkeletonStartedAtRef = useRef(0);
+    const initialSkeletonTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const inFlightRef = useRef({
         replace: false,
         prepend: false,
@@ -78,6 +128,13 @@ const TimelinePage = () => {
     useEffect(() => {
         activeDirectionRef.current = activeDirection;
     }, [activeDirection]);
+
+    useEffect(() => () => {
+        if (initialSkeletonTimerRef.current !== undefined) {
+            clearTimeout(initialSkeletonTimerRef.current);
+        }
+    }, []);
+
     const buildTimelinePdfUrl = (arxivUrl?: string) => {
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
             return "";
@@ -152,6 +209,47 @@ const TimelinePage = () => {
         }
 
         setLoadingNext(loading);
+    };
+
+    const clearInitialSkeletonTimer = () => {
+        if (initialSkeletonTimerRef.current !== undefined) {
+            clearTimeout(initialSkeletonTimerRef.current);
+            initialSkeletonTimerRef.current = undefined;
+        }
+    };
+
+    const startInitialSkeletonPhase = () => {
+        clearInitialSkeletonTimer();
+        initialSkeletonStartedAtRef.current = Date.now();
+        setShowInitialSkeleton(true);
+    };
+
+    const finishInitialSkeletonPhase = (mode: TimelineLoadMode, generation: number) => {
+        if (mode !== "replace") {
+            return;
+        }
+
+        clearInitialSkeletonTimer();
+        const elapsed = Date.now() - initialSkeletonStartedAtRef.current;
+        const remaining = Math.max(MIN_INITIAL_SKELETON_MS - elapsed, 0);
+        const finalize = () => {
+            if (generation !== directionGenerationRef.current) {
+                return;
+            }
+
+            setShowInitialSkeleton(false);
+            setFeedRevealKey((current) => current + 1);
+        };
+
+        if (remaining === 0) {
+            finalize();
+            return;
+        }
+
+        initialSkeletonTimerRef.current = setTimeout(() => {
+            initialSkeletonTimerRef.current = undefined;
+            finalize();
+        }, remaining);
     };
 
     const hasAnyFeedLoadInFlight = () => (
@@ -234,6 +332,9 @@ const TimelinePage = () => {
         inFlightRef.current[mode] = true;
         setLoadingFlag(mode, true);
         setErrorMessage("");
+        if (mode === "replace") {
+            startInitialSkeletonPhase();
+        }
 
         try {
             const query = new URLSearchParams({
@@ -319,16 +420,20 @@ const TimelinePage = () => {
 
     useEffect(() => {
         if (activeDirection === "") {
+            clearInitialSkeletonTimer();
+            setShowInitialSkeleton(false);
             setPapers([]);
             setTotalPapers(0);
             setWindowStartOffset(0);
             setHasMoreBefore(false);
             setHasMoreAfter(false);
+            setHasResolvedInitialFeed(false);
             return;
         }
 
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
+        clearInitialSkeletonTimer();
         inFlightRef.current = {
             replace: false,
             prepend: false,
@@ -337,6 +442,8 @@ const TimelinePage = () => {
         pendingScrollAdjustmentRef.current = undefined;
         setLoadingPrevious(false);
         setLoadingNext(false);
+        setHasResolvedInitialFeed(false);
+        setShowInitialSkeleton(true);
         setPapers([]);
         setWindowStartOffset(0);
         setTotalPapers(0);
@@ -526,6 +633,80 @@ const TimelinePage = () => {
                     </article>
                 );
             })}
+        </div>
+    );
+
+    const renderDirectionSkeletonList = () => (
+        <div
+            className="timelineDirectionSkeletonList"
+            data-testid="timeline-direction-skeletons"
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                width: "100%",
+            }}
+        >
+            {createSkeletonKeys(DIRECTION_SKELETON_COUNT, "direction").map((key) => (
+                <button
+                    key={key}
+                    type="button"
+                    className="timelineDirectionButton timelineDirectionLoadingCard"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        width: "100%",
+                        minHeight: 98,
+                        padding: "10px 12px",
+                        border: "1px solid #ccc",
+                        borderRadius: 6,
+                        background: "#fff",
+                        boxSizing: "border-box",
+                        position: "relative",
+                        overflow: "hidden",
+                        gap: 8,
+                        cursor: "default",
+                        pointerEvents: "none",
+                        opacity: 1,
+                    }}
+                >
+                    <span
+                        className="timelineDirectionLoadingBar timelineDirectionLoadingBarPrimary"
+                        aria-hidden="true"
+                        style={{
+                            display: "block",
+                            width: "82%",
+                            height: 18,
+                            marginTop: 2,
+                            flex: "0 0 auto",
+                            borderRadius: 999,
+                            background: "#e3e9f0",
+                            position: "relative",
+                            overflow: "hidden",
+                            zIndex: 1,
+                        }}
+                    />
+                    <span
+                        className="timelineDirectionLoadingBar timelineDirectionLoadingBarSecondary"
+                        aria-hidden="true"
+                        style={{
+                            display: "block",
+                            width: "36%",
+                            height: 12,
+                            marginTop: "auto",
+                            flex: "0 0 auto",
+                            borderRadius: 999,
+                            background: "#e3e9f0",
+                            position: "relative",
+                            overflow: "hidden",
+                            zIndex: 1,
+                        }}
+                    />
+                </button>
+            ))}
         </div>
     );
 
@@ -833,6 +1014,26 @@ const TimelinePage = () => {
                     font-size: 13px;
                     white-space: nowrap;
                 }
+
+                .timelineFeedStatsSkeleton {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    align-items: flex-end;
+                    min-width: 132px;
+                }
+
+                .timelineFeedStatsSkeletonLine {
+                    display: block;
+                    width: 72px;
+                    height: 12px;
+                    border-radius: 999px;
+                }
+
+                .timelineFeedStatsSkeletonLineWide {
+                    width: 112px;
+                }
+
                 .timelineFeedViewport {
                     flex: 1;
                     min-height: 0;
@@ -1039,6 +1240,17 @@ const TimelinePage = () => {
                     margin-bottom: 18px;
                 }
 
+                .timelineSkeletonMetaRow {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+
+                .timelineSkeletonTag {
+                    height: 22px;
+                    border-radius: 999px;
+                }
+
                 .timelineSkeletonMetaLabel {
                     width: 42px;
                     height: 12px;
@@ -1205,6 +1417,29 @@ const TimelinePage = () => {
                     }
                 }
 
+                @keyframes timelineSkeletonPulse {
+                    0%,
+                    100% {
+                        background-color: #e3e9f0;
+                    }
+
+                    50% {
+                        background-color: #d7e0ea;
+                    }
+                }
+
+                @keyframes timelineFeedFadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(4px);
+                    }
+
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
                 @media (max-width: 900px) {
                     .timelinePageHeader {
                         flex-direction: column;
@@ -1241,6 +1476,10 @@ const TimelinePage = () => {
                         flex: 0 0 220px;
                     }
 
+                    .timelineDirectionLoadingCard {
+                        flex: 0 0 220px;
+                    }
+
                     .timelineFeedHeader {
                         flex-direction: column;
                         align-items: stretch;
@@ -1251,8 +1490,34 @@ const TimelinePage = () => {
                         white-space: normal;
                     }
 
+                    .timelineFeedStatsSkeleton {
+                        align-items: flex-start;
+                    }
+
+                    .timelineFeedHeaderSecondarySkeleton {
+                        align-items: flex-start;
+                    }
+
                     .timelineFeedViewport {
                         padding-right: 0;
+                    }
+                }
+
+                @media (max-width: 720px) {
+                    .timelineSkeletonHeaderRow {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+
+                    .timelineSkeletonChipRow {
+                        justify-content: flex-start;
+                    }
+
+                    .timelineFeedHeaderSkeletonTitle,
+                    .timelineFeedHeaderSkeletonSummary,
+                    .timelineFeedHeaderSkeletonStat,
+                    .timelineFeedHeaderSkeletonStatShort {
+                        width: 100%;
                     }
                 }
             `}</style>
