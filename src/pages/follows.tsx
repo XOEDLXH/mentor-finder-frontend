@@ -234,17 +234,19 @@ const FollowsPage = () => {
                 }
             }}
         >
-            <div className="userAvatar" aria-hidden="true">
-                {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="" />
-                ) : (
-                    <span>{user.username.slice(0, 1).toUpperCase()}</span>
-                )}
-            </div>
-            <div className="userText">
-                <h4>{user.realName || user.username}</h4>
-                <p>{user.username} · {user.role}</p>
-                <p>{user.signature || "暂无签名"}</p>
+            <div className="userCardProfile">
+                <div className="userAvatar" aria-hidden="true">
+                    {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="" />
+                    ) : (
+                        <span>{user.username.slice(0, 1).toUpperCase()}</span>
+                    )}
+                </div>
+                <div className="userText">
+                    <h4>{user.realName || user.username}</h4>
+                    <p>{user.username} · {user.role}</p>
+                    <p>{user.signature || "暂无签名"}</p>
+                </div>
             </div>
             <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
                 <FollowToggleButton
@@ -648,37 +650,37 @@ const FollowsPage = () => {
                     justify-content: center;
                 }
 
-                .userFollowSection {
+                :global(.userFollowSection) {
                     display: flex;
                     flex-direction: column;
                     gap: 18px;
                 }
 
-                .userSearchSection,
-                .followedUserSection {
+                :global(.userSearchSection),
+                :global(.followedUserSection) {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
                 }
 
-                .followedUserSection {
+                :global(.followedUserSection) {
                     border-top: 1px solid #d0d7de;
                     padding-top: 16px;
                 }
 
-                .sectionHeader {
+                :global(.sectionHeader) {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                     gap: 12px;
                 }
 
-                .sectionHeader h3 {
+                :global(.sectionHeader h3) {
                     margin: 0;
                     font-size: 18px;
                 }
 
-                .sectionHeader span {
+                :global(.sectionHeader span) {
                     border: 1px solid #d0d7de;
                     border-radius: 999px;
                     padding: 4px 10px;
@@ -687,12 +689,13 @@ const FollowsPage = () => {
                     font-weight: 700;
                 }
 
-                .userSearch {
+                :global(.userSearch) {
                     display: flex;
                     gap: 8px;
+                    align-items: stretch;
                 }
 
-                .userSearch input {
+                :global(.userSearch input) {
                     min-width: 0;
                     flex: 1;
                     border: 1px solid #d0d7de;
@@ -700,7 +703,8 @@ const FollowsPage = () => {
                     padding: 10px 12px;
                 }
 
-                .userSearch button {
+                :global(.userSearch button) {
+                    flex: 0 0 auto;
                     border: 1px solid #222;
                     border-radius: 6px;
                     background: #fff;
@@ -708,17 +712,17 @@ const FollowsPage = () => {
                     font-weight: 700;
                 }
 
-                .userList {
+                :global(.userList) {
                     display: flex;
                     flex-direction: column;
                     gap: 10px;
                 }
 
-                .userCard {
-                    display: grid;
-                    grid-template-columns: 44px minmax(0, 1fr) auto;
+                :global(.userCard) {
+                    display: flex;
                     gap: 12px;
                     align-items: center;
+                    justify-content: space-between;
                     border: 1px solid #d0d7de;
                     border-radius: 8px;
                     padding: 12px;
@@ -727,22 +731,31 @@ const FollowsPage = () => {
                     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
                 }
 
-                .userCard:hover,
-                .userCard:focus {
+                :global(.userCard:hover),
+                :global(.userCard:focus) {
                     border-color: #8c959f;
                     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
                     outline: none;
                     transform: translateY(-1px);
                 }
 
-                .userAvatar,
-                .userAvatar img {
+                :global(.userCardProfile) {
+                    display: grid;
+                    grid-template-columns: 44px minmax(0, 1fr);
+                    gap: 12px;
+                    align-items: center;
+                    min-width: 0;
+                    flex: 1 1 auto;
+                }
+
+                :global(.userAvatar),
+                :global(.userAvatar img) {
                     width: 44px;
                     height: 44px;
                     border-radius: 50%;
                 }
 
-                .userAvatar {
+                :global(.userAvatar) {
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -752,33 +765,35 @@ const FollowsPage = () => {
                     font-weight: 800;
                 }
 
-                .userAvatar img {
+                :global(.userAvatar img) {
                     display: block;
                     object-fit: cover;
                 }
 
-                .userText {
+                :global(.userText) {
                     min-width: 0;
                 }
 
-                .userText h4,
-                .userText p {
+                :global(.userText h4),
+                :global(.userText p) {
                     overflow: hidden;
                     margin: 0;
                     text-overflow: ellipsis;
                     white-space: nowrap;
                 }
 
-                .userText h4 {
+                :global(.userText h4) {
                     font-size: 16px;
                 }
 
-                .userText p {
+                :global(.userText p) {
                     color: #57606a;
                     font-size: 13px;
                 }
 
-                .userFollowButtonShell {
+                :global(.userFollowButtonShell) {
+                    display: flex;
+                    flex: 0 0 auto;
                     justify-self: end;
                 }
 
@@ -902,13 +917,33 @@ const FollowsPage = () => {
                         grid-template-columns: 1fr;
                     }
 
-                    .userCard {
-                        grid-template-columns: 40px minmax(0, 1fr);
+                    :global(.userSearch) {
+                        flex-direction: column;
                     }
 
-                    .userFollowButtonShell {
-                        grid-column: 1 / -1;
-                        justify-self: start;
+                    :global(.userSearch button) {
+                        width: 100%;
+                    }
+
+                    :global(.userCard) {
+                        align-items: flex-start;
+                        flex-direction: column;
+                    }
+
+                    :global(.userCardProfile) {
+                        grid-template-columns: 40px minmax(0, 1fr);
+                        width: 100%;
+                    }
+
+                    :global(.userAvatar),
+                    :global(.userAvatar img) {
+                        width: 40px;
+                        height: 40px;
+                    }
+
+                    :global(.userFollowButtonShell) {
+                        justify-content: flex-start;
+                        width: 100%;
                     }
                 }
             `}</style>
