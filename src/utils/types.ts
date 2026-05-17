@@ -130,6 +130,22 @@ export interface WeeklyPushMentorGroup {
     papers: WeeklyPushMentorGroupPaper[];
 }
 
+export interface WeeklyPushSubjectGroupPaper {
+    id: number;
+    title: string;
+    publishDate?: string;
+    authorNames: string;
+    subject: string;
+    subjects: string[];
+    abstractPreview?: string;
+}
+
+export interface WeeklyPushSubjectGroup {
+    subject: string;
+    paperCount: number;
+    papers: WeeklyPushSubjectGroupPaper[];
+}
+
 export interface WeeklyPushSubjectDistributionItem {
     subject: string;
     count: number;
@@ -147,9 +163,12 @@ export interface WeeklyPushItem {
     generatedBy: string;
     updatedAt: string;
     mentorGroups?: WeeklyPushMentorGroup[];
+    subjectGroups?: WeeklyPushSubjectGroup[];
     subjectDistribution?: WeeklyPushSubjectDistributionItem[];
     trackedMentorCount?: number;
     activeMentorCount?: number;
+    trackedSubjectCount?: number;
+    activeSubjectCount?: number;
 }
 
 export interface WeeklyPushResponse {
