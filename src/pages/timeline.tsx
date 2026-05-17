@@ -1076,34 +1076,20 @@ const TimelinePage = () => {
                     <span
                         className="timelineDirectionLoadingBar timelineDirectionLoadingBarPrimary"
                         aria-hidden="true"
-                        style={{
-                            display: "block",
-                            width: "82%",
-                            height: 18,
+                        style={createPreviewBarStyle("82%", 18, {
                             marginTop: 2,
                             flex: "0 0 auto",
-                            borderRadius: 999,
-                            background: "#e3e9f0",
-                            position: "relative",
-                            overflow: "hidden",
                             zIndex: 1,
-                        }}
+                        })}
                     />
                     <span
                         className="timelineDirectionLoadingBar timelineDirectionLoadingBarSecondary"
                         aria-hidden="true"
-                        style={{
-                            display: "block",
-                            width: "36%",
-                            height: 12,
+                        style={createPreviewBarStyle("36%", 12, {
                             marginTop: "auto",
                             flex: "0 0 auto",
-                            borderRadius: 999,
-                            background: "#e3e9f0",
-                            position: "relative",
-                            overflow: "hidden",
                             zIndex: 1,
-                        }}
+                        })}
                     />
                 </button>
             ))}
@@ -1141,27 +1127,11 @@ const TimelinePage = () => {
             >
                 <span
                     className="timelineFeedHeaderLoadingBar timelineFeedHeaderLoadingBarPrimary"
-                    style={{
-                        display: "block",
-                        width: "min(360px, 62%)",
-                        height: 24,
-                        borderRadius: 999,
-                        background: "#e3e9f0",
-                        position: "relative",
-                        overflow: "hidden",
-                    }}
+                    style={createPreviewBarStyle("min(360px, 62%)", 24)}
                 />
                 <span
                     className="timelineFeedHeaderLoadingBar timelineFeedHeaderLoadingBarSecondary"
-                    style={{
-                        display: "block",
-                        width: "min(240px, 38%)",
-                        height: 14,
-                        borderRadius: 999,
-                        background: "#e3e9f0",
-                        position: "relative",
-                        overflow: "hidden",
-                    }}
+                    style={createPreviewBarStyle("min(240px, 38%)", 14)}
                 />
             </div>
             <div
@@ -1175,8 +1145,14 @@ const TimelinePage = () => {
                     flex: "0 0 auto",
                 }}
             >
-                <span className="timelineSkeletonBlock timelineFeedHeaderSkeletonStat" />
-                <span className="timelineSkeletonBlock timelineFeedHeaderSkeletonStat timelineFeedHeaderSkeletonStatShort" />
+                <span
+                    className="timelineFeedHeaderLoadingBar timelineFeedHeaderSkeletonStat"
+                    style={createPreviewBarStyle(72, 12)}
+                />
+                <span
+                    className="timelineFeedHeaderLoadingBar timelineFeedHeaderSkeletonStat timelineFeedHeaderSkeletonStatShort"
+                    style={createPreviewBarStyle(112, 12)}
+                />
             </div>
         </div>
     );
@@ -1320,7 +1296,21 @@ const TimelinePage = () => {
     const renderCalendarPlaceholder = () => (
         <div className="timelineCalendarPlaceholder" aria-hidden="true">
             <div className="timelineCalendarPlaceholderHeader">
-                <span className="timelineSkeletonBlock timelineCalendarPlaceholderTitle" />
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        flex: 1,
+                        minWidth: 0,
+                    }}
+                >
+                    <span className="timelineSkeletonBlock timelineCalendarPlaceholderTitle" />
+                    <span
+                        className="timelineFeedHeaderLoadingBar timelineCalendarPlaceholderSubtitle"
+                        style={createPreviewBarStyle("min(220px, 72%)", 13)}
+                    />
+                </div>
                 <div className="timelineCalendarPlaceholderNav">
                     <span className="timelineSkeletonBlock timelineCalendarPlaceholderNavButton" />
                     <span className="timelineSkeletonBlock timelineCalendarPlaceholderNavButton" />
@@ -1328,9 +1318,10 @@ const TimelinePage = () => {
             </div>
             <div className="timelineCalendarWeekRow">
                 {CALENDAR_WEEKDAY_LABELS.map((label) => (
-                    <span key={`calendar-placeholder-week-${label}`} className="timelineCalendarWeekday">
-                        {label}
-                    </span>
+                    <span
+                        key={`calendar-placeholder-week-${label}`}
+                        className="timelineFeedHeaderLoadingBar timelineCalendarPlaceholderWeekday"
+                    />
                 ))}
             </div>
             <div className="timelineCalendarGrid">
@@ -1343,12 +1334,18 @@ const TimelinePage = () => {
 
     const shouldRenderTimelineShell = loadingDirections || directions.length > 0;
     const shouldRenderDirectionSkeletons = loadingDirections && directions.length === 0;
-    const shouldRenderFeedHeaderSkeleton = shouldRenderDirectionSkeletons || activeDirection === "" || loadingCalendar;
+    const shouldHoldInitialFeedSkeleton = activeDirection !== "" && !hasResolvedInitialFeed && papers.length === 0;
+    const shouldRenderFeedHeaderSkeleton = (
+        shouldRenderDirectionSkeletons
+        || activeDirection === ""
+        || loadingCalendar
+        || shouldHoldInitialFeedSkeleton
+    );
     const shouldRenderInitialFeedSkeleton = (
         shouldRenderDirectionSkeletons
         || loadingCalendar
         || showInitialSkeleton
-        || (!hasResolvedInitialFeed && papers.length === 0 && selectedDate !== "")
+        || shouldHoldInitialFeedSkeleton
     );
     const shouldRenderFeedPreviewSkeletons = shouldRenderInitialFeedSkeleton;
     const shouldRenderFeedStatsSkeleton = !shouldRenderFeedHeaderSkeleton && shouldRenderInitialFeedSkeleton;
@@ -1642,6 +1639,10 @@ const TimelinePage = () => {
             )}
 
             <style jsx>{`
+                :global(.appMain:has(.timelinePageShell)) {
+                    width: min(1544px, calc(100% - 32px));
+                }
+
                 .timelinePageShell {
                     --timeline-surface: #ffffff;
                     --timeline-surface-muted: #f6f8fb;
@@ -1652,7 +1653,8 @@ const TimelinePage = () => {
                     display: flex;
                     flex-direction: column;
                     gap: 20px;
-                    max-width: 1420px;
+                    width: 100%;
+                    max-width: 1544px;
                     height: calc(100vh - 158px);
                     overflow: hidden;
                 }
@@ -1666,7 +1668,7 @@ const TimelinePage = () => {
 
                 .timelineContentLayout {
                     display: grid;
-                    grid-template-columns: 240px minmax(0, 1fr) 312px;
+                    grid-template-columns: 240px minmax(0, 856px) 400px;
                     gap: 24px;
                     align-items: stretch;
                     flex: 1;
@@ -1853,6 +1855,12 @@ const TimelinePage = () => {
                     border-radius: 999px;
                 }
 
+                .timelineCalendarPlaceholderSubtitle {
+                    width: min(220px, 72%);
+                    height: 13px;
+                    border-radius: 999px;
+                }
+
                 .timelineCalendarPlaceholderNav {
                     display: flex;
                     gap: 8px;
@@ -1862,6 +1870,15 @@ const TimelinePage = () => {
                     width: 34px;
                     height: 34px;
                     border-radius: 10px;
+                }
+
+                .timelineCalendarPlaceholderWeekday {
+                    display: block;
+                    width: 100%;
+                    height: 12px;
+                    border-radius: 999px;
+                    justify-self: center;
+                    align-self: center;
                 }
 
                 .timelineCalendarPlaceholderCell {
@@ -2114,20 +2131,9 @@ const TimelinePage = () => {
                 .timelineSkeletonBlock {
                     position: relative;
                     overflow: hidden;
-                    background: #e3e9f0;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
-                }
-
-                .timelineSkeletonBlock::after {
-                    content: "";
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    background: linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%);
+                    background-size: 200% 100%;
+                    animation: timelinePreviewBarShimmer 1.15s ease-in-out infinite;
                 }
 
                 .timelineSkeletonLine,
@@ -2216,21 +2222,10 @@ const TimelinePage = () => {
                     display: block;
                     border-radius: 999px;
                     position: relative;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
-                }
-
-                .timelineDirectionLoadingBar::after,
-                .timelineFeedHeaderLoadingBar::after,
-                .timelineFeedPreviewBar::after {
-                    content: "";
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
+                    overflow: hidden;
+                    background: linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%);
+                    background-size: 200% 100%;
+                    animation: timelinePreviewBarShimmer 1.15s ease-in-out infinite;
                 }
 
                 .timelineEmptyState,
@@ -2258,27 +2253,6 @@ const TimelinePage = () => {
                     margin-top: 14px;
                 }
 
-                @keyframes timelineSkeletonShimmer {
-                    from {
-                        transform: translateX(-100%);
-                    }
-
-                    to {
-                        transform: translateX(260%);
-                    }
-                }
-
-                @keyframes timelineSkeletonPulse {
-                    0%,
-                    100% {
-                        background-color: #e3e9f0;
-                    }
-
-                    50% {
-                        background-color: #d7e0ea;
-                    }
-                }
-
                 @keyframes timelinePreviewBarShimmer {
                     from {
                         background-position: 200% 0;
@@ -2298,12 +2272,6 @@ const TimelinePage = () => {
                     to {
                         opacity: 1;
                         transform: translateY(0);
-                    }
-                }
-
-                @media (max-width: 1180px) {
-                    .timelineContentLayout {
-                        grid-template-columns: 220px minmax(0, 1fr) 284px;
                     }
                 }
 

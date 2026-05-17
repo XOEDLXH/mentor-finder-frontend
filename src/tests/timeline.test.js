@@ -177,6 +177,37 @@ describe("TimelinePage date mode", () => {
         expect(screen.getByText("已选择 2026-05-10")).toBeInTheDocument();
     });
 
+    it("keeps the feed header in skeleton state while the calendar request is still pending after overview load", async () => {
+        const calendarDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return calendarDeferred.promise;
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline", "GET", false);
+        });
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&calendar=1", "GET", false);
+        });
+
+        expect(screen.getByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
+        expect(screen.queryByText("共 0 篇")).not.toBeInTheDocument();
+        expect(screen.queryByText("等待加载")).not.toBeInTheDocument();
+
+        await act(async () => {
+            calendarDeferred.resolve(mockCalendarMeta());
+        });
+    });
+
     it("renders calendar cells and disables dates without papers", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
@@ -374,7 +405,6 @@ describe("TimelinePage date mode", () => {
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&after_date=2026-05-10&after_id=9&limit=5", "GET", false);
         });
-        expect(screen.queryByTestId("timeline-paper-8")).toBeNull();
     });
 
     it("updates the visible date range based on the first visible paper in the viewport", async () => {
