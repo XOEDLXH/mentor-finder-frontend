@@ -1,13 +1,14 @@
-import { CSSProperties, useCallback, useEffect, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import FollowToggleButton from "../components/FollowToggleButton";
+import LatexText from "../components/LatexText";
 import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
-import { FollowUserResult, SearchMentorResult } from "../utils/types";
+import { FollowUserResult, SearchMentorResult, TimelinePaper } from "../utils/types";
 
 interface FollowedMentorsResponse {
     mentors?: SearchMentorResult[];
@@ -21,6 +22,23 @@ interface FollowersResponse {
     users?: FollowUserResult[];
 }
 
+interface FollowedSubjectResult {
+    subject: string;
+    paperCount: number;
+    recentPapers: TimelinePaper[];
+}
+
+interface AvailableSubjectResult {
+    subject: string;
+    paperCount: number;
+    followed: boolean;
+}
+
+interface FollowedSubjectsResponse {
+    subjects?: FollowedSubjectResult[];
+    availableSubjects?: AvailableSubjectResult[];
+}
+
 interface SearchUsersResponse {
     users?: FollowUserResult[];
 }
@@ -29,7 +47,7 @@ interface FollowedMentorCardState extends SearchMentorResult {
     followed: boolean;
 }
 
-type FollowCategory = "mentor" | "user";
+type FollowCategory = "mentor" | "user" | "subject";
 type FollowView = "following" | "followers";
 
 const FOLLOWED_MENTOR_CARDS_PER_PAGE = 18;
@@ -80,6 +98,10 @@ const FollowsPage = () => {
     const [mentors, setMentors] = useState<FollowedMentorCardState[]>([]);
     const [users, setUsers] = useState<FollowUserResult[]>([]);
     const [followers, setFollowers] = useState<FollowUserResult[]>([]);
+    const [subjects, setSubjects] = useState<FollowedSubjectResult[]>([]);
+    const [availableSubjects, setAvailableSubjects] = useState<AvailableSubjectResult[]>([]);
+    const [subjectSearchKeyword, setSubjectSearchKeyword] = useState("");
+    const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
     const [userSearchKeyword, setUserSearchKeyword] = useState("");
     const [userSearchResults, setUserSearchResults] = useState<FollowUserResult[]>([]);
     const [userSearchLoading, setUserSearchLoading] = useState(false);
@@ -89,6 +111,7 @@ const FollowsPage = () => {
     const [loading, setLoading] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
+    const [actionSubject, setActionSubject] = useState<string | undefined>(undefined);
     const [errorMessage, setErrorMessage] = useState("");
 
     const fetchFollows = useCallback(async () => {
@@ -96,6 +119,8 @@ const FollowsPage = () => {
             setMentors([]);
             setUsers([]);
             setFollowers([]);
+            setSubjects([]);
+            setAvailableSubjects([]);
             return;
         }
 
@@ -103,10 +128,11 @@ const FollowsPage = () => {
         setErrorMessage("");
 
         try {
-            const [mentorRes, userRes, followerRes] = await Promise.all([
+            const [mentorRes, userRes, followerRes, subjectRes] = await Promise.all([
                 request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true),
                 request<FollowedUsersResponse>("/api/follow/users", "GET", true),
                 request<FollowersResponse>("/api/follow/followers", "GET", true),
+                request<FollowedSubjectsResponse>("/api/follow/subjects", "GET", true),
             ]);
             setMentors(
                 Array.isArray(mentorRes.mentors)
@@ -118,6 +144,8 @@ const FollowsPage = () => {
             );
             setUsers(Array.isArray(userRes.users) ? userRes.users : []);
             setFollowers(Array.isArray(followerRes.users) ? followerRes.users : []);
+            setSubjects(Array.isArray(subjectRes.subjects) ? subjectRes.subjects : []);
+            setAvailableSubjects(Array.isArray(subjectRes.availableSubjects) ? subjectRes.availableSubjects : []);
         }
         catch (err) {
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -188,6 +216,47 @@ const FollowsPage = () => {
         }
     };
 
+    const toggleSubjectFollow = async (targetSubject: string, followed: boolean) => {
+        setActionSubject(targetSubject);
+        setErrorMessage("");
+
+        try {
+            const res = await request<{ followed?: boolean; subject?: FollowedSubjectResult | string }>(
+                `/api/follow/subjects/${encodeURIComponent(targetSubject)}`,
+                followed ? "DELETE" : "POST",
+                true,
+            );
+            const nextFollowed = Boolean(res.followed);
+
+            setAvailableSubjects((currentSubjects) => currentSubjects.map((item) => (
+                item.subject === targetSubject ? { ...item, followed: nextFollowed } : item
+            )));
+
+            if (nextFollowed && typeof res.subject === "object" && Boolean(res.subject)) {
+                setSubjects((currentSubjects) => {
+                    if (currentSubjects.some((item) => item.subject === targetSubject)) {
+                        return currentSubjects;
+                    }
+                    return [res.subject as FollowedSubjectResult, ...currentSubjects];
+                });
+            }
+            else {
+                setSubjects((currentSubjects) => currentSubjects.filter((item) => item.subject !== targetSubject));
+                setExpandedSubjects((currentSubjects) => {
+                    const nextSubjects = new Set(currentSubjects);
+                    nextSubjects.delete(targetSubject);
+                    return nextSubjects;
+                });
+            }
+        }
+        catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            setActionSubject(undefined);
+        }
+    };
+
     const searchUsers = async () => {
         const keyword = userSearchKeyword.trim();
         if (keyword === "") {
@@ -217,6 +286,27 @@ const FollowsPage = () => {
 
     const openUserProfile = (userId: number) => {
         void router.push(`/users/${userId}`);
+    };
+
+    const buildPaperPdfUrl = (arxivUrl?: string) => {
+        if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
+            return "";
+        }
+
+        return arxivUrl.replace("/abs/", "/pdf/");
+    };
+
+    const toggleSubjectExpand = (subject: string) => {
+        setExpandedSubjects((currentSubjects) => {
+            const nextSubjects = new Set(currentSubjects);
+            if (nextSubjects.has(subject)) {
+                nextSubjects.delete(subject);
+            }
+            else {
+                nextSubjects.add(subject);
+            }
+            return nextSubjects;
+        });
     };
 
     const renderUserCard = (user: FollowUserResult, keyPrefix: string) => (
@@ -262,7 +352,25 @@ const FollowsPage = () => {
     const followedUserIds = new Set(
         users.filter((user) => user.followed).map((user) => user.id),
     );
-    const followingCount = mentors.filter((mentor) => mentor.followed).length + users.filter((user) => user.followed).length;
+    const followedSubjectSet = useMemo(
+        () => new Set(subjects.map((subject) => subject.subject)),
+        [subjects],
+    );
+    const filteredAvailableSubjects = useMemo(() => {
+        const keyword = subjectSearchKeyword.trim().toLowerCase();
+        return availableSubjects.filter((subject) => {
+            if (subject.followed || followedSubjectSet.has(subject.subject)) {
+                return false;
+            }
+            if (keyword === "") {
+                return true;
+            }
+            return subject.subject.toLowerCase().includes(keyword);
+        });
+    }, [availableSubjects, followedSubjectSet, subjectSearchKeyword]);
+    const followingCount = mentors.filter((mentor) => mentor.followed).length
+        + users.filter((user) => user.followed).length
+        + subjects.length;
     const visibleUserSearchResults = userSearchResults.filter((user) => (
         !user.followed && !followedUserIds.has(user.id)
     ));
@@ -344,6 +452,13 @@ const FollowsPage = () => {
                         onClick={() => setActiveCategory("user")}
                     >
                         用户（{users.filter((user) => user.followed).length}）
+                    </button>
+                    <button
+                        className={activeCategory === "subject" ? "filterButton filterButtonActive" : "filterButton"}
+                        type="button"
+                        onClick={() => setActiveCategory("subject")}
+                    >
+                        板块（{subjects.length}）
                     </button>
                 </aside>
 
@@ -459,6 +574,119 @@ const FollowsPage = () => {
                             ) : (
                                 <div className="userList" aria-label="已关注用户">
                                     {users.map((user) => renderUserCard(user, "followed"))}
+                                </div>
+                            )}
+                        </section>
+                    </section>
+                    )}
+
+                    {activeCategory === "subject" && (
+                    <section className="subjectFollowSection" aria-label="关注板块">
+                        <section className="subjectSearchSection" aria-label="搜索关注板块">
+                            <div className="sectionHeader">
+                                <h3>关注板块</h3>
+                            </div>
+
+                            <div className="userSearch">
+                                <input
+                                    type="text"
+                                    value={subjectSearchKeyword}
+                                    placeholder="搜索板块代码，例如 cs.AI"
+                                    onChange={(event) => setSubjectSearchKeyword(event.target.value)}
+                                />
+                            </div>
+
+                            {filteredAvailableSubjects.length > 0 && (
+                                <div className="subjectChipGrid" aria-label="可关注板块">
+                                    {filteredAvailableSubjects.slice(0, 24).map((subject) => (
+                                        <button
+                                            key={subject.subject}
+                                            className="subjectChip"
+                                            type="button"
+                                            disabled={actionSubject === subject.subject}
+                                            onClick={() => void toggleSubjectFollow(subject.subject, false)}
+                                        >
+                                            <span>{subject.subject}</span>
+                                            <small>{subject.paperCount} 篇</small>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="followedSubjectSection" aria-label="已关注板块区块">
+                            <div className="sectionHeader">
+                                <h3>已关注板块</h3>
+                                <span>{subjects.length}</span>
+                            </div>
+
+                            {!loading && subjects.length === 0 ? (
+                                <p>暂无关注板块</p>
+                            ) : (
+                                <div className="subjectList" aria-label="已关注板块">
+                                    {subjects.map((subject) => (
+                                        <article className="subjectCard" key={subject.subject}>
+                                            <div className="subjectCardHeader">
+                                                <div>
+                                                    <h4>{subject.subject}</h4>
+                                                    <p>{subject.paperCount} 篇论文</p>
+                                                </div>
+                                                <div className="subjectActionGroup">
+                                                    <button
+                                                        className="subjectExpandButton"
+                                                        type="button"
+                                                        onClick={() => toggleSubjectExpand(subject.subject)}
+                                                    >
+                                                        {expandedSubjects.has(subject.subject) ? "收起论文" : "展开论文"}
+                                                    </button>
+                                                    <button
+                                                        className="subjectUnfollowButton"
+                                                        type="button"
+                                                        disabled={actionSubject === subject.subject}
+                                                        onClick={() => void toggleSubjectFollow(subject.subject, true)}
+                                                    >
+                                                        {actionSubject === subject.subject ? "处理中..." : "取消关注"}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {expandedSubjects.has(subject.subject) && subject.recentPapers.length === 0 && (
+                                                <p className="subjectEmptyText">该板块暂无论文。</p>
+                                            )}
+
+                                            {expandedSubjects.has(subject.subject) && subject.recentPapers.length > 0 && (
+                                                <div className="subjectPaperList">
+                                                    {subject.recentPapers.map((paper) => {
+                                                        const pdfUrl = buildPaperPdfUrl(paper.arxiv_url);
+                                                        return (
+                                                            <div className="subjectPaperItem" key={paper.id}>
+                                                                <div className="subjectPaperTitle">
+                                                                    <LatexText text={paper.title} forceInlineMath />
+                                                                </div>
+                                                                <div className="subjectPaperMeta">
+                                                                    <span>{paper.publish_date || "未知日期"}</span>
+                                                                    <span>{paper.author_names || "未知作者"}</span>
+                                                                    {paper.arxiv_url && (
+                                                                        <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
+                                                                            arXiv
+                                                                        </a>
+                                                                    )}
+                                                                    {pdfUrl !== "" && (
+                                                                        <a href={pdfUrl} target="_blank" rel="noreferrer">
+                                                                            PDF
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                                <p className="subjectPaperAbstract">
+                                                                    {paper.tldr || paper.abstract || "暂无摘要"}
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </article>
+                                    ))}
                                 </div>
                             )}
                         </section>
@@ -656,14 +884,23 @@ const FollowsPage = () => {
                     gap: 18px;
                 }
 
+                :global(.subjectFollowSection) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 18px;
+                }
+
                 :global(.userSearchSection),
-                :global(.followedUserSection) {
+                :global(.followedUserSection),
+                :global(.subjectSearchSection),
+                :global(.followedSubjectSection) {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
                 }
 
-                :global(.followedUserSection) {
+                :global(.followedUserSection),
+                :global(.followedSubjectSection) {
                     border-top: 1px solid #d0d7de;
                     padding-top: 16px;
                 }
@@ -716,6 +953,148 @@ const FollowsPage = () => {
                     display: flex;
                     flex-direction: column;
                     gap: 10px;
+                }
+
+                :global(.subjectChipGrid) {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+                    gap: 8px;
+                }
+
+                :global(.subjectChip) {
+                    display: flex;
+                    min-height: 46px;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                    border: 1px solid #d0d7de;
+                    border-radius: 8px;
+                    background: #fff;
+                    padding: 8px 10px;
+                    color: #1f2328;
+                    font-weight: 700;
+                }
+
+                :global(.subjectChip small) {
+                    color: #57606a;
+                    font-size: 12px;
+                    font-weight: 600;
+                    white-space: nowrap;
+                }
+
+                :global(.subjectChip:hover:not(:disabled)),
+                :global(.subjectChip:focus-visible) {
+                    border-color: #0969da;
+                    color: #0969da;
+                    outline: none;
+                }
+
+                :global(.subjectList) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                :global(.subjectCard) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    border: 1px solid #d0d7de;
+                    border-radius: 8px;
+                    background: #fff;
+                    padding: 14px;
+                }
+
+                :global(.subjectCardHeader) {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                :global(.subjectActionGroup) {
+                    display: inline-flex;
+                    flex: 0 0 auto;
+                    gap: 8px;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
+                }
+
+                :global(.subjectCardHeader h4),
+                :global(.subjectCardHeader p) {
+                    margin: 0;
+                }
+
+                :global(.subjectCardHeader h4) {
+                    font-size: 18px;
+                }
+
+                :global(.subjectCardHeader p) {
+                    margin-top: 4px;
+                    color: #57606a;
+                    font-size: 13px;
+                }
+
+                :global(.subjectExpandButton),
+                :global(.subjectUnfollowButton) {
+                    border: 1px solid #d0d7de;
+                    border-radius: 6px;
+                    background: #f6f8fa;
+                    padding: 8px 10px;
+                    color: #1f2328;
+                    font-weight: 700;
+                }
+
+                :global(.subjectExpandButton) {
+                    border-color: rgb(8, 109, 177);
+                    background: #fff;
+                    color: rgb(8, 109, 177);
+                }
+
+                :global(.subjectPaperList) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                :global(.subjectPaperItem) {
+                    border-top: 1px solid #d8dee4;
+                    padding-top: 10px;
+                }
+
+                :global(.subjectPaperTitle) {
+                    color: #1f2328;
+                    font-weight: 700;
+                    line-height: 1.45;
+                }
+
+                :global(.subjectPaperMeta) {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    margin-top: 4px;
+                    color: #57606a;
+                    font-size: 13px;
+                }
+
+                :global(.subjectPaperMeta a) {
+                    color: rgb(8, 109, 177);
+                    text-decoration: none;
+                }
+
+                :global(.subjectPaperAbstract),
+                :global(.subjectEmptyText) {
+                    margin: 6px 0 0;
+                    color: #3f4650;
+                    line-height: 1.55;
+                }
+
+                :global(.subjectPaperAbstract) {
+                    display: -webkit-box;
+                    overflow: hidden;
+                    -webkit-box-orient: vertical;
+                    -webkit-line-clamp: 3;
                 }
 
                 :global(.userCard) {
