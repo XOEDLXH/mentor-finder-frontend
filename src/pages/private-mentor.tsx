@@ -19,6 +19,8 @@ const PRIVATE_MENTOR_LIMIT = 10;
 const PrivateMentorScreen = () => {
     const router = useRouter();
     const token = useSelector((state: RootState) => state.auth.token);
+    const userId = useSelector((state: RootState) => state.auth.userId);
+    const profileHref = userId === undefined ? "/follows" : `/users/${userId}`;
     const isLoggedIn = token.trim() !== "";
 
     const [privateMentorSaving, setPrivateMentorSaving] = useState(false);
@@ -212,7 +214,7 @@ const PrivateMentorScreen = () => {
                 <p>请先登录后再添加个人导师。</p>
                 <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => router.push("/login")}>去登录</button>
-                    <button onClick={() => router.push("/profile")}>返回个人主页</button>
+                    <button onClick={() => router.push(profileHref)}>返回个人主页</button>
                 </div>
             </div>
         );
@@ -349,7 +351,7 @@ const PrivateMentorScreen = () => {
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => router.push("/profile")}>返回个人主页</button>
+                <button onClick={() => router.push(profileHref)}>返回个人主页</button>
                 <button onClick={() => router.push("/search")}>去检索</button>
             </div>
 

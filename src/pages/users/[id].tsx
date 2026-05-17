@@ -123,8 +123,8 @@ const UserPublicProfilePage = () => {
 
     return (
         <main className="userPublicPage">
-            <button className="backButton" type="button" onClick={() => void router.push("/follows")}>
-                返回我的关注
+            <button className="backButton" type="button" onClick={() => void router.push("/")}>
+                返回主界面
             </button>
 
             {loading ? (

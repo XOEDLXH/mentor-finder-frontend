@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
+import { MentorVerificationRequestResult } from "../utils/types";
 
 interface ProfileSettings {
     avatarUrl: string;
@@ -17,6 +18,11 @@ interface ProfileSettings {
 
 interface ProfileResponse {
     profile?: Partial<ProfileSettings>;
+    mentorVerificationRequest?: MentorVerificationRequestResult;
+}
+
+interface MentorVerificationSubmitResponse {
+    mentorVerificationRequest?: MentorVerificationRequestResult;
 }
 
 const EMPTY_SETTINGS: ProfileSettings = {
@@ -46,18 +52,30 @@ const ProfileSettingsPage = () => {
     const [saving, setSaving] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [mentorVerificationName, setMentorVerificationName] = useState("");
+    const [mentorVerificationSubmitting, setMentorVerificationSubmitting] = useState(false);
+    const [mentorVerificationRequest, setMentorVerificationRequest] = useState<MentorVerificationRequestResult | undefined>(undefined);
 
     useEffect(() => {
         if (token.trim() === "") {
             setSettings(EMPTY_SETTINGS);
+            setMentorVerificationRequest(undefined);
             return;
         }
 
         setLoading(true);
         setErrorMessage("");
+        setMentorVerificationRequest(undefined);
 
         request<ProfileResponse>("/api/profile/me", "GET", true)
-            .then((res) => setSettings(normalizeSettings(res.profile)))
+            .then((res) => {
+                setSettings(normalizeSettings(res.profile));
+                setMentorVerificationRequest(
+                    typeof res.mentorVerificationRequest === "object" && res.mentorVerificationRequest
+                        ? res.mentorVerificationRequest
+                        : undefined,
+                );
+            })
             .catch((err) => {
                 if (err instanceof NetworkError && err.type === NetworkErrorType.UNAUTHORIZED) {
                     setErrorMessage("登录已失效，请重新登录后再试");
@@ -88,6 +106,35 @@ const ProfileSettingsPage = () => {
         }
     };
 
+    const submitMentorVerificationRequest = async () => {
+        const submittedName = mentorVerificationName.trim();
+        if (submittedName === "") {
+            setErrorMessage("导师身份申请姓名不能为空");
+            return;
+        }
+
+        setMentorVerificationSubmitting(true);
+        setSuccessMessage("");
+        setErrorMessage("");
+
+        try {
+            const res = await request<MentorVerificationSubmitResponse>("/api/profile/mentor-verification-request", "POST", true, {
+                submittedName,
+            });
+            setMentorVerificationRequest(res.mentorVerificationRequest);
+            setMentorVerificationName("");
+            setSuccessMessage("导师身份认证申请已提交");
+        } catch (err) {
+            if (err instanceof NetworkError && err.type === NetworkErrorType.UNAUTHORIZED) {
+                setErrorMessage("登录已失效，请重新登录后再试");
+                return;
+            }
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        } finally {
+            setMentorVerificationSubmitting(false);
+        }
+    };
+
     const profileHref = userId === undefined ? "/follows" : `/users/${userId}`;
 
     if (token.trim() === "") {
@@ -107,7 +154,10 @@ const ProfileSettingsPage = () => {
                     <h2>个人设置</h2>
                     <p>管理头像、个性签名和个人主页展示内容。</p>
                 </div>
-                <button type="button" onClick={() => void router.push(profileHref)}>返回个人主页</button>
+                <div className="headerActions">
+                    <button type="button" onClick={() => void router.push("/private-mentor")}>添加个人导师</button>
+                    <button type="button" onClick={() => void router.push(profileHref)}>返回个人主页</button>
+                </div>
             </div>
 
             {loading ? (
@@ -180,6 +230,35 @@ const ProfileSettingsPage = () => {
                         </div>
                     </section>
 
+                    <section className="settingsSection" aria-label="导师身份认证申请">
+                        <h3>导师身份认证申请</h3>
+                        <p>非管理员用户可在此提交导师身份绑定申请，请填写你的姓名。</p>
+                        <input
+                            type="text"
+                            value={mentorVerificationName}
+                            placeholder="填写申请绑定的导师姓名"
+                            onChange={(e) => setMentorVerificationName(e.target.value)}
+                            disabled={mentorVerificationSubmitting}
+                        />
+                        <div className="actions">
+                            <button
+                                type="button"
+                                onClick={() => void submitMentorVerificationRequest()}
+                                disabled={mentorVerificationSubmitting || mentorVerificationName.trim() === ""}
+                            >
+                                {mentorVerificationSubmitting ? "提交中..." : "提交导师身份申请"}
+                            </button>
+                        </div>
+
+                        {mentorVerificationRequest && (
+                            <div className="mentorRequestPanel">
+                                <p>最近申请姓名：{mentorVerificationRequest.submittedName}</p>
+                                <p>当前状态：{mentorVerificationRequest.status}</p>
+                                <p>提交时间：{mentorVerificationRequest.createdAt || "未知"}</p>
+                            </div>
+                        )}
+                    </section>
+
                     <div className="actions">
                         <button type="button" onClick={() => void saveSettings()} disabled={saving}>
                             {saving ? "保存中..." : "保存设置"}
@@ -205,6 +284,13 @@ const ProfileSettingsPage = () => {
                     align-items: flex-start;
                     justify-content: space-between;
                     gap: 16px;
+                }
+
+                .headerActions {
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    justify-content: flex-end;
                 }
 
                 .pageHeader h2 {
@@ -298,6 +384,21 @@ const ProfileSettingsPage = () => {
                 .actions {
                     display: flex;
                     gap: 8px;
+                }
+
+                .mentorRequestPanel {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    padding: 12px;
+                    border: 1px solid #d7d7d7;
+                    border-radius: 6px;
+                    background: #fafafa;
+                }
+
+                .mentorRequestPanel p {
+                    margin: 0;
+                    line-height: 1.5;
                 }
 
                 .errorPanel,
