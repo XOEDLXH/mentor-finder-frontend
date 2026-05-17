@@ -19,6 +19,7 @@ const INITIAL_FEED_PREVIEW_COUNT = 4;
 const LOAD_MORE_PREVIEW_COUNT = 1;
 const MIN_INITIAL_SKELETON_MS = 800;
 const INITIAL_SKELETON_FADE_MS = 180;
+const APPEND_SCROLL_ADJUSTMENT_RATIO = 0.002;
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type TimelineLoadMode = "replace" | "prepend" | "append";
@@ -604,10 +605,11 @@ const TimelinePage = () => {
 
             if (targetElement !== undefined) {
                 const delta = targetElement.offsetTop - pendingAdjustment.anchorTop;
+                const adjustedDelta = delta * APPEND_SCROLL_ADJUSTMENT_RATIO;
 
-                if (delta !== 0) {
+                if (adjustedDelta !== 0) {
                     skipNextScrollEventRef.current = true;
-                    viewport.scrollTop += delta;
+                    viewport.scrollTop += adjustedDelta;
                     lastFeedScrollTopRef.current = viewport.scrollTop;
                     scrollDirectionRef.current = pendingAdjustment.direction;
                 }
