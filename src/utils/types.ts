@@ -82,6 +82,8 @@ export interface TimelinePaper {
     author_names: string;
     mentor_ids?: number[];
     subjects?: string;
+    day_sequence?: number | null;
+    day_total?: number | null;
 }
 
 export interface TimelineDirectionSummary {
@@ -94,6 +96,19 @@ export interface TimelineDirectionsResponse {
     default_direction: string;
     page_size_default: number;
     page_size_max: number;
+}
+
+export interface TimelineCalendarDateSummary {
+    date: string;
+    paper_count: number;
+}
+
+export interface TimelineCalendarResponse {
+    direction: string;
+    default_date: string;
+    latest_date: string;
+    earliest_date: string;
+    available_dates: TimelineCalendarDateSummary[];
 }
 
 export interface WeeklyPushPaper {
@@ -190,11 +205,13 @@ export interface WeeklyPushHistoryResponse {
 
 export interface TimelinePapersResponse {
     direction: string;
-    offset: number;
     limit: number;
     total_papers: number;
-    has_previous: boolean;
-    has_next: boolean;
+    has_newer?: boolean;
+    has_older?: boolean;
+    offset?: number;
+    has_previous?: boolean;
+    has_next?: boolean;
     papers: TimelinePaper[];
 }
 
