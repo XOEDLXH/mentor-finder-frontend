@@ -19,7 +19,7 @@ const INITIAL_FEED_PREVIEW_COUNT = 4;
 const LOAD_MORE_PREVIEW_COUNT = 1;
 const MIN_INITIAL_SKELETON_MS = 800;
 const INITIAL_SKELETON_FADE_MS = 180;
-const APPEND_SCROLL_ADJUSTMENT_RATIO = 0.002;
+export const APPEND_SCROLL_ADJUSTMENT_RATIO = 0.002;
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type TimelineLoadMode = "replace" | "prepend" | "append";
