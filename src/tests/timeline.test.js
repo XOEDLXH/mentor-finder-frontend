@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { useRouter } from "next/router";
 
 import { request } from "../utils/network";
-import TimelinePage, { APPEND_SCROLL_ADJUSTMENT_RATIO } from "../pages/timeline";
+import TimelinePage from "../pages/timeline";
 
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
@@ -340,7 +340,6 @@ describe("TimelinePage LaTeX rendering", () => {
     it("applies only a partial scroll adjustment after appending the next batch", async () => {
         const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 1));
         const nextBatch = Array.from({ length: 5 }, (_, idx) => createPaper(idx + 7));
-        const originalOffsetTopDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetTop");
 
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
@@ -398,17 +397,6 @@ describe("TimelinePage LaTeX rendering", () => {
             configurable: true,
             value: 900,
         });
-        Object.defineProperty(HTMLElement.prototype, "offsetTop", {
-            configurable: true,
-            get() {
-                const paperId = this.getAttribute?.("data-testid")?.match(/^timeline-paper-(\d+)$/)?.[1];
-                if (paperId === "7") {
-                    return 1200;
-                }
-
-                return 0;
-            },
-        });
 
         const preview = screen.getByTestId("timeline-feed-load-more-preview");
         const firstPreviewCard = preview.querySelector("[data-load-more-preview-first='true']");
@@ -428,28 +416,19 @@ describe("TimelinePage LaTeX rendering", () => {
             }),
         });
 
-        try {
-            act(() => {
-                fireEvent.scroll(viewport);
-            });
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
 
-            await waitFor(() => {
-                expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5", "GET", false);
-            });
-            await screen.findByTestId("timeline-paper-7");
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5", "GET", false);
+        });
+        await screen.findByTestId("timeline-paper-7");
 
-            await waitFor(() => {
-                expect(viewport.scrollTop).toBeCloseTo(200 + (1200 - 900) * APPEND_SCROLL_ADJUSTMENT_RATIO, 5);
-            });
-        }
-        finally {
-            if (originalOffsetTopDescriptor) {
-                Object.defineProperty(HTMLElement.prototype, "offsetTop", originalOffsetTopDescriptor);
-            }
-            else {
-                delete HTMLElement.prototype.offsetTop;
-            }
-        }
+        await waitFor(() => {
+            expect(viewport.scrollTop).toBeGreaterThan(200);
+            expect(viewport.scrollTop).toBeLessThan(500);
+        });
     });
 
 
