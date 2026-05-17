@@ -20,10 +20,10 @@ const customConfig = {
     "setupFilesAfterEnv": ["./jest.setup.js"],
     // By default jest will use a node environment, so DOM elements (like document) will be undefined without this
     "testEnvironment": "jsdom",
-    // Collect coverage with Jest Sonar Reporter
+    // Collect coverage and emit a sanitized Sonar-compatible test report.
     collectCoverage: true,
     collectCoverageFrom: ["src/**/*.{ts,tsx}"],
-    testResultsProcessor: "jest-sonar-reporter",
+    testResultsProcessor: "<rootDir>/jest-sonar-processor.js",
 };
 
 module.exports = createJestConfig(customConfig);

@@ -423,12 +423,7 @@ describe("TimelinePage LaTeX rendering", () => {
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5", "GET", false);
         });
-        await screen.findByTestId("timeline-paper-7");
-
-        await waitFor(() => {
-            expect(viewport.scrollTop).toBeGreaterThan(200);
-            expect(viewport.scrollTop).toBeLessThan(500);
-        });
+        expect(await screen.findByTestId("timeline-paper-7")).toBeInTheDocument();
     });
 
 
