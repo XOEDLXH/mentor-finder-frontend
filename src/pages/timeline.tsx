@@ -1,10 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+    type TouchEvent as ReactTouchEvent,
+    type WheelEvent as ReactWheelEvent,
+} from "react";
 import { useRouter } from "next/router";
 
 import LatexText from "../components/LatexText";
 import { FAILURE_PREFIX } from "../constants/string";
 import { request } from "../utils/network";
 import {
+    TimelineCalendarResponse,
     TimelineDirectionSummary,
     TimelineDirectionsResponse,
     TimelinePaper,
@@ -20,6 +29,10 @@ const LOAD_MORE_PREVIEW_COUNT = 1;
 const MIN_INITIAL_SKELETON_MS = 800;
 const INITIAL_SKELETON_FADE_MS = 180;
 const APPEND_SCROLL_ADJUSTMENT_RATIO = 0.002;
+const TOP_OVERSCROLL_WHEEL_THRESHOLD = 72;
+const TOP_OVERSCROLL_TOUCH_THRESHOLD = 54;
+const CALENDAR_GRID_CELL_COUNT = 42;
+const CALENDAR_WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type TimelineLoadMode = "replace" | "prepend" | "append";
@@ -49,6 +62,51 @@ const createPreviewBarStyle = (
     ...extraStyles,
 });
 
+const CALENDAR_HEATMAP_MAX = 20;
+const CALENDAR_HEATMAP_DARK_RGB = { r: 8, g: 109, b: 177 } as const;
+const CALENDAR_HEATMAP_LIGHT_RGB = { r: 255, g: 255, b: 255 } as const;
+const CALENDAR_HEATMAP_MID_RGB = {
+    r: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.r*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.r/9),
+    g: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.g*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.g /9),
+    b: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.b*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.b/9),
+} as const;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const interpolateChannel = (start: number, end: number, ratio: number) => (
+    Math.round(start + ((end - start) * ratio))
+);
+
+const toRgbString = (rgb: { r: number; g: number; b: number; }) => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+const createCalendarHeatColor = (paperCount: number) => {
+    if (paperCount <= 0) {
+        return {
+            backgroundColor: "#ffffff",
+            textColor: "#1f2328",
+        };
+    }
+
+    if (paperCount >= CALENDAR_HEATMAP_MAX) {
+        return {
+            backgroundColor: toRgbString(CALENDAR_HEATMAP_DARK_RGB),
+            textColor: "#1f2328",
+        };
+    }
+
+    const ratio = (paperCount - 1) / (CALENDAR_HEATMAP_MAX - 1);
+    const rgb = {
+        r: interpolateChannel(CALENDAR_HEATMAP_MID_RGB.r, CALENDAR_HEATMAP_DARK_RGB.r, ratio),
+        g: interpolateChannel(CALENDAR_HEATMAP_MID_RGB.g, CALENDAR_HEATMAP_DARK_RGB.g, ratio),
+        b: interpolateChannel(CALENDAR_HEATMAP_MID_RGB.b, CALENDAR_HEATMAP_DARK_RGB.b, ratio),
+    };
+
+    return {
+        backgroundColor: toRgbString(rgb),
+        textColor: "#1f2328",
+    };
+};
+
 const TIMELINE_SKELETON_BLUEPRINTS = [
     {
         eyebrow: "88px",
@@ -73,16 +131,64 @@ const TIMELINE_SKELETON_BLUEPRINTS = [
     },
 ] as const;
 
+const padDatePart = (value: number) => String(value).padStart(2, "0");
+
+const parseIsoDate = (value?: string) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return undefined;
+    }
+
+    const [year, month, day] = value.split("-").map((item) => Number(item));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return undefined;
+    }
+
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
+};
+
+const formatIsoDate = (value: Date) => (
+    `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`
+);
+
+const cloneDate = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
+
+const addCalendarDays = (value: Date, days: number) => {
+    const next = cloneDate(value);
+    next.setDate(next.getDate() + days);
+    return next;
+};
+
+const addCalendarMonths = (value: Date, months: number) => {
+    const next = new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
+    next.setMonth(next.getMonth() + months);
+    return next;
+};
+
+const startOfCalendarMonth = (value: Date) => new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
+
+const buildCalendarGridStart = (month: Date) => {
+    const firstDay = startOfCalendarMonth(month);
+    const weekday = (firstDay.getDay() + 6) % 7;
+    return addCalendarDays(firstDay, -weekday);
+};
+
+const formatCalendarMonthLabel = (value: Date) => `${value.getFullYear()} 年 ${value.getMonth() + 1} 月`;
+
 const TimelinePage = () => {
     const router = useRouter();
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");
+    const [calendarMeta, setCalendarMeta] = useState<TimelineCalendarResponse | undefined>(undefined);
+    const [displayedMonth, setDisplayedMonth] = useState<Date | undefined>(undefined);
+    const [selectedDate, setSelectedDate] = useState("");
+    const [leadVisibleDate, setLeadVisibleDate] = useState("");
+    const [isCalendarBrowsingManually, setIsCalendarBrowsingManually] = useState(false);
     const [papers, setPapers] = useState<TimelinePaper[]>([]);
-    const [windowStartOffset, setWindowStartOffset] = useState(0);
     const [totalPapers, setTotalPapers] = useState(0);
     const [hasMoreBefore, setHasMoreBefore] = useState(false);
     const [hasMoreAfter, setHasMoreAfter] = useState(false);
     const [loadingDirections, setLoadingDirections] = useState(true);
+    const [loadingCalendar, setLoadingCalendar] = useState(false);
     const [loadingInitial, setLoadingInitial] = useState(false);
     const [loadingPrevious, setLoadingPrevious] = useState(false);
     const [, setLoadingNext] = useState(false);
@@ -93,10 +199,10 @@ const TimelinePage = () => {
     const feedViewportRef = useRef<HTMLDivElement | undefined>(undefined);
     const paperRefs = useRef<Record<number, HTMLElement | undefined>>({});
     const papersRef = useRef<TimelinePaper[]>([]);
-    const windowStartOffsetRef = useRef(0);
+    const activeDirectionRef = useRef("");
+    const selectedDateRef = useRef("");
     const hasMoreBeforeRef = useRef(false);
     const hasMoreAfterRef = useRef(false);
-    const activeDirectionRef = useRef("");
     const directionGenerationRef = useRef(0);
     const pendingScrollAdjustmentRef = useRef<ScrollAdjustment>(undefined);
     const initialSkeletonStartedAtRef = useRef(0);
@@ -111,14 +217,22 @@ const TimelinePage = () => {
     const skipNextScrollEventRef = useRef(false);
     const lastRealPaperBottomRef = useRef(0);
     const loadMoreThresholdConsumedRef = useRef(false);
+    const topWheelPullDistanceRef = useRef(0);
+    const topTouchStartYRef = useRef<number | undefined>(undefined);
+    const topTouchPullDistanceRef = useRef(0);
+    const topOverscrollConsumedRef = useRef(false);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         papersRef.current = papers;
     }, [papers]);
 
     useEffect(() => {
-        windowStartOffsetRef.current = windowStartOffset;
-    }, [windowStartOffset]);
+        activeDirectionRef.current = activeDirection;
+    }, [activeDirection]);
+
+    useEffect(() => {
+        selectedDateRef.current = selectedDate;
+    }, [selectedDate]);
 
     useEffect(() => {
         hasMoreBeforeRef.current = hasMoreBefore;
@@ -127,10 +241,6 @@ const TimelinePage = () => {
     useEffect(() => {
         hasMoreAfterRef.current = hasMoreAfter;
     }, [hasMoreAfter]);
-
-    useEffect(() => {
-        activeDirectionRef.current = activeDirection;
-    }, [activeDirection]);
 
     useEffect(() => () => {
         if (initialSkeletonTimerRef.current !== undefined) {
@@ -259,8 +369,80 @@ const TimelinePage = () => {
         inFlightRef.current.replace || inFlightRef.current.prepend || inFlightRef.current.append
     );
 
+    const resetTopOverscrollState = () => {
+        topWheelPullDistanceRef.current = 0;
+        topTouchStartYRef.current = undefined;
+        topTouchPullDistanceRef.current = 0;
+        topOverscrollConsumedRef.current = false;
+    };
+
+    const resetFeedViewportState = () => {
+        lastFeedScrollTopRef.current = 0;
+        scrollDirectionRef.current = "down";
+        skipNextScrollEventRef.current = false;
+        lastRealPaperBottomRef.current = 0;
+        loadMoreThresholdConsumedRef.current = false;
+        resetTopOverscrollState();
+        if (feedViewportRef.current !== undefined) {
+            feedViewportRef.current.scrollTop = 0;
+        }
+    };
+
+    const prepareFeedForReplace = (showSkeleton: boolean) => {
+        clearInitialSkeletonTimer();
+        inFlightRef.current = {
+            replace: false,
+            prepend: false,
+            append: false,
+        };
+        pendingScrollAdjustmentRef.current = undefined;
+        setLoadingInitial(false);
+        setLoadingPrevious(false);
+        setLoadingNext(false);
+        setHasResolvedInitialFeed(false);
+        setShowInitialSkeleton(showSkeleton);
+        setPapers([]);
+        setTotalPapers(0);
+        setHasMoreBefore(false);
+        setHasMoreAfter(false);
+        setLeadVisibleDate("");
+        papersRef.current = [];
+        paperRefs.current = {};
+        hasMoreBeforeRef.current = false;
+        hasMoreAfterRef.current = false;
+        resetFeedViewportState();
+    };
+
+    const updateLeadVisibleDate = () => {
+        const viewport = feedViewportRef.current;
+        const currentPapers = papersRef.current;
+        if (viewport === undefined || currentPapers.length === 0) {
+            setLeadVisibleDate("");
+            return;
+        }
+
+        const threshold = viewport.scrollTop + 8;
+        for (const paper of currentPapers) {
+            const paperElement = paperRefs.current[paper.id];
+            if (paperElement === undefined) {
+                continue;
+            }
+
+            const paperBottom = paperElement.offsetTop + paperElement.offsetHeight;
+            if (paperBottom > threshold) {
+                setLeadVisibleDate(paper.publish_date || "");
+                return;
+            }
+        }
+
+        setLeadVisibleDate(currentPapers[0]?.publish_date || "");
+    };
+
+    const buildTimelineQueryString = (params: Record<string, string>) => (
+        new URLSearchParams(params).toString()
+    );
+
     const applyFeedResponse = (response: TimelinePapersResponse, mode: TimelineLoadMode) => {
-        const normalizedOffset = Math.max(0, Number(response.offset) || 0);
         const normalizedLimit = Math.max(1, Number(response.limit) || DEFAULT_TIMELINE_LIMIT);
         const nextPapers = Array.isArray(response.papers) ? response.papers : [];
         const nextTotal = Number(response.total_papers) > 0 ? Number(response.total_papers) : 0;
@@ -270,14 +452,12 @@ const TimelinePage = () => {
         if (mode === "replace") {
             pendingScrollAdjustmentRef.current = undefined;
             setPapers(nextPapers);
-            setWindowStartOffset(normalizedOffset);
-            setHasMoreBefore(Boolean(response.has_previous));
-            setHasMoreAfter(Boolean(response.has_next));
+            setHasMoreBefore(Boolean(response.has_newer));
+            setHasMoreAfter(Boolean(response.has_older));
             return;
         }
 
         const currentPapers = papersRef.current;
-        const currentStartOffset = windowStartOffsetRef.current;
         const existingIds = new Set(currentPapers.map((paper) => paper.id));
 
         if (mode === "append") {
@@ -292,9 +472,11 @@ const TimelinePage = () => {
                 : pendingScrollAdjustmentRef.current;
 
             setPapers(mergedPapers);
-            setWindowStartOffset(currentStartOffset);
-            setHasMoreBefore(Boolean(response.has_previous) || currentStartOffset > 0);
-            setHasMoreAfter(Boolean(response.has_next));
+            setHasMoreBefore(Boolean(response.has_newer) || hasMoreBeforeRef.current);
+            setHasMoreAfter(Boolean(response.has_older));
+            if (!response.has_older && normalizedLimit < currentPapers.length) {
+                setHasMoreAfter(false);
+            }
             return;
         }
 
@@ -310,15 +492,13 @@ const TimelinePage = () => {
             : undefined;
 
         setPapers(mergedPapers);
-        setWindowStartOffset(normalizedOffset);
-        setHasMoreBefore(Boolean(response.has_previous));
-        setHasMoreAfter(Boolean(response.has_next) || hasMoreAfterRef.current || normalizedLimit < currentPapers.length);
+        setHasMoreBefore(Boolean(response.has_newer));
+        setHasMoreAfter(Boolean(response.has_older) || hasMoreAfterRef.current);
     };
 
     const fetchTimelineSlice = async (
         direction: string,
-        offset: number,
-        limit: number,
+        queryParams: Record<string, string>,
         mode: TimelineLoadMode,
         generation: number,
     ) => {
@@ -334,30 +514,29 @@ const TimelinePage = () => {
         }
 
         try {
-            const query = new URLSearchParams({
+            const query = buildTimelineQueryString({
                 direction,
-                offset: String(offset),
-                limit: String(limit),
-            }).toString();
+                ...queryParams,
+            });
             const response = await request<TimelinePapersResponse>(`/api/timeline?${query}`, "GET", false);
 
-            if (generation !== directionGenerationRef.current || activeDirectionRef.current !== direction) {
+            if (generation !== directionGenerationRef.current) {
                 return;
             }
 
             applyFeedResponse(response, mode);
         }
         catch (err) {
-            if (generation !== directionGenerationRef.current || activeDirectionRef.current !== direction) {
+            if (generation !== directionGenerationRef.current) {
                 return;
             }
 
             if (mode === "replace") {
                 setPapers([]);
-                setWindowStartOffset(0);
                 setTotalPapers(0);
                 setHasMoreBefore(false);
                 setHasMoreAfter(false);
+                setLeadVisibleDate("");
             }
 
             setErrorMessage(FAILURE_PREFIX + String(err));
@@ -400,9 +579,11 @@ const TimelinePage = () => {
             catch (err) {
                 setDirections([]);
                 setPapers([]);
+                setCalendarMeta(undefined);
                 setActiveDirection("");
+                setSelectedDate("");
+                setDisplayedMonth(undefined);
                 setTotalPapers(0);
-                setWindowStartOffset(0);
                 setHasMoreBefore(false);
                 setHasMoreAfter(false);
                 setErrorMessage(FAILURE_PREFIX + String(err));
@@ -419,43 +600,97 @@ const TimelinePage = () => {
         if (activeDirection === "") {
             clearInitialSkeletonTimer();
             setShowInitialSkeleton(false);
+            setCalendarMeta(undefined);
+            setDisplayedMonth(undefined);
+            setSelectedDate("");
+            selectedDateRef.current = "";
+            setLeadVisibleDate("");
             setPapers([]);
             setTotalPapers(0);
-            setWindowStartOffset(0);
             setHasMoreBefore(false);
             setHasMoreAfter(false);
             setHasResolvedInitialFeed(false);
+            setLoadingCalendar(false);
             return;
         }
 
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
-        clearInitialSkeletonTimer();
-        inFlightRef.current = {
-            replace: false,
-            prepend: false,
-            append: false,
+        prepareFeedForReplace(true);
+        setCalendarMeta(undefined);
+        setDisplayedMonth(undefined);
+        setLoadingCalendar(true);
+        setErrorMessage("");
+
+        const fetchCalendarAndInitialFeed = async () => {
+            try {
+                const query = buildTimelineQueryString({
+                    direction: activeDirection,
+                    calendar: "1",
+                });
+                const response = await request<TimelineCalendarResponse>(`/api/timeline?${query}`, "GET", false);
+
+                if (generation !== directionGenerationRef.current || activeDirectionRef.current !== activeDirection) {
+                    return;
+                }
+
+                const nextAvailableDates = Array.isArray(response.available_dates) ? response.available_dates : [];
+                const normalizedCalendarMeta = {
+                    ...response,
+                    available_dates: nextAvailableDates,
+                };
+                setCalendarMeta(normalizedCalendarMeta);
+
+                const preservedDate = selectedDateRef.current !== ""
+                    && nextAvailableDates.some((item) => item.date === selectedDateRef.current)
+                    ? selectedDateRef.current
+                    : (response.default_date || "");
+
+                setSelectedDate(preservedDate);
+                selectedDateRef.current = preservedDate;
+                const monthSource = preservedDate || response.latest_date;
+                setDisplayedMonth(monthSource !== "" ? parseIsoDate(monthSource) : undefined);
+                setIsCalendarBrowsingManually(false);
+
+                if (preservedDate === "") {
+                    clearInitialSkeletonTimer();
+                    setShowInitialSkeleton(false);
+                    setHasResolvedInitialFeed(true);
+                    return;
+                }
+
+                await fetchTimelineSlice(activeDirection, {
+                    date: preservedDate,
+                    limit: String(INITIAL_BATCH_SIZE),
+                }, "replace", generation);
+            }
+            catch (err) {
+                if (generation !== directionGenerationRef.current || activeDirectionRef.current !== activeDirection) {
+                    return;
+                }
+
+                setCalendarMeta(undefined);
+                setDisplayedMonth(undefined);
+                setIsCalendarBrowsingManually(false);
+                setSelectedDate("");
+                selectedDateRef.current = "";
+                setPapers([]);
+                setTotalPapers(0);
+                setHasMoreBefore(false);
+                setHasMoreAfter(false);
+                setLeadVisibleDate("");
+                setHasResolvedInitialFeed(true);
+                setShowInitialSkeleton(false);
+                setErrorMessage(FAILURE_PREFIX + String(err));
+            }
+            finally {
+                if (generation === directionGenerationRef.current) {
+                    setLoadingCalendar(false);
+                }
+            }
         };
-        pendingScrollAdjustmentRef.current = undefined;
-        setLoadingPrevious(false);
-        setLoadingNext(false);
-        setHasResolvedInitialFeed(false);
-        setShowInitialSkeleton(true);
-        setPapers([]);
-        setWindowStartOffset(0);
-        setTotalPapers(0);
-        setHasMoreBefore(false);
-        setHasMoreAfter(false);
-        papersRef.current = [];
-        windowStartOffsetRef.current = 0;
-        hasMoreBeforeRef.current = false;
-        hasMoreAfterRef.current = false;
-        lastFeedScrollTopRef.current = 0;
-        scrollDirectionRef.current = "down";
-        if (feedViewportRef.current !== undefined) {
-            feedViewportRef.current.scrollTop = 0;
-        }
-        void fetchTimelineSlice(activeDirection, 0, INITIAL_BATCH_SIZE, "replace", generation);
+
+        void fetchCalendarAndInitialFeed();
     }, [activeDirection]);
 
     const activeDirectionSummary = useMemo(
@@ -463,23 +698,114 @@ const TimelinePage = () => {
         [activeDirection, directions],
     );
 
-    const visibleStart = papers.length > 0 ? windowStartOffset + 1 : 0;
-    const visibleEnd = papers.length > 0 ? windowStartOffset + papers.length : 0;
+    const availableDateSet = useMemo(
+        () => new Set((calendarMeta?.available_dates || []).map((item) => item.date)),
+        [calendarMeta],
+    );
 
-    const loadPreviousBatch = () => {
+    const availableDateCountMap = useMemo(
+        () => new Map((calendarMeta?.available_dates || []).map((item) => [item.date, item.paper_count])),
+        [calendarMeta],
+    );
+
+    const currentCalendarMonth = useMemo(() => {
+        if (displayedMonth !== undefined) {
+            return startOfCalendarMonth(displayedMonth);
+        }
+
+        const fallbackDate = parseIsoDate(selectedDate || calendarMeta?.latest_date || "");
+        return fallbackDate !== undefined ? startOfCalendarMonth(fallbackDate) : startOfCalendarMonth(new Date());
+    }, [calendarMeta?.latest_date, displayedMonth, selectedDate]);
+
+    const handleCalendarMonthChange = (deltaMonths: number) => {
+        setIsCalendarBrowsingManually(true);
+        setDisplayedMonth(addCalendarMonths(currentCalendarMonth, deltaMonths));
+    };
+
+    const calendarDayCells = useMemo(() => {
+        const gridStart = buildCalendarGridStart(currentCalendarMonth);
+        return Array.from({ length: CALENDAR_GRID_CELL_COUNT }, (_, idx) => {
+            const value = addCalendarDays(gridStart, idx);
+            const isoDate = formatIsoDate(value);
+            const paperCount = availableDateCountMap.get(isoDate) || 0;
+            const { backgroundColor, textColor } = createCalendarHeatColor(paperCount);
+            return {
+                isoDate,
+                label: value.getDate(),
+                inCurrentMonth: value.getMonth() === currentCalendarMonth.getMonth(),
+                hasPaper: paperCount > 0,
+                isInteractive: paperCount > 0,
+                paperCount,
+                displayCount: paperCount,
+                heatLevel: clamp(paperCount, 0, CALENDAR_HEATMAP_MAX),
+                backgroundColor,
+                textColor,
+            };
+        });
+    }, [availableDateCountMap, currentCalendarMonth]);
+
+    const currentVisibleDateRange = useMemo(() => {
+        const targetDate = leadVisibleDate || papers[0]?.publish_date || selectedDate;
+        if (targetDate === "") {
+            return undefined;
+        }
+
+        const visibleSameDayPapers = papers.filter((paper) => paper.publish_date === targetDate);
+        if (visibleSameDayPapers.length === 0) {
+            return undefined;
+        }
+
+        const sequences = visibleSameDayPapers
+            .map((paper) => paper.day_sequence)
+            .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+        if (sequences.length > 0) {
+            return {
+                date: targetDate,
+                start: Math.min(...sequences),
+                end: Math.max(...sequences),
+            };
+        }
+
+        return {
+            date: targetDate,
+            start: 1,
+            end: visibleSameDayPapers.length,
+        };
+    }, [leadVisibleDate, papers, selectedDate]);
+
+    useEffect(() => {
+        if (leadVisibleDate === "") {
+            return;
+        }
+
+        const nextLeadDate = parseIsoDate(leadVisibleDate);
+        if (nextLeadDate === undefined) {
+            return;
+        }
+
+        const nextLeadMonth = startOfCalendarMonth(nextLeadDate);
+        if (isCalendarBrowsingManually) {
+            return;
+        }
+
         if (
-            activeDirectionRef.current === ""
-            || !hasMoreBeforeRef.current
-            || hasAnyFeedLoadInFlight()
-            || windowStartOffsetRef.current <= 0
+            currentCalendarMonth.getFullYear() === nextLeadMonth.getFullYear()
+            && currentCalendarMonth.getMonth() === nextLeadMonth.getMonth()
         ) {
             return;
         }
 
-        const limit = Math.min(WINDOW_BATCH_SIZE, windowStartOffsetRef.current);
-        const offset = Math.max(0, windowStartOffsetRef.current - limit);
-        void fetchTimelineSlice(activeDirectionRef.current, offset, limit, "prepend", directionGenerationRef.current);
-    };
+        setDisplayedMonth(nextLeadMonth);
+    }, [currentCalendarMonth, isCalendarBrowsingManually, leadVisibleDate]);
+
+    useEffect(() => {
+        if (leadVisibleDate === "") {
+            return;
+        }
+
+        setIsCalendarBrowsingManually(false);
+    }, [leadVisibleDate]);
 
     const getFeedViewportBottom = () => {
         const viewport = feedViewportRef.current;
@@ -499,6 +825,27 @@ const TimelinePage = () => {
         return firstPreview.getBoundingClientRect().top;
     };
 
+    const loadPreviousBatch = () => {
+        if (
+            activeDirectionRef.current === ""
+            || !hasMoreBeforeRef.current
+            || hasAnyFeedLoadInFlight()
+        ) {
+            return;
+        }
+
+        const firstPaper = papersRef.current[0];
+        if (firstPaper === undefined || typeof firstPaper.publish_date !== "string" || firstPaper.publish_date === "") {
+            return;
+        }
+
+        void fetchTimelineSlice(activeDirectionRef.current, {
+            after_date: firstPaper.publish_date,
+            after_id: String(firstPaper.id),
+            limit: String(WINDOW_BATCH_SIZE),
+        }, "prepend", directionGenerationRef.current);
+    };
+
     const loadNextBatch = () => {
         if (
             activeDirectionRef.current === ""
@@ -509,7 +856,11 @@ const TimelinePage = () => {
         }
 
         const lastPaper = papersRef.current[papersRef.current.length - 1];
-        const anchorTop = lastPaper !== undefined ? (paperRefs.current[lastPaper.id]?.offsetTop || 0) : 0;
+        if (lastPaper === undefined || typeof lastPaper.publish_date !== "string" || lastPaper.publish_date === "") {
+            return;
+        }
+
+        const anchorTop = paperRefs.current[lastPaper.id]?.offsetTop || 0;
         if (anchorTop > 0) {
             pendingScrollAdjustmentRef.current = {
                 type: "append-anchor",
@@ -518,13 +869,11 @@ const TimelinePage = () => {
             };
         }
 
-        void fetchTimelineSlice(
-            activeDirectionRef.current,
-            windowStartOffsetRef.current + papersRef.current.length,
-            WINDOW_BATCH_SIZE,
-            "append",
-            directionGenerationRef.current,
-        );
+        void fetchTimelineSlice(activeDirectionRef.current, {
+            before_date: lastPaper.publish_date,
+            before_id: String(lastPaper.id),
+            limit: String(WINDOW_BATCH_SIZE),
+        }, "append", directionGenerationRef.current);
     };
 
     const maybeLoadNextFromViewport = () => {
@@ -548,6 +897,19 @@ const TimelinePage = () => {
         }
     };
 
+    const triggerTopOverscrollLoad = () => {
+        if (
+            topOverscrollConsumedRef.current
+            || !hasMoreBeforeRef.current
+            || hasAnyFeedLoadInFlight()
+        ) {
+            return;
+        }
+
+        topOverscrollConsumedRef.current = true;
+        loadPreviousBatch();
+    };
+
     const handleFeedViewportScroll = () => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined) {
@@ -560,6 +922,7 @@ const TimelinePage = () => {
         if (skipNextScrollEventRef.current) {
             skipNextScrollEventRef.current = false;
             lastFeedScrollTopRef.current = currentTop;
+            updateLeadVisibleDate();
             return;
         }
 
@@ -569,14 +932,76 @@ const TimelinePage = () => {
 
         lastFeedScrollTopRef.current = currentTop;
 
-        if (currentTop <= 0) {
-            if (previousTop > 0 && scrollDirectionRef.current === "up") {
-                loadPreviousBatch();
+        if (currentTop > 0) {
+            resetTopOverscrollState();
+        }
+
+        maybeLoadNextFromViewport();
+        updateLeadVisibleDate();
+    };
+
+    const handleFeedViewportWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+        const viewport = feedViewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+
+        if (viewport.scrollTop > 0 || event.deltaY >= 0) {
+            if (viewport.scrollTop > 0 || event.deltaY > 0) {
+                resetTopOverscrollState();
             }
             return;
         }
 
-        maybeLoadNextFromViewport();
+        if (!hasMoreBeforeRef.current || hasAnyFeedLoadInFlight()) {
+            return;
+        }
+
+        topWheelPullDistanceRef.current += Math.abs(event.deltaY);
+        if (topWheelPullDistanceRef.current >= TOP_OVERSCROLL_WHEEL_THRESHOLD) {
+            triggerTopOverscrollLoad();
+        }
+    };
+
+    const handleFeedViewportTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+        const viewport = feedViewportRef.current;
+        if (viewport === undefined || viewport.scrollTop > 0) {
+            topTouchStartYRef.current = undefined;
+            topTouchPullDistanceRef.current = 0;
+            return;
+        }
+
+        topTouchStartYRef.current = event.touches[0]?.clientY;
+        topTouchPullDistanceRef.current = 0;
+    };
+
+    const handleFeedViewportTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+        const viewport = feedViewportRef.current;
+        if (
+            viewport === undefined
+            || viewport.scrollTop > 0
+            || topTouchStartYRef.current === undefined
+            || !hasMoreBeforeRef.current
+            || hasAnyFeedLoadInFlight()
+        ) {
+            return;
+        }
+
+        const currentY = event.touches[0]?.clientY ?? topTouchStartYRef.current;
+        const delta = currentY - topTouchStartYRef.current;
+        if (delta <= 0) {
+            return;
+        }
+
+        topTouchPullDistanceRef.current = Math.max(topTouchPullDistanceRef.current, delta);
+        if (topTouchPullDistanceRef.current >= TOP_OVERSCROLL_TOUCH_THRESHOLD) {
+            triggerTopOverscrollLoad();
+        }
+    };
+
+    const handleFeedViewportTouchEnd = () => {
+        topTouchStartYRef.current = undefined;
+        topTouchPullDistanceRef.current = 0;
     };
 
     useIsomorphicLayoutEffect(() => {
@@ -619,7 +1044,35 @@ const TimelinePage = () => {
         pendingScrollAdjustmentRef.current = undefined;
         lastRealPaperBottomRef.current = getFeedViewportBottom();
         loadMoreThresholdConsumedRef.current = false;
+        if (viewport.scrollTop > 0) {
+            resetTopOverscrollState();
+        }
+        updateLeadVisibleDate();
     }, [papers]);
+
+    const handleSelectDate = (nextDate: string) => {
+        if (
+            activeDirectionRef.current === ""
+            || nextDate === ""
+            || !availableDateSet.has(nextDate)
+        ) {
+            return;
+        }
+
+        directionGenerationRef.current += 1;
+        const generation = directionGenerationRef.current;
+        setSelectedDate(nextDate);
+        selectedDateRef.current = nextDate;
+        setDisplayedMonth(parseIsoDate(nextDate));
+        setIsCalendarBrowsingManually(false);
+        prepareFeedForReplace(true);
+        setErrorMessage("");
+
+        void fetchTimelineSlice(activeDirectionRef.current, {
+            date: nextDate,
+            limit: String(INITIAL_BATCH_SIZE),
+        }, "replace", generation);
+    };
 
     const renderSkeletonStack = (count: number, position: "top" | "initial" | "bottom") => (
         <div
@@ -716,34 +1169,20 @@ const TimelinePage = () => {
                     <span
                         className="timelineDirectionLoadingBar timelineDirectionLoadingBarPrimary"
                         aria-hidden="true"
-                        style={{
-                            display: "block",
-                            width: "82%",
-                            height: 18,
+                        style={createPreviewBarStyle("82%", 18, {
                             marginTop: 2,
                             flex: "0 0 auto",
-                            borderRadius: 999,
-                            background: "#e3e9f0",
-                            position: "relative",
-                            overflow: "hidden",
                             zIndex: 1,
-                        }}
+                        })}
                     />
                     <span
                         className="timelineDirectionLoadingBar timelineDirectionLoadingBarSecondary"
                         aria-hidden="true"
-                        style={{
-                            display: "block",
-                            width: "36%",
-                            height: 12,
+                        style={createPreviewBarStyle("36%", 12, {
                             marginTop: "auto",
                             flex: "0 0 auto",
-                            borderRadius: 999,
-                            background: "#e3e9f0",
-                            position: "relative",
-                            overflow: "hidden",
                             zIndex: 1,
-                        }}
+                        })}
                     />
                 </button>
             ))}
@@ -781,27 +1220,11 @@ const TimelinePage = () => {
             >
                 <span
                     className="timelineFeedHeaderLoadingBar timelineFeedHeaderLoadingBarPrimary"
-                    style={{
-                        display: "block",
-                        width: "min(360px, 62%)",
-                        height: 24,
-                        borderRadius: 999,
-                        background: "#e3e9f0",
-                        position: "relative",
-                        overflow: "hidden",
-                    }}
+                    style={createPreviewBarStyle("min(360px, 62%)", 24)}
                 />
                 <span
                     className="timelineFeedHeaderLoadingBar timelineFeedHeaderLoadingBarSecondary"
-                    style={{
-                        display: "block",
-                        width: "min(240px, 38%)",
-                        height: 14,
-                        borderRadius: 999,
-                        background: "#e3e9f0",
-                        position: "relative",
-                        overflow: "hidden",
-                    }}
+                    style={createPreviewBarStyle("min(240px, 38%)", 14)}
                 />
             </div>
             <div
@@ -815,8 +1238,14 @@ const TimelinePage = () => {
                     flex: "0 0 auto",
                 }}
             >
-                <span className="timelineSkeletonBlock timelineFeedHeaderSkeletonStat" />
-                <span className="timelineSkeletonBlock timelineFeedHeaderSkeletonStat timelineFeedHeaderSkeletonStatShort" />
+                <span
+                    className="timelineFeedHeaderLoadingBar timelineFeedHeaderSkeletonStat"
+                    style={createPreviewBarStyle(72, 12)}
+                />
+                <span
+                    className="timelineFeedHeaderLoadingBar timelineFeedHeaderSkeletonStat timelineFeedHeaderSkeletonStatShort"
+                    style={createPreviewBarStyle(112, 12)}
+                />
             </div>
         </div>
     );
@@ -957,13 +1386,59 @@ const TimelinePage = () => {
         </div>
     );
 
+    const renderCalendarPlaceholder = () => (
+        <div className="timelineCalendarPlaceholder" aria-hidden="true">
+            <div className="timelineCalendarPlaceholderHeader">
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        flex: 1,
+                        minWidth: 0,
+                    }}
+                >
+                    <span className="timelineSkeletonBlock timelineCalendarPlaceholderTitle" />
+                    <span
+                        className="timelineFeedHeaderLoadingBar timelineCalendarPlaceholderSubtitle"
+                        style={createPreviewBarStyle("min(220px, 72%)", 13)}
+                    />
+                </div>
+                <div className="timelineCalendarPlaceholderNav">
+                    <span className="timelineSkeletonBlock timelineCalendarPlaceholderNavButton" />
+                    <span className="timelineSkeletonBlock timelineCalendarPlaceholderNavButton" />
+                </div>
+            </div>
+            <div className="timelineCalendarWeekRow">
+                {CALENDAR_WEEKDAY_LABELS.map((label) => (
+                    <span
+                        key={`calendar-placeholder-week-${label}`}
+                        className="timelineFeedHeaderLoadingBar timelineCalendarPlaceholderWeekday"
+                    />
+                ))}
+            </div>
+            <div className="timelineCalendarGrid">
+                {createSkeletonKeys(CALENDAR_GRID_CELL_COUNT, "calendar-cell").map((key) => (
+                    <span key={key} className="timelineSkeletonBlock timelineCalendarPlaceholderCell" />
+                ))}
+            </div>
+        </div>
+    );
+
     const shouldRenderTimelineShell = loadingDirections || directions.length > 0;
     const shouldRenderDirectionSkeletons = loadingDirections && directions.length === 0;
-    const shouldRenderFeedHeaderSkeleton = shouldRenderDirectionSkeletons || activeDirection === "";
+    const shouldHoldInitialFeedSkeleton = activeDirection !== "" && !hasResolvedInitialFeed && papers.length === 0;
+    const shouldRenderFeedHeaderSkeleton = (
+        shouldRenderDirectionSkeletons
+        || activeDirection === ""
+        || loadingCalendar
+        || shouldHoldInitialFeedSkeleton
+    );
     const shouldRenderInitialFeedSkeleton = (
         shouldRenderDirectionSkeletons
+        || loadingCalendar
         || showInitialSkeleton
-        || (!hasResolvedInitialFeed && papers.length === 0)
+        || shouldHoldInitialFeedSkeleton
     );
     const shouldRenderFeedPreviewSkeletons = shouldRenderInitialFeedSkeleton;
     const shouldRenderFeedStatsSkeleton = !shouldRenderFeedHeaderSkeleton && shouldRenderInitialFeedSkeleton;
@@ -991,7 +1466,7 @@ const TimelinePage = () => {
             <div className="timelinePageHeader">
                 <div>
                     <h2 style={{ margin: "0 0 8px" }}>论文时间线</h2>
-                    <p style={{ margin: 0 }}>按研究方向查看最新论文动态，像内容 feed 一样连续向下浏览与回看。</p>
+                    <p style={{ margin: 0 }}>按研究方向和日期查看论文动态，右侧日历可以快速跳到任意有论文的那一天。</p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => router.push("/")}>返回首页</button>
@@ -1018,10 +1493,11 @@ const TimelinePage = () => {
                                         key={group.direction}
                                         onClick={() => {
                                             if (group.direction === activeDirection) {
-                                            if (feedViewportRef.current !== undefined) {
-                                                lastFeedScrollTopRef.current = 0;
-                                                scrollDirectionRef.current = "down";
-                                                feedViewportRef.current.scrollTop = 0;
+                                                if (feedViewportRef.current !== undefined) {
+                                                    lastFeedScrollTopRef.current = 0;
+                                                    scrollDirectionRef.current = "down";
+                                                    feedViewportRef.current.scrollTop = 0;
+                                                    updateLeadVisibleDate();
                                                 }
                                                 return;
                                             }
@@ -1059,7 +1535,11 @@ const TimelinePage = () => {
                                     ) : (
                                         <>
                                             <span>共 {totalPapers} 篇</span>
-                                            <span>{papers.length > 0 ? `当前显示第 ${visibleStart}-${visibleEnd} 篇` : "等待加载"}</span>
+                                            <span>
+                                                {currentVisibleDateRange
+                                                    ? `当前显示 ${currentVisibleDateRange.date} 第 ${currentVisibleDateRange.start}-${currentVisibleDateRange.end} 篇`
+                                                    : "等待加载"}
+                                            </span>
                                         </>
                                     )}
                                 </div>
@@ -1073,6 +1553,10 @@ const TimelinePage = () => {
                             className="timelineFeedViewport"
                             data-testid="timeline-feed-viewport"
                             onScroll={handleFeedViewportScroll}
+                            onWheel={handleFeedViewportWheel}
+                            onTouchStart={handleFeedViewportTouchStart}
+                            onTouchMove={handleFeedViewportTouchMove}
+                            onTouchEnd={handleFeedViewportTouchEnd}
                         >
                             {!loadingInitial && loadingPrevious && renderSkeletonStack(WINDOW_BATCH_SIZE, "top")}
 
@@ -1147,19 +1631,100 @@ const TimelinePage = () => {
 
                             {shouldRenderEmptyFeedState && (
                                 <div className="timelineEmptyState">
-                                    当前研究方向下暂无论文数据。
+                                    当前研究方向下暂无可浏览的日期论文。
                                 </div>
                             )}
 
                             {shouldRenderFeedHint && (
                                 <div className="timelineFeedHint">
                                     {hasMoreBefore
-                                        ? "已到当前方向末尾；向上滑到顶部会立即补回更早加载过的论文。"
+                                        ? "已到更早日期末尾；回到顶部后继续上拉，可加载更新日期的论文。"
                                         : "这个方向的论文已经浏览到底。"}
                                 </div>
                             )}
                         </div>
                     </section>
+
+                    <aside className="timelineCalendarPanel" data-testid="timeline-calendar-panel">
+                        <div className="timelineCalendarPanelHeader">
+                            <div>
+                                <h3 className="timelineCalendarPanelTitle">日期日历</h3>
+                                <p className="timelineCalendarPanelSubtitle">
+                                    {selectedDate !== "" ? `已选择 ${selectedDate}` : "只可点击有论文的日期"}
+                                </p>
+                            </div>
+                        </div>
+                        {loadingCalendar || calendarMeta === undefined ? (
+                            renderCalendarPlaceholder()
+                        ) : (
+                            <>
+                                <div className="timelineCalendarMonthBar">
+                                    <button
+                                        type="button"
+                                        className="timelineCalendarNavButton"
+                                        onClick={() => handleCalendarMonthChange(-1)}
+                                        aria-label="查看上个月"
+                                    >
+                                        ‹
+                                    </button>
+                                    <div className="timelineCalendarMonthLabel">{formatCalendarMonthLabel(currentCalendarMonth)}</div>
+                                    <button
+                                        type="button"
+                                        className="timelineCalendarNavButton"
+                                        onClick={() => handleCalendarMonthChange(1)}
+                                        aria-label="查看下个月"
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                                <div className="timelineCalendarWeekRow" aria-hidden="true">
+                                    {CALENDAR_WEEKDAY_LABELS.map((label) => (
+                                        <span key={`weekday-${label}`} className="timelineCalendarWeekday">
+                                            {label}
+                                        </span>
+                                    ))}
+                                </div>
+                                <div className="timelineCalendarGrid">
+                                    {calendarDayCells.map((cell) => {
+                                        const isLeadVisible = leadVisibleDate !== "" && cell.isoDate === leadVisibleDate;
+                                        const cellClassName = [
+                                            "timelineCalendarDayButton",
+                                            cell.inCurrentMonth ? "" : " timelineCalendarDayButtonOutside",
+                                            cell.isInteractive ? "" : " timelineCalendarDayButtonDisabled",
+                                            isLeadVisible ? " timelineCalendarDayButtonLead" : "",
+                                        ].join("");
+                                        const cellStyle = {
+                                            "--timeline-calendar-cell-bg": cell.backgroundColor,
+                                            "--timeline-calendar-cell-text": cell.textColor,
+                                        } as React.CSSProperties;
+
+                                        return (
+                                            <button
+                                                key={cell.isoDate}
+                                                type="button"
+                                                data-testid={`timeline-calendar-day-${cell.isoDate}`}
+                                                className={cellClassName}
+                                                style={cellStyle}
+                                                onClick={() => {
+                                                    if (!cell.isInteractive) {
+                                                        return;
+                                                    }
+                                                    handleSelectDate(cell.isoDate);
+                                                }}
+                                                aria-disabled={!cell.isInteractive}
+                                                aria-label={`${cell.isoDate} ${cell.displayCount} 篇论文`}
+                                            >
+                                                <span className="timelineCalendarDayNumber">{cell.label}</span>
+                                                <span className="timelineCalendarDayMeta">
+                                                    {cell.displayCount}篇
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                    </aside>
                 </div>
             )}
 
@@ -1170,8 +1735,11 @@ const TimelinePage = () => {
             )}
 
             <style jsx>{`
+                :global(.appMain:has(.timelinePageShell)) {
+                    width: min(1544px, calc(100% - 32px));
+                }
+
                 .timelinePageShell {
-                    --timeline-sticky-top: 64px;
                     --timeline-surface: #ffffff;
                     --timeline-surface-muted: #f6f8fb;
                     --timeline-border: #d8dee6;
@@ -1181,7 +1749,8 @@ const TimelinePage = () => {
                     display: flex;
                     flex-direction: column;
                     gap: 20px;
-                    max-width: 1160px;
+                    width: 100%;
+                    max-width: 1544px;
                     height: calc(100vh - 158px);
                     overflow: hidden;
                 }
@@ -1195,7 +1764,7 @@ const TimelinePage = () => {
 
                 .timelineContentLayout {
                     display: grid;
-                    grid-template-columns: 240px minmax(0, 1fr);
+                    grid-template-columns: 240px minmax(0, 856px) 400px;
                     gap: 24px;
                     align-items: stretch;
                     flex: 1;
@@ -1203,7 +1772,8 @@ const TimelinePage = () => {
                     overflow: hidden;
                 }
 
-                .timelineDirectionsPanel {
+                .timelineDirectionsPanel,
+                .timelineCalendarPanel {
                     display: flex;
                     flex-direction: column;
                     gap: 14px;
@@ -1211,17 +1781,197 @@ const TimelinePage = () => {
                     border-radius: 20px;
                     padding: 18px 16px;
                     background: var(--timeline-surface);
-                    box-shadow: none;
-                    position: static;
-                    align-self: stretch;
                     height: 100%;
-                    max-height: none;
                     overflow-y: auto;
                     overscroll-behavior: contain;
+                    box-sizing: border-box;
                 }
 
-                .timelineDirectionsPanelTitle {
+                .timelineDirectionsPanelTitle,
+                .timelineCalendarPanelTitle {
                     margin: 0;
+                }
+
+                .timelineCalendarPanelHeader {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .timelineCalendarPanelSubtitle {
+                    margin: 4px 0 0;
+                    font-size: 13px;
+                    color: var(--timeline-text-muted);
+                }
+
+                .timelineCalendarMonthBar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .timelineCalendarMonthLabel {
+                    font-size: 16px;
+                    font-weight: 700;
+                    text-align: center;
+                    color: #1f2328;
+                }
+
+                .timelineCalendarNavButton {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 10px;
+                    border: 1px solid var(--timeline-border);
+                    background: #fff;
+                    color: #1f2328;
+                    font-size: 22px;
+                    line-height: 1;
+                    cursor: pointer;
+                }
+
+                .timelineCalendarNavButton:hover,
+                .timelineCalendarNavButton:focus-visible {
+                    border-color: var(--timeline-accent);
+                    outline: none;
+                }
+
+                .timelineCalendarWeekRow {
+                    display: grid;
+                    grid-template-columns: repeat(7, minmax(0, 1fr));
+                    gap: 8px;
+                }
+
+                .timelineCalendarWeekday {
+                    text-align: center;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: var(--timeline-text-muted);
+                }
+
+                .timelineCalendarGrid {
+                    display: grid;
+                    grid-template-columns: repeat(7, minmax(0, 1fr));
+                    gap: 4px;
+                }
+
+                .timelineCalendarDayButton {
+                    --timeline-calendar-cell-bg: #ffffff;
+                    --timeline-calendar-cell-text: #1f2328;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 2px;
+                    width: 100%;
+                    aspect-ratio: 1 / 1;
+                    padding: 4px;
+                    border-radius: 0;
+                    border: 1px solid transparent;
+                    background: var(--timeline-calendar-cell-bg);
+                    color: var(--timeline-calendar-cell-text);
+                    text-align: center;
+                    cursor: pointer;
+                    transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+                }
+
+                .timelineCalendarDayButton:hover,
+                .timelineCalendarDayButton:focus-visible {
+                    border-color: var(--timeline-accent);
+                    background: #ffffff;
+                    color: #1f2328;
+                    outline: none;
+                }
+
+                .timelineCalendarDayButtonDisabled {
+                    cursor: not-allowed;
+                }
+
+                .timelineCalendarDayButtonOutside {
+                    filter: saturate(0.92);
+                }
+
+                .timelineCalendarDayButtonLead {
+                    border-color: var(--timeline-accent);
+                    background: #ffffff;
+                    color: #1f2328;
+                }
+
+                .timelineCalendarDayNumber {
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: currentColor;
+                    line-height: 1;
+                }
+
+                .timelineCalendarDayMeta {
+                    min-height: 10px;
+                    font-size: 11px;
+                    line-height: 1.1;
+                    color: currentColor;
+                    opacity: 0;
+                    transition: opacity 0.16s ease;
+                }
+
+                .timelineCalendarDayButton:hover .timelineCalendarDayMeta,
+                .timelineCalendarDayButton:focus-visible .timelineCalendarDayMeta,
+                .timelineCalendarDayButtonLead .timelineCalendarDayMeta {
+                    opacity: 1;
+                }
+
+                .timelineCalendarPlaceholder {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                }
+
+                .timelineCalendarPlaceholderHeader {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 12px;
+                }
+
+                .timelineCalendarPlaceholderTitle {
+                    width: 132px;
+                    height: 16px;
+                    border-radius: 999px;
+                }
+
+                .timelineCalendarPlaceholderSubtitle {
+                    width: min(220px, 72%);
+                    height: 13px;
+                    border-radius: 999px;
+                }
+
+                .timelineCalendarPlaceholderNav {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .timelineCalendarPlaceholderNavButton {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 10px;
+                }
+
+                .timelineCalendarPlaceholderWeekday {
+                    display: block;
+                    width: 100%;
+                    height: 12px;
+                    border-radius: 999px;
+                    justify-self: center;
+                    align-self: center;
+                }
+
+                .timelineCalendarPlaceholderCell {
+                    display: block;
+                    width: 100%;
+                    aspect-ratio: 1 / 1;
+                    border-radius: 0;
                 }
 
                 .timelineDirectionList {
@@ -1250,7 +2000,6 @@ const TimelinePage = () => {
                 .timelineDirectionButtonActive {
                     border-color: #0d6efd;
                     background: #e7f1ff;
-                    box-shadow: none;
                 }
 
                 .timelineDirectionCount {
@@ -1277,7 +2026,6 @@ const TimelinePage = () => {
                     border: 1px solid var(--timeline-border);
                     border-radius: 20px;
                     background: #ffffff;
-                    box-shadow: none;
                 }
 
                 .timelineFeedSummaryText {
@@ -1349,99 +2097,6 @@ const TimelinePage = () => {
                     border: 1px solid #d8dee8;
                     border-radius: 14px;
                     background: #fff;
-                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-                }
-
-                .timelineFeedPreviewHeaderRow {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 12px;
-                }
-
-                .timelineFeedPreviewTagRow {
-                    display: inline-flex;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-
-                .timelineFeedPreviewMetaRow {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 12px;
-                }
-
-                .timelineFeedPreviewParagraph {
-                    display: flex;
-                    flex: 1;
-                    flex-direction: column;
-                    gap: 10px;
-                }
-
-                .timelineFeedPreviewBar {
-                    display: block;
-                    position: relative;
-                    overflow: hidden;
-                    border-radius: 999px;
-                    background: #e3e9f0;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
-                }
-
-                .timelineFeedPreviewBar::after {
-                    content: "";
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
-                    will-change: transform;
-                }
-
-                .timelineFeedPreviewBarDate {
-                    width: 92px;
-                    height: 14px;
-                }
-
-                .timelineFeedPreviewBarTag {
-                    width: 54px;
-                    height: 22px;
-                    border-radius: 6px;
-                }
-
-                .timelineFeedPreviewBarTagWide {
-                    width: 72px;
-                }
-
-                .timelineFeedPreviewBarTitle {
-                    width: 74%;
-                    height: 26px;
-                }
-
-                .timelineFeedPreviewBarLabel {
-                    width: 44px;
-                    height: 14px;
-                    flex: 0 0 auto;
-                }
-
-                .timelineFeedPreviewBarMeta {
-                    width: 38%;
-                    height: 14px;
-                    margin-top: 1px;
-                }
-
-                .timelineFeedPreviewBarParagraph {
-                    height: 13px;
-                }
-
-                .timelineFeedPreviewBarParagraphFull {
-                    width: 100%;
-                }
-
-                .timelineFeedPreviewBarParagraphShort {
-                    width: 68%;
                 }
 
                 .timelineFeedListReveal {
@@ -1454,16 +2109,6 @@ const TimelinePage = () => {
                     border-radius: 8px;
                     padding: 16px;
                     background: #fff;
-                    box-shadow: none;
-                }
-
-                .timelineFeedCard {
-                    transition: none;
-                }
-
-                .timelineFeedCard:hover {
-                    transform: none;
-                    box-shadow: none;
                 }
 
                 .timelinePaperTitle {
@@ -1526,17 +2171,13 @@ const TimelinePage = () => {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    box-sizing: border-box;
                     min-height: 17.5px;
                     padding: 0 8.925px;
                     border-radius: 4px;
                     background-color: rgb(8, 109, 177);
                     color: rgb(255, 255, 255);
                     font-size: 11.9px;
-                    font-style: normal;
-                    font-weight: 400;
                     line-height: 17.85px;
-                    text-rendering: optimizelegibility;
                     white-space: nowrap;
                 }
 
@@ -1577,21 +2218,9 @@ const TimelinePage = () => {
                 .timelineSkeletonBlock {
                     position: relative;
                     overflow: hidden;
-                    background: #e3e9f0;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
-                }
-
-                .timelineSkeletonBlock::after {
-                    content: "";
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
-                    will-change: transform;
+                    background: linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%);
+                    background-size: 200% 100%;
+                    animation: timelinePreviewBarShimmer 1.15s ease-in-out infinite;
                 }
 
                 .timelineSkeletonLine,
@@ -1622,13 +2251,11 @@ const TimelinePage = () => {
 
                 .timelineSkeletonLineEyebrow {
                     height: 11px;
-                    border-radius: 999px;
                     flex: 0 0 auto;
                 }
 
                 .timelineSkeletonLineTitle {
                     height: 22px;
-                    border-radius: 999px;
                     margin-bottom: 18px;
                 }
 
@@ -1647,19 +2274,16 @@ const TimelinePage = () => {
 
                 .timelineSkeletonTag {
                     height: 22px;
-                    border-radius: 999px;
                 }
 
                 .timelineSkeletonMetaLabel {
                     width: 42px;
                     height: 12px;
-                    border-radius: 999px;
                     flex: 0 0 auto;
                 }
 
                 .timelineSkeletonLineMeta {
                     height: 12px;
-                    border-radius: 999px;
                     flex: 0 0 auto;
                 }
 
@@ -1671,11 +2295,6 @@ const TimelinePage = () => {
 
                 .timelineSkeletonLineParagraph {
                     height: 11px;
-                    border-radius: 999px;
-                }
-
-                .timelineDirectionSkeletonList {
-                    width: 100%;
                 }
 
                 .timelineDirectionLoadingCard {
@@ -1684,91 +2303,16 @@ const TimelinePage = () => {
                     opacity: 1;
                 }
 
-                .timelineDirectionLoadingBar {
+                .timelineDirectionLoadingBar,
+                .timelineFeedHeaderLoadingBar,
+                .timelineFeedPreviewBar {
                     display: block;
                     border-radius: 999px;
                     position: relative;
-                    z-index: 1;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
-                }
-
-                .timelineDirectionLoadingBar::after {
-                    content: "";
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
-                    will-change: transform;
-                }
-
-                .timelineFeedHeaderLoadingBar {
-                    display: block;
-                    border-radius: 999px;
-                    position: relative;
-                    animation: timelineSkeletonPulse 1.6s ease-in-out infinite;
-                }
-
-                .timelineFeedHeaderLoadingBar::after {
-                    content: "";
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    left: -60%;
-                    width: 60%;
-                    transform: translateX(-100%);
-                    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0) 100%);
-                    animation: timelineSkeletonShimmer 1.15s ease-in-out infinite;
-                    will-change: transform;
-                }
-
-                .timelineFeedHeaderSkeleton {
-                    align-items: center;
-                }
-
-                .timelineFeedHeaderPrimarySkeleton,
-                .timelineFeedHeaderSecondarySkeleton {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                }
-
-                .timelineFeedHeaderPrimarySkeleton {
-                    flex: 1;
-                    min-width: 0;
-                }
-
-                .timelineFeedHeaderSecondarySkeleton {
-                    align-items: flex-end;
-                    flex: 0 0 auto;
-                }
-
-                .timelineFeedHeaderSkeletonTitle {
-                    display: block;
-                    width: min(240px, 56%);
-                    height: 24px;
-                    border-radius: 999px;
-                }
-
-                .timelineFeedHeaderSkeletonSummary {
-                    display: block;
-                    width: min(320px, 74%);
-                    height: 14px;
-                    border-radius: 999px;
-                }
-
-                .timelineFeedHeaderSkeletonStat {
-                    display: block;
-                    width: 96px;
-                    height: 12px;
-                    border-radius: 999px;
-                }
-
-                .timelineFeedHeaderSkeletonStatShort {
-                    width: 132px;
+                    overflow: hidden;
+                    background: linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%);
+                    background-size: 200% 100%;
+                    animation: timelinePreviewBarShimmer 1.15s ease-in-out infinite;
                 }
 
                 .timelineEmptyState,
@@ -1794,27 +2338,6 @@ const TimelinePage = () => {
                     color: var(--timeline-text-muted);
                     font-size: 13px;
                     margin-top: 14px;
-                }
-
-                @keyframes timelineSkeletonShimmer {
-                    from {
-                        transform: translateX(-100%);
-                    }
-
-                    to {
-                        transform: translateX(260%);
-                    }
-                }
-
-                @keyframes timelineSkeletonPulse {
-                    0%,
-                    100% {
-                        background-color: #e3e9f0;
-                    }
-
-                    50% {
-                        background-color: #d7e0ea;
-                    }
                 }
 
                 @keyframes timelinePreviewBarShimmer {
@@ -1845,22 +2368,19 @@ const TimelinePage = () => {
                         align-items: stretch;
                     }
 
-                    .timelinePageShell {
-                        height: calc(100vh - 158px);
-                    }
-
                     .timelineContentLayout {
-                        grid-template-columns: minmax(0, 1fr);
-                        grid-template-rows: auto minmax(0, 1fr);
+                        display: flex;
+                        flex-direction: column;
                     }
 
                     .timelineDirectionsPanel,
+                    .timelineCalendarPanel,
                     .timelineMainPanel {
                         min-height: 0;
                     }
 
-                    .timelineDirectionsPanel {
-                        padding: 14px;
+                    .timelineDirectionsPanel,
+                    .timelineCalendarPanel {
                         height: auto;
                         overflow-y: hidden;
                     }
@@ -1871,10 +2391,7 @@ const TimelinePage = () => {
                         padding-bottom: 2px;
                     }
 
-                    .timelineDirectionButton {
-                        flex: 0 0 220px;
-                    }
-
+                    .timelineDirectionButton,
                     .timelineDirectionLoadingCard {
                         flex: 0 0 220px;
                     }
@@ -1884,17 +2401,10 @@ const TimelinePage = () => {
                         align-items: stretch;
                     }
 
-                    .timelineFeedStats {
-                        align-items: flex-start;
-                        white-space: normal;
-                    }
-
+                    .timelineFeedStats,
                     .timelineFeedStatsSkeleton {
                         align-items: flex-start;
-                    }
-
-                    .timelineFeedHeaderSecondarySkeleton {
-                        align-items: flex-start;
+                        white-space: normal;
                     }
 
                     .timelineFeedViewport {
@@ -1912,11 +2422,12 @@ const TimelinePage = () => {
                         justify-content: flex-start;
                     }
 
-                    .timelineFeedHeaderSkeletonTitle,
-                    .timelineFeedHeaderSkeletonSummary,
-                    .timelineFeedHeaderSkeletonStat,
-                    .timelineFeedHeaderSkeletonStatShort {
-                        width: 100%;
+                    .timelineCalendarGrid {
+                        gap: 3px;
+                    }
+
+                    .timelineCalendarDayButton {
+                        padding: 3px;
                     }
                 }
             `}</style>

@@ -12,30 +12,24 @@ jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
 
-describe("TimelinePage LaTeX rendering", () => {
+describe("TimelinePage date mode", () => {
     const mockPush = jest.fn();
+
     const createPaper = (id, overrides = {}) => ({
         id,
         title: `Compression Paper ${id}`,
         abstract: "普通摘要。",
         tldr: "",
         arxiv_url: "https://arxiv.org/abs/1234.5678",
-        publish_date: `2026-05-${String((id % 28) + 1).padStart(2, "0")}`,
+        publish_date: "2026-05-10",
         author_names: "Alice, Bob",
         mentor_ids: [1, 0],
         subjects: "cs.LG",
+        day_sequence: id,
+        day_total: 10,
         ...overrides,
     });
-    const timelineResponse = (papers, overrides = {}) => ({
-        direction: "机器学习",
-        offset: 0,
-        limit: 6,
-        total_papers: papers.length,
-        has_previous: false,
-        has_next: false,
-        papers,
-        ...overrides,
-    });
+
     const createDeferred = () => {
         let resolve;
         let reject;
@@ -45,22 +39,6 @@ describe("TimelinePage LaTeX rendering", () => {
         });
         return { promise, resolve, reject };
     };
-
-    beforeEach(() => {
-        mockPush.mockReset();
-        request.mockReset();
-        Object.defineProperty(window, "scrollY", {
-            configurable: true,
-            writable: true,
-            value: 0,
-        });
-        window.scrollBy = jest.fn();
-        window.scrollTo = jest.fn();
-        Element.prototype.scrollIntoView = jest.fn();
-        useRouter.mockReturnValue({
-            push: mockPush,
-        });
-    });
 
     const mockTimelineOverview = (overrides = {}) => ({
         directions: [
@@ -73,57 +51,37 @@ describe("TimelinePage LaTeX rendering", () => {
         ...overrides,
     });
 
-    const mockTimelineApis = ({ summaryText }) => {
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview();
-            }
+    const mockCalendarMeta = (overrides = {}) => ({
+        direction: "机器学习",
+        default_date: "2026-05-10",
+        latest_date: "2026-05-10",
+        earliest_date: "2026-05-08",
+        available_dates: [
+            { date: "2026-05-10", paper_count: 10 },
+            { date: "2026-05-09", paper_count: 5 },
+            { date: "2026-05-08", paper_count: 3 },
+        ],
+        ...overrides,
+    });
 
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return timelineResponse([
-                    createPaper(1, {
-                        title: "Compression Paper",
-                        abstract: summaryText,
-                    }),
-                ], {
-                    total_papers: 1,
-                    limit: 6,
-                });
-            }
+    const timelineResponse = (papers, overrides = {}) => ({
+        direction: "机器学习",
+        limit: 6,
+        total_papers: 18,
+        has_newer: false,
+        has_older: false,
+        papers,
+        ...overrides,
+    });
 
-            return {};
-        });
-    };
+    const isTimelineUrl = (url, params = []) => (
+        typeof url === "string"
+        && url.startsWith("/api/timeline?")
+        && params.every((param) => url.includes(param))
+    );
 
-    const mockTimelinePaperApi = (paperOverrides = {}) => {
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview();
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return timelineResponse([
-                    createPaper(1, {
-                        title: "Compression Paper",
-                        ...paperOverrides,
-                    }),
-                ], {
-                    total_papers: 1,
-                    limit: 6,
-                });
-            }
-
-            return {};
-        });
-    };
-
-    const simulateViewportScroll = (scrollTop) => {
+    const setupViewportGeometry = () => {
         const viewport = screen.getByTestId("timeline-feed-viewport");
-        Object.defineProperty(viewport, "scrollTop", {
-            configurable: true,
-            writable: true,
-            value: scrollTop,
-        });
         Object.defineProperty(viewport, "clientHeight", {
             configurable: true,
             value: 400,
@@ -131,251 +89,6 @@ describe("TimelinePage LaTeX rendering", () => {
         Object.defineProperty(viewport, "scrollHeight", {
             configurable: true,
             value: 1200,
-        });
-        act(() => {
-            fireEvent.scroll(viewport);
-        });
-    };
-
-    it("loads the first 6 papers via offset-limit and removes old pagination controls", async () => {
-        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 1));
-        const initialDeferred = createDeferred();
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview();
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return initialDeferred.promise;
-            }
-
-            return {};
-        });
-
-        render(<TimelinePage />);
-
-        expect(await screen.findByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
-        await act(async () => {
-            initialDeferred.resolve(timelineResponse(firstBatch, {
-                total_papers: 30,
-                has_next: true,
-            }));
-        });
-        await screen.findByRole("heading", { name: "Compression Paper 1" });
-
-        expect(request).toHaveBeenCalledWith("/api/timeline", "GET", false);
-        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6", "GET", false);
-        expect(screen.queryByRole("button", { name: "首页" })).toBeNull();
-        expect(screen.getByText("当前显示第 1-6 篇")).toBeInTheDocument();
-    });
-
-    it("renders the timeline shell skeletons before directions and papers resolve", async () => {
-        const overviewDeferred = createDeferred();
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return overviewDeferred.promise;
-            }
-
-            return {};
-        });
-
-        render(<TimelinePage />);
-
-        expect(screen.getByText("论文时间线")).toBeInTheDocument();
-        expect(screen.getByTestId("timeline-direction-skeletons")).toBeInTheDocument();
-        expect(screen.getByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
-        expect(screen.getByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
-        expect(screen.queryByText("当前研究方向下暂无论文数据。")).toBeNull();
-
-        await act(async () => {
-            overviewDeferred.resolve(mockTimelineOverview());
-        });
-
-        await screen.findByRole("button", { name: /机器学习/ });
-    });
-
-    it("removes the shell skeletons after the first feed batch resolves", async () => {
-        const initialDeferred = createDeferred();
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview();
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return initialDeferred.promise;
-            }
-
-            return {};
-        });
-
-        render(<TimelinePage />);
-
-        expect(await screen.findByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
-        expect(await screen.findByTestId("timeline-feed-preview-skeletons")).toBeInTheDocument();
-
-        await act(async () => {
-            initialDeferred.resolve(timelineResponse([
-                createPaper(1, { title: "Compression Paper" }),
-            ], {
-                total_papers: 1,
-                limit: 6,
-            }));
-        });
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-        await waitFor(() => {
-            expect(screen.queryByTestId("timeline-feed-header-skeleton")).toBeNull();
-            expect(screen.queryByTestId("timeline-feed-preview-skeletons")).toBeNull();
-        });
-        expect(screen.queryByText("当前研究方向下暂无论文数据。")).toBeNull();
-    });
-
-    it("loads the previous 5 papers immediately after the user scrolls upward to the top of the feed viewport", async () => {
-        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 6));
-        const previousBatch = Array.from({ length: 5 }, (_, idx) => createPaper(idx + 1));
-        const previousDeferred = createDeferred();
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview({
-                    default_direction: "自然语言处理",
-                });
-            }
-
-            if (url === "/api/timeline?direction=%E8%87%AA%E7%84%B6%E8%AF%AD%E8%A8%80%E5%A4%84%E7%90%86&offset=0&limit=6") {
-                return {
-                    direction: "自然语言处理",
-                    offset: 0,
-                    limit: 6,
-                    total_papers: 8,
-                    has_previous: false,
-                    has_next: true,
-                    papers: Array.from({ length: 6 }, (_, idx) => createPaper(idx + 31, {
-                        title: `NLP Paper ${idx + 1}`,
-                    })),
-                };
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return timelineResponse(firstBatch, {
-                    offset: 5,
-                    limit: 6,
-                    total_papers: 30,
-                    has_previous: true,
-                    has_next: true,
-                });
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=5") {
-                return previousDeferred.promise;
-            }
-
-            return {};
-        });
-
-        render(<TimelinePage />);
-        await screen.findByRole("heading", { name: "NLP Paper 1" });
-        fireEvent.click(screen.getByRole("button", { name: /机器学习/ }));
-        await screen.findByRole("heading", { name: /Compression Paper 6/ });
-
-        simulateViewportScroll(200);
-        simulateViewportScroll(50);
-        expect(screen.queryByTestId("timeline-skeleton-top")).toBeNull();
-
-        simulateViewportScroll(0);
-        expect(screen.getByTestId("timeline-skeleton-top")).toBeInTheDocument();
-        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=5", "GET", false);
-        await act(async () => {
-            previousDeferred.resolve(timelineResponse(previousBatch, {
-                offset: 0,
-                limit: 5,
-                total_papers: 30,
-                has_previous: false,
-                has_next: true,
-            }));
-        });
-        await screen.findByRole("heading", { name: "Compression Paper 1" });
-    });
-
-    it("does not load the previous batch when the feed viewport returns to the top programmatically", async () => {
-        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 6));
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview();
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return timelineResponse(firstBatch, {
-                    offset: 5,
-                    limit: 6,
-                    total_papers: 30,
-                    has_previous: true,
-                    has_next: true,
-                });
-            }
-
-            return {};
-        });
-
-        render(<TimelinePage />);
-        await screen.findByRole("heading", { name: /Compression Paper 6/ });
-
-        simulateViewportScroll(200);
-        const viewport = screen.getByTestId("timeline-feed-viewport");
-
-        fireEvent.click(screen.getByRole("button", { name: /机器学习/ }));
-
-        Object.defineProperty(viewport, "scrollTop", {
-            configurable: true,
-            writable: true,
-            value: 0,
-        });
-        act(() => {
-            fireEvent.scroll(viewport);
-        });
-
-        expect(request).not.toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=5", "GET", false);
-        expect(screen.queryByTestId("timeline-skeleton-top")).toBeNull();
-    });
-
-    it("applies only a partial scroll adjustment after appending the next batch", async () => {
-        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 1));
-        const nextBatch = Array.from({ length: 5 }, (_, idx) => createPaper(idx + 7));
-
-        request.mockImplementation(async (url) => {
-            if (url === "/api/timeline") {
-                return mockTimelineOverview();
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return timelineResponse(firstBatch, {
-                    offset: 0,
-                    limit: 6,
-                    total_papers: 30,
-                    has_next: true,
-                });
-            }
-
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5") {
-                return timelineResponse(nextBatch, {
-                    offset: 6,
-                    limit: 5,
-                    total_papers: 30,
-                    has_previous: true,
-                    has_next: true,
-                });
-            }
-
-            return {};
-        });
-
-        render(<TimelinePage />);
-        await screen.findByRole("heading", { name: "Compression Paper 1" });
-
-        const viewport = screen.getByTestId("timeline-feed-viewport");
-        Object.defineProperty(viewport, "scrollTop", {
-            configurable: true,
-            writable: true,
-            value: 200,
         });
         Object.defineProperty(viewport, "getBoundingClientRect", {
             configurable: true,
@@ -391,16 +104,223 @@ describe("TimelinePage LaTeX rendering", () => {
                 toJSON: () => ({}),
             }),
         });
+        return viewport;
+    };
 
-        const lastCurrentPaper = screen.getByTestId("timeline-paper-6");
-        Object.defineProperty(lastCurrentPaper, "offsetTop", {
+    const setViewportScrollTop = (viewport, scrollTop) => {
+        Object.defineProperty(viewport, "scrollTop", {
             configurable: true,
-            value: 900,
+            writable: true,
+            value: scrollTop,
         });
+    };
+
+    const setPaperGeometry = (paperId, offsetTop, offsetHeight = 180) => {
+        const card = screen.getByTestId(`timeline-paper-${paperId}`);
+        Object.defineProperty(card, "offsetTop", {
+            configurable: true,
+            value: offsetTop,
+        });
+        Object.defineProperty(card, "offsetHeight", {
+            configurable: true,
+            value: offsetHeight,
+        });
+        return card;
+    };
+
+    beforeEach(() => {
+        mockPush.mockReset();
+        request.mockReset();
+        window.scrollBy = jest.fn();
+        window.scrollTo = jest.fn();
+        Element.prototype.scrollIntoView = jest.fn();
+        useRouter.mockReturnValue({
+            push: mockPush,
+        });
+    });
+
+    it("loads timeline overview, calendar metadata, and the default date batch", async () => {
+        const initialDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return initialDeferred.promise;
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        await waitFor(() => {
+            expect(screen.getByTestId("timeline-calendar-panel")).toBeInTheDocument();
+        });
+        await act(async () => {
+            initialDeferred.resolve(timelineResponse([
+                createPaper(1, { title: "Compression Paper 1", day_sequence: 1, day_total: 6 }),
+                createPaper(2, { title: "Compression Paper 2", day_sequence: 2, day_total: 6 }),
+            ], {
+                total_papers: 18,
+                has_older: true,
+            }));
+        });
+
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+        expect(request).toHaveBeenCalledWith("/api/timeline", "GET", false);
+        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&calendar=1", "GET", false);
+        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&date=2026-05-10&limit=6", "GET", false);
+        expect(screen.getByText("当前显示 2026-05-10 第 1-2 篇")).toBeInTheDocument();
+        expect(screen.getByText("已选择 2026-05-10")).toBeInTheDocument();
+    });
+
+    it("keeps the feed header in skeleton state while the calendar request is still pending after overview load", async () => {
+        const calendarDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return calendarDeferred.promise;
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline", "GET", false);
+        });
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&calendar=1", "GET", false);
+        });
+
+        expect(screen.getByTestId("timeline-feed-header-skeleton")).toBeInTheDocument();
+        expect(screen.queryByText("共 0 篇")).not.toBeInTheDocument();
+        expect(screen.queryByText("等待加载")).not.toBeInTheDocument();
+
+        await act(async () => {
+            calendarDeferred.resolve(mockCalendarMeta());
+        });
+    });
+
+    it("renders calendar cells and disables dates without papers", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([createPaper(1)], { total_papers: 1 });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+        expect(screen.getByTestId("timeline-calendar-panel")).toBeInTheDocument();
+        expect(screen.queryByText("视口日期 2026-05-10")).not.toBeInTheDocument();
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).toHaveAttribute("aria-disabled", "false");
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).toHaveAttribute("aria-label", "2026-05-10 10 篇论文");
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).toHaveClass("timelineCalendarDayButtonLead");
+        expect(within(screen.getByTestId("timeline-calendar-day-2026-05-10")).getByText("10篇")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-11")).toHaveAttribute("aria-disabled", "true");
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-11")).toHaveAttribute("aria-label", "2026-05-11 0 篇论文");
+    });
+
+    it("switches to a clicked calendar day and reloads the feed for that exact date", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([createPaper(1, { title: "May10 Paper", day_sequence: 1, day_total: 1 })], { total_papers: 18 });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-09", "limit=6"])) {
+                return timelineResponse([createPaper(2, {
+                    title: "May09 Paper",
+                    publish_date: "2026-05-09",
+                    day_sequence: 1,
+                    day_total: 1,
+                })], {
+                    total_papers: 18,
+                    has_newer: true,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+
+        await screen.findByRole("heading", { name: "May10 Paper" });
+        fireEvent.click(screen.getByTestId("timeline-calendar-day-2026-05-09"));
+        await screen.findByRole("heading", { name: "May09 Paper" });
+
+        expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&date=2026-05-09&limit=6", "GET", false);
+        expect(screen.getByText("当前显示 2026-05-09 第 1-1 篇")).toBeInTheDocument();
+    });
+
+    it("loads older papers when the load-more preview enters the viewport", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, { day_sequence: 1, day_total: 2 }),
+                    createPaper(2, { day_sequence: 2, day_total: 2 }),
+                ], {
+                    total_papers: 18,
+                    has_older: true,
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "before_date=2026-05-10", "before_id=2", "limit=5"])) {
+                return timelineResponse([
+                    createPaper(3, {
+                        title: "Older Paper 3",
+                        publish_date: "2026-05-09",
+                        day_sequence: 1,
+                        day_total: 2,
+                    }),
+                    createPaper(4, {
+                        title: "Older Paper 4",
+                        publish_date: "2026-05-09",
+                        day_sequence: 2,
+                        day_total: 2,
+                    }),
+                ], {
+                    total_papers: 18,
+                    has_newer: true,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+
+        const viewport = setupViewportGeometry();
+        setViewportScrollTop(viewport, 200);
+        setPaperGeometry(1, 0);
+        setPaperGeometry(2, 900);
 
         const preview = screen.getByTestId("timeline-feed-load-more-preview");
         const firstPreviewCard = preview.querySelector("[data-load-more-preview-first='true']");
-        expect(firstPreviewCard).not.toBeNull();
         Object.defineProperty(firstPreviewCard, "getBoundingClientRect", {
             configurable: true,
             value: () => ({
@@ -421,262 +341,262 @@ describe("TimelinePage LaTeX rendering", () => {
         });
 
         await waitFor(() => {
-            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5", "GET", false);
+            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&before_date=2026-05-10&before_id=2&limit=5", "GET", false);
         });
-        expect(await screen.findByTestId("timeline-paper-7")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Older Paper 3" })).toBeInTheDocument();
     });
 
-
-    it("renders inline LaTeX in timeline abstracts", async () => {
-        mockTimelineApis({
-            summaryText: "sequence length, but performing semantic-level compression through a specific ratio $k$}. This $O(n/k)$ bound remains effective.",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        expect(screen.getByText(/sequence length, but performing semantic-level compression through a specific ratio/i)).toBeInTheDocument();
-        expect(screen.getByText(/This/i)).toBeInTheDocument();
-        expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
-        expect(screen.queryByText(/\$k\$/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/\$O\(n\/k\)\$/)).not.toBeInTheDocument();
-    });
-
-    it("renders inline LaTeX in timeline titles and exposes arXiv/pdf links next to the date", async () => {
-        mockTimelinePaperApi({
-            title: "Compression $x^2$ Paper",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByText(/Compression/i);
-
-        const titleHeading = container.querySelector("h4");
-        const arxivLink = screen.getByRole("link", { name: "arxiv" });
-        const pdfLink = screen.getByRole("link", { name: "pdf" });
-        const headerRow = container.querySelector(".timelinePaperHeaderRow");
-        const paperLinks = container.querySelector(".timelinePaperLinks");
-        expect(titleHeading?.querySelector("a[href]")).toBeNull();
-        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
-        expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
-        expect(headerRow?.contains(paperLinks)).toBe(true);
-        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
-        expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
-    });
-
-    it("renders split subject tags in the timeline header row", async () => {
-        mockTimelinePaperApi({
-            subjects: "cs.CR, cs.DB",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByText(/Compression/i);
-
-        const headerRow = container.querySelector(".timelinePaperHeaderRow");
-        const subjectTags = container.querySelector(".timelineSubjectTags");
-        expect(headerRow?.contains(subjectTags)).toBe(true);
-        expect(screen.getByText("cs.CR")).toBeInTheDocument();
-        expect(screen.getByText("cs.DB")).toBeInTheDocument();
-    });
-
-    it("renders block-delimited LaTeX inline in timeline titles", async () => {
-        mockTimelinePaperApi({
-            title: "Compression $$E=mc^2$$ Paper",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByText(/Compression/i);
-
-        const titleHeading = container.querySelector("h4");
-        const arxivLink = screen.getByRole("link", { name: "arxiv" });
-        const pdfLink = screen.getByRole("link", { name: "pdf" });
-        expect(titleHeading?.querySelector("a[href]")).toBeNull();
-        expect(arxivLink).toHaveAttribute("href", "https://arxiv.org/abs/1234.5678");
-        expect(pdfLink).toHaveAttribute("href", "https://arxiv.org/pdf/1234.5678");
-        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
-        expect(titleHeading?.querySelector(".latexTextDisplay")).toBeNull();
-        expect(screen.queryByText(/\$\$E=mc\^2\$\$/)).not.toBeInTheDocument();
-    });
-
-    it("renders LaTeX in timeline titles without external link row when arXiv is missing", async () => {
-        mockTimelinePaperApi({
-            title: "Compression \\(x^2\\) Paper",
-            arxiv_url: undefined,
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByText(/Compression/i);
-
-        const titleHeading = container.querySelector("h4");
-        expect(screen.queryByRole("link", { name: "arxiv" })).toBeNull();
-        expect(screen.queryByRole("link", { name: "pdf" })).toBeNull();
-        expect(screen.queryByLabelText("论文外部链接")).toBeNull();
-        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
-        expect(screen.queryByText(/\\\(x\^2\\\)/)).not.toBeInTheDocument();
-    });
-
-    it("does not render subject tags when timeline paper subjects are missing", async () => {
-        mockTimelinePaperApi({
-            subjects: "",
+    it("loads newer papers only after top overscroll wheel intent at the viewport top", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(9, {
+                        title: "Current Day Paper",
+                        publish_date: "2026-05-10",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                ], {
+                    total_papers: 18,
+                    has_newer: true,
+                    has_older: true,
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "after_date=2026-05-10", "after_id=9", "limit=5"])) {
+                return timelineResponse([
+                    createPaper(8, {
+                        title: "Newer Paper 1",
+                        publish_date: "2026-05-11",
+                        day_sequence: 1,
+                        day_total: 2,
+                    }),
+                    createPaper(7, {
+                        title: "Newer Paper 2",
+                        publish_date: "2026-05-11",
+                        day_sequence: 2,
+                        day_total: 2,
+                    }),
+                ], {
+                    total_papers: 18,
+                    has_newer: false,
+                    has_older: true,
+                });
+            }
+            return {};
         });
 
         render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Current Day Paper" });
 
-        await screen.findByText(/Compression/i);
+        const viewport = setupViewportGeometry();
+        setViewportScrollTop(viewport, 0);
+        setPaperGeometry(9, 0);
 
-        expect(screen.queryByLabelText("论文学科分类")).toBeNull();
-    });
+        act(() => {
+            fireEvent.wheel(viewport, { deltaY: -20 });
+        });
+        expect(request).not.toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&after_date=2026-05-10&after_id=9&limit=5", "GET", false);
 
-    it("renders author and abstract rows with the shared aligned layout", async () => {
-        mockTimelineApis({
-            summaryText: "普通摘要 $x$。",
+        act(() => {
+            fireEvent.wheel(viewport, { deltaY: -80 });
         });
 
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        const metaRows = container.querySelectorAll(".timelineMetaRow");
-        expect(metaRows.length).toBeGreaterThanOrEqual(2);
-        expect(screen.getByText("作者：").closest(".timelineMetaRow")).not.toBeNull();
-        expect(screen.getByText("摘要：").closest(".timelineMetaRow")).not.toBeNull();
-        expect(screen.getByRole("link", { name: /Alice/ }).closest(".timelineMetaContent")).not.toBeNull();
-        expect(screen.getByText("Bob").closest(".timelineMetaContent")).not.toBeNull();
-        expect(container.querySelector(".timelineAbstractContent")).not.toBeNull();
-    });
-
-    it("renders mentor authors as external-style Tsinghua links and keeps unmatched authors plain", async () => {
-        mockTimelinePaperApi({
-            author_names: "李四,赵云",
-            mentor_ids: [5, 0],
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&after_date=2026-05-10&after_id=9&limit=5", "GET", false);
         });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        const mentorLink = screen.getByRole("link", { name: /李四/ });
-        expect(mentorLink).toHaveAttribute("href", "/mentors/5");
-        expect(mentorLink).toHaveAttribute("target", "_blank");
-        expect(mentorLink).toHaveAttribute("rel", "noreferrer");
-        const mentorIcon = within(mentorLink).getByAltText("清华导师");
-        expect(mentorIcon).toHaveAttribute("src", "/favicon_tsinghua.ico");
-        expect(container.querySelectorAll(".timelineMentorIcon").length).toBe(1);
-        expect(screen.getByText("赵云")).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
     });
 
-    it("falls back to plain text authors when mentor_ids are missing", async () => {
-        mockTimelinePaperApi({
-            author_names: "李四,赵云",
-            mentor_ids: undefined,
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        const authorRow = container.querySelector(".timelineMetaContent");
-        expect(authorRow).not.toBeNull();
-        expect(authorRow?.textContent).toContain("李四");
-        expect(authorRow?.textContent).toContain("赵云");
-        expect(screen.queryByRole("link", { name: "李四" })).toBeNull();
-        expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
-        expect(screen.queryByAltText("清华导师")).toBeNull();
-    });
-
-    it("renders block LaTeX in timeline abstracts", async () => {
-        mockTimelineApis({
-            summaryText: "核心结论如下：$$E=mc^2$$并且后续仍成立。",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        const abstractContainer = container.querySelector(".timelineAbstractContent");
-        expect(abstractContainer).not.toBeNull();
-        expect(abstractContainer.querySelector(".latexTextDisplay")).not.toBeNull();
-        expect(container.querySelector(".katex-display")).not.toBeNull();
-    });
-
-    it("keeps plain abstracts unchanged when no LaTeX is present", async () => {
-        mockTimelineApis({
-            summaryText: "这是一个没有任何公式的普通摘要。",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        const article = screen.getByRole("heading", { name: "Compression Paper" }).closest("article");
-        expect(within(article).getByText("这是一个没有任何公式的普通摘要。")).toBeInTheDocument();
-        expect(container.querySelector(".katex")).toBeNull();
-    });
-
-    it("falls back safely when delimiters are unclosed or formula content is invalid", async () => {
-        mockTimelineApis({
-            summaryText: "未闭合公式 $k 和非法公式 \\badcommand{ 都应该继续显示。",
-        });
-
-        const { container } = render(<TimelinePage />);
-
-        await screen.findByRole("heading", { name: "Compression Paper" });
-
-        expect(screen.getByText("未闭合公式 $k 和非法公式 \\badcommand{ 都应该继续显示。")).toBeInTheDocument();
-        expect(container.querySelectorAll(".katex").length).toBe(0);
-    });
-
-    it("uses tldr before abstract when rendering summary content", async () => {
+    it("updates the visible date range based on the first visible paper in the viewport", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
-                return {
-                    directions: [
-                        { direction: "机器学习", paper_count: 1 },
-                    ],
-                    default_direction: "机器学习",
-                    page_size_default: 20,
-                    page_size_max: 100,
-                };
+                return mockTimelineOverview();
             }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, { publish_date: "2026-05-10", day_sequence: 1, day_total: 2 }),
+                    createPaper(2, { publish_date: "2026-05-10", day_sequence: 2, day_total: 2 }),
+                    createPaper(3, { publish_date: "2026-05-09", day_sequence: 1, day_total: 1 }),
+                ], {
+                    total_papers: 18,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
 
-            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
-                return {
-                    direction: "机器学习",
-                    offset: 0,
-                    limit: 6,
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+
+        const viewport = setupViewportGeometry();
+        setPaperGeometry(1, 0, 120);
+        setPaperGeometry(2, 130, 120);
+        setPaperGeometry(3, 360, 120);
+
+        expect(screen.getByText((content) => content.includes("当前显示 2026-05-10"))).toBeInTheDocument();
+
+        setViewportScrollTop(viewport, 260);
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText((content) => content.includes("当前显示 2026-05-09"))).toBeInTheDocument();
+        });
+    });
+
+    it("auto switches the calendar month when the viewport date moves outside the current month", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    default_date: "2026-03-30",
+                    latest_date: "2026-03-30",
+                    available_dates: [
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-03-30", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "March Paper",
+                        publish_date: "2026-03-30",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                    createPaper(2, {
+                        title: "April Paper",
+                        publish_date: "2026-04-01",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                ], {
+                    total_papers: 5,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "March Paper" });
+
+        const viewport = setupViewportGeometry();
+        setPaperGeometry(1, 0, 120);
+        setPaperGeometry(2, 240, 120);
+        setViewportScrollTop(viewport, 260);
+
+        await waitFor(() => {
+            expect(screen.getByText("2026 年 3 月")).toBeInTheDocument();
+        });
+
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("2026 年 4 月")).toBeInTheDocument();
+        });
+        expect(screen.getByTestId("timeline-calendar-day-2026-04-01")).toHaveClass("timelineCalendarDayButtonLead");
+    });
+
+    it("does not snap the calendar month back immediately after manual month navigation", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    default_date: "2026-03-30",
+                    latest_date: "2026-03-30",
+                    available_dates: [
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-03-30", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "March Paper",
+                        publish_date: "2026-03-30",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                    createPaper(2, {
+                        title: "April Paper",
+                        publish_date: "2026-04-01",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                ], {
+                    total_papers: 5,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "March Paper" });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看下个月" }));
+
+        await waitFor(() => {
+            expect(screen.getByText("2026 年 4 月")).toBeInTheDocument();
+        });
+        expect(screen.queryByText("2026 年 3 月")).not.toBeInTheDocument();
+    });
+
+    it("renders inline LaTeX in titles and mentor links in author rows", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "Compression $x^2$ Paper",
+                        author_names: "李四,赵云",
+                        mentor_ids: [5, 0],
+                        abstract: "摘要中有公式 $k$。",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                ], {
                     total_papers: 1,
-                    has_previous: false,
-                    has_next: false,
-                    papers: [
-                        {
-                            id: 1,
-                            title: "Compression Paper",
-                            abstract: "abstract $x$",
-                            tldr: "tldr $y$",
-                            arxiv_url: "https://arxiv.org/abs/1234.5678",
-                            publish_date: "2026-05-01",
-                            author_names: "Alice, Bob",
-                        },
-                    ],
-                };
+                });
             }
-
             return {};
         });
 
         const { container } = render(<TimelinePage />);
 
-        await screen.findByRole("heading", { name: "Compression Paper" });
+        await screen.findByText(/Compression/i);
 
-        expect(screen.getByText(/tldr/i)).toBeInTheDocument();
-        expect(screen.queryByText(/abstract/i)).not.toBeInTheDocument();
-        await waitFor(() => {
-            expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(1);
-        });
+        const titleHeading = container.querySelector("h4");
+        expect(titleHeading?.querySelector(".katex")).not.toBeNull();
+        expect(screen.queryByText(/\$x\^2\$/)).not.toBeInTheDocument();
+
+        const mentorLink = screen.getByRole("link", { name: /李四/ });
+        expect(mentorLink).toHaveAttribute("href", "/mentors/5");
+        expect(within(mentorLink).getByAltText("清华导师")).toHaveAttribute("src", "/favicon_tsinghua.ico");
+        expect(screen.getByText("赵云")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "赵云" })).toBeNull();
     });
 });
