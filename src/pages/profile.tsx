@@ -116,7 +116,7 @@ const ProfileScreen = () => {
     if (token === "") {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760 }}>
-                <h2>个人主页</h2>
+                <h2>编辑主页</h2>
                 <p>请先登录后再维护个人信息。</p>
                 <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => router.push("/")}>返回首页</button>
@@ -128,7 +128,7 @@ const ProfileScreen = () => {
     // 已登录：展示资料编辑表单
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760 }}>
-            <h2>个人主页</h2>
+                <h2>编辑主页</h2>
             <p>你可以在这里维护个人简介、科研经历、所获荣誉与项目经历等信息。</p>
 
             <div style={{ display: "flex", gap: 8 }}>
