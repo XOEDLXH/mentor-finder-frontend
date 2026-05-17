@@ -453,6 +453,113 @@ describe("TimelinePage date mode", () => {
         });
     });
 
+    it("auto switches the calendar month when the viewport date moves outside the current month", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    default_date: "2026-03-30",
+                    latest_date: "2026-03-30",
+                    available_dates: [
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-03-30", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "March Paper",
+                        publish_date: "2026-03-30",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                    createPaper(2, {
+                        title: "April Paper",
+                        publish_date: "2026-04-01",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                ], {
+                    total_papers: 5,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "March Paper" });
+
+        const viewport = setupViewportGeometry();
+        setPaperGeometry(1, 0, 120);
+        setPaperGeometry(2, 240, 120);
+        setViewportScrollTop(viewport, 260);
+
+        await waitFor(() => {
+            expect(screen.getByText("2026 年 3 月")).toBeInTheDocument();
+        });
+
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText("2026 年 4 月")).toBeInTheDocument();
+        });
+        expect(screen.getByTestId("timeline-calendar-day-2026-04-01")).toHaveClass("timelineCalendarDayButtonLead");
+    });
+
+    it("does not snap the calendar month back immediately after manual month navigation", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    default_date: "2026-03-30",
+                    latest_date: "2026-03-30",
+                    available_dates: [
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-03-30", "limit=6"])) {
+                return timelineResponse([
+                    createPaper(1, {
+                        title: "March Paper",
+                        publish_date: "2026-03-30",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                    createPaper(2, {
+                        title: "April Paper",
+                        publish_date: "2026-04-01",
+                        day_sequence: 1,
+                        day_total: 1,
+                    }),
+                ], {
+                    total_papers: 5,
+                    has_older: true,
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "March Paper" });
+
+        fireEvent.click(screen.getByRole("button", { name: "查看下个月" }));
+
+        await waitFor(() => {
+            expect(screen.getByText("2026 年 4 月")).toBeInTheDocument();
+        });
+        expect(screen.queryByText("2026 年 3 月")).not.toBeInTheDocument();
+    });
+
     it("renders inline LaTeX in titles and mentor links in author rows", async () => {
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {

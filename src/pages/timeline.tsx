@@ -65,6 +65,11 @@ const createPreviewBarStyle = (
 const CALENDAR_HEATMAP_MAX = 20;
 const CALENDAR_HEATMAP_DARK_RGB = { r: 8, g: 109, b: 177 } as const;
 const CALENDAR_HEATMAP_LIGHT_RGB = { r: 255, g: 255, b: 255 } as const;
+const CALENDAR_HEATMAP_MID_RGB = {
+    r: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.r*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.r/9),
+    g: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.g*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.g /9),
+    b: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.b*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.b/9),
+} as const;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -91,9 +96,9 @@ const createCalendarHeatColor = (paperCount: number) => {
 
     const ratio = (paperCount - 1) / (CALENDAR_HEATMAP_MAX - 1);
     const rgb = {
-        r: interpolateChannel(CALENDAR_HEATMAP_LIGHT_RGB.r, CALENDAR_HEATMAP_DARK_RGB.r, ratio),
-        g: interpolateChannel(CALENDAR_HEATMAP_LIGHT_RGB.g, CALENDAR_HEATMAP_DARK_RGB.g, ratio),
-        b: interpolateChannel(CALENDAR_HEATMAP_LIGHT_RGB.b, CALENDAR_HEATMAP_DARK_RGB.b, ratio),
+        r: interpolateChannel(CALENDAR_HEATMAP_MID_RGB.r, CALENDAR_HEATMAP_DARK_RGB.r, ratio),
+        g: interpolateChannel(CALENDAR_HEATMAP_MID_RGB.g, CALENDAR_HEATMAP_DARK_RGB.g, ratio),
+        b: interpolateChannel(CALENDAR_HEATMAP_MID_RGB.b, CALENDAR_HEATMAP_DARK_RGB.b, ratio),
     };
 
     return {
@@ -177,6 +182,7 @@ const TimelinePage = () => {
     const [displayedMonth, setDisplayedMonth] = useState<Date | null>(null);
     const [selectedDate, setSelectedDate] = useState("");
     const [leadVisibleDate, setLeadVisibleDate] = useState("");
+    const [isCalendarBrowsingManually, setIsCalendarBrowsingManually] = useState(false);
     const [papers, setPapers] = useState<TimelinePaper[]>([]);
     const [totalPapers, setTotalPapers] = useState(0);
     const [hasMoreBefore, setHasMoreBefore] = useState(false);
@@ -644,6 +650,7 @@ const TimelinePage = () => {
                 selectedDateRef.current = preservedDate;
                 const monthSource = preservedDate || response.latest_date;
                 setDisplayedMonth(monthSource !== "" ? parseIsoDate(monthSource) : null);
+                setIsCalendarBrowsingManually(false);
 
                 if (preservedDate === "") {
                     clearInitialSkeletonTimer();
@@ -664,6 +671,7 @@ const TimelinePage = () => {
 
                 setCalendarMeta(null);
                 setDisplayedMonth(null);
+                setIsCalendarBrowsingManually(false);
                 setSelectedDate("");
                 selectedDateRef.current = "";
                 setPapers([]);
@@ -708,6 +716,11 @@ const TimelinePage = () => {
         const fallbackDate = parseIsoDate(selectedDate || calendarMeta?.latest_date || "");
         return fallbackDate ? startOfCalendarMonth(fallbackDate) : startOfCalendarMonth(new Date());
     }, [calendarMeta?.latest_date, displayedMonth, selectedDate]);
+
+    const handleCalendarMonthChange = (deltaMonths: number) => {
+        setIsCalendarBrowsingManually(true);
+        setDisplayedMonth(addCalendarMonths(currentCalendarMonth, deltaMonths));
+    };
 
     const calendarDayCells = useMemo(() => {
         const gridStart = buildCalendarGridStart(currentCalendarMonth);
@@ -760,6 +773,39 @@ const TimelinePage = () => {
             end: visibleSameDayPapers.length,
         };
     }, [leadVisibleDate, papers, selectedDate]);
+
+    useEffect(() => {
+        if (leadVisibleDate === "") {
+            return;
+        }
+
+        const nextLeadDate = parseIsoDate(leadVisibleDate);
+        if (nextLeadDate === null) {
+            return;
+        }
+
+        const nextLeadMonth = startOfCalendarMonth(nextLeadDate);
+        if (isCalendarBrowsingManually) {
+            return;
+        }
+
+        if (
+            currentCalendarMonth.getFullYear() === nextLeadMonth.getFullYear()
+            && currentCalendarMonth.getMonth() === nextLeadMonth.getMonth()
+        ) {
+            return;
+        }
+
+        setDisplayedMonth(nextLeadMonth);
+    }, [currentCalendarMonth, isCalendarBrowsingManually, leadVisibleDate]);
+
+    useEffect(() => {
+        if (leadVisibleDate === "") {
+            return;
+        }
+
+        setIsCalendarBrowsingManually(false);
+    }, [leadVisibleDate]);
 
     const getFeedViewportBottom = () => {
         const viewport = feedViewportRef.current;
@@ -1018,6 +1064,7 @@ const TimelinePage = () => {
         setSelectedDate(nextDate);
         selectedDateRef.current = nextDate;
         setDisplayedMonth(parseIsoDate(nextDate));
+        setIsCalendarBrowsingManually(false);
         prepareFeedForReplace(true);
         setErrorMessage("");
 
@@ -1615,7 +1662,7 @@ const TimelinePage = () => {
                                     <button
                                         type="button"
                                         className="timelineCalendarNavButton"
-                                        onClick={() => setDisplayedMonth(addCalendarMonths(currentCalendarMonth, -1))}
+                                        onClick={() => handleCalendarMonthChange(-1)}
                                         aria-label="查看上个月"
                                     >
                                         ‹
@@ -1624,7 +1671,7 @@ const TimelinePage = () => {
                                     <button
                                         type="button"
                                         className="timelineCalendarNavButton"
-                                        onClick={() => setDisplayedMonth(addCalendarMonths(currentCalendarMonth, 1))}
+                                        onClick={() => handleCalendarMonthChange(1)}
                                         aria-label="查看下个月"
                                     >
                                         ›
