@@ -7,6 +7,7 @@ import {
     WeeklyPushHistoryResponse,
     WeeklyPushItem,
     WeeklyPushPaper,
+    WeeklyPushSubjectGroup,
     WeeklyPushResponse,
 } from "../utils/types";
 
@@ -71,6 +72,46 @@ const WeeklyPushPaperList = ({
     );
 };
 
+interface WeeklyPushSubjectGroupsProps {
+    groups: WeeklyPushSubjectGroup[];
+}
+
+const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
+    if (groups.length === 0) {
+        return (
+            <div className="homePersonalizedPlaceholder">
+                你关注的板块本周暂无新增论文。
+            </div>
+        );
+    }
+
+    return (
+        <div className="homeSubjectGroupStack">
+            {groups.map((group) => (
+                <section className="homeSubjectGroupCard" key={group.subject}>
+                    <div className="homeSubjectGroupHeader">
+                        <h4>{group.subject}</h4>
+                        <span>{group.paperCount} 篇</span>
+                    </div>
+                    <div className="homeSubjectPaperList">
+                        {group.papers.map((paper) => (
+                            <article className="homeSubjectPaperItem" key={`${group.subject}-${paper.id}`}>
+                                <div className="homeSubjectPaperTitle">
+                                    <LatexText text={paper.title} forceInlineMath />
+                                </div>
+                                <div className="homeSubjectPaperMeta">
+                                    作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"} ｜ 分类：{paper.subjects.join(", ") || group.subject}
+                                </div>
+                                <p>{paper.abstractPreview || "暂无摘要"}</p>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </div>
+    );
+};
+
 interface WeeklyPushDetailCardProps {
     push: WeeklyPushItem;
     emptyPaperText: string;
@@ -129,6 +170,12 @@ const WeeklyPushDetailCard = ({
                     showMentorNames={showMentorNames}
                 />
             </div>
+            {showPersonalizedSummary && (
+                <div>
+                    <h4 style={{ margin: "12px 0 8px" }}>关注板块动态</h4>
+                    <WeeklyPushSubjectGroups groups={push.subjectGroups || []} />
+                </div>
+            )}
         </div>
     );
 };
@@ -264,7 +311,7 @@ const HomeScreen = () => {
                             <div>
                                 <h3 style={{ margin: 0 }}>个性周报</h3>
                                 <p className="homePersonalizedPanelHint">
-                                    根据你关注的导师和私有导师，本周即时生成专属周报，并结合 AI 做摘要整理。
+                                    根据你关注的导师、私有导师和板块，本周即时生成专属周报，并结合 AI 做摘要整理。
                                 </p>
                             </div>
                             {isLoggedIn && (
@@ -285,13 +332,13 @@ const HomeScreen = () => {
 
                         {!isLoggedIn && (
                             <div className="homePersonalizedPlaceholder">
-                                登录后即可基于你关注的导师生成专属周报。
+                                登录后即可基于你关注的导师和板块生成专属周报。
                             </div>
                         )}
 
                         {isLoggedIn && isGeneratingPersonalized && (
                             <div className="homePersonalizedStatusCard">
-                                正在整理你关注导师本周的新增论文，并生成 AI 总结，请稍候。
+                                正在整理你关注导师和板块本周的新增论文，并生成 AI 总结，请稍候。
                             </div>
                         )}
 
@@ -311,6 +358,14 @@ const HomeScreen = () => {
                                         <strong>{personalizedWeeklyPush.activeMentorCount ?? 0}</strong>
                                     </div>
                                     <div className="homePersonalizedStatItem">
+                                        <span>关注板块</span>
+                                        <strong>{personalizedWeeklyPush.trackedSubjectCount ?? 0}</strong>
+                                    </div>
+                                    <div className="homePersonalizedStatItem">
+                                        <span>命中板块</span>
+                                        <strong>{personalizedWeeklyPush.activeSubjectCount ?? 0}</strong>
+                                    </div>
+                                    <div className="homePersonalizedStatItem">
                                         <span>新增论文</span>
                                         <strong>{personalizedWeeklyPush.paperCount}</strong>
                                     </div>
@@ -324,6 +379,8 @@ const HomeScreen = () => {
                                     metaItems={[
                                         `关注导师：${personalizedWeeklyPush.trackedMentorCount ?? 0} 位`,
                                         `命中导师：${personalizedWeeklyPush.activeMentorCount ?? 0} 位`,
+                                        `关注板块：${personalizedWeeklyPush.trackedSubjectCount ?? 0} 个`,
+                                        `命中板块：${personalizedWeeklyPush.activeSubjectCount ?? 0} 个`,
                                     ]}
                                 />
                             </div>
@@ -331,7 +388,7 @@ const HomeScreen = () => {
 
                         {isLoggedIn && !isGeneratingPersonalized && personalizedWeeklyPush === undefined && (
                             <div className="homePersonalizedPlaceholder">
-                                点击上方按钮后，会按你当前关注的导师即时生成一份专属周报。
+                                点击上方按钮后，会按你当前关注的导师和板块即时生成一份专属周报。
                             </div>
                         )}
                     </section>
