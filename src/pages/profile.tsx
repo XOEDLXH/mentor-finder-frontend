@@ -31,6 +31,8 @@ const ProfileScreen = () => {
     const router = useRouter();
     // 从 Redux store 中获取认证 token
     const token = useSelector((state: RootState) => state.auth.token);
+    const userId = useSelector((state: RootState) => state.auth.userId);
+    const profileHref = userId === undefined ? "/follows" : `/users/${userId}`;
 
     // 状态管理
     const [loading, setLoading] = useState(false);        // 加载资料中
@@ -132,6 +134,7 @@ const ProfileScreen = () => {
             <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => router.push("/")}>返回首页</button>
                 <button onClick={() => router.push("/search")}>去检索</button>
+                <button onClick={() => router.push(profileHref)}>返回个人主页</button>
             </div>
 
             {loading ? (
