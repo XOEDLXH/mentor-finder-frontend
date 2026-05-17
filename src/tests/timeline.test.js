@@ -226,8 +226,13 @@ describe("TimelinePage date mode", () => {
 
         await screen.findByRole("heading", { name: "Compression Paper 1" });
         expect(screen.getByTestId("timeline-calendar-panel")).toBeInTheDocument();
-        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).not.toBeDisabled();
-        expect(screen.getByTestId("timeline-calendar-day-2026-05-11")).toBeDisabled();
+        expect(screen.queryByText("视口日期 2026-05-10")).not.toBeInTheDocument();
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).toHaveAttribute("aria-disabled", "false");
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).toHaveAttribute("aria-label", "2026-05-10 10 篇论文");
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-10")).toHaveClass("timelineCalendarDayButtonLead");
+        expect(within(screen.getByTestId("timeline-calendar-day-2026-05-10")).getByText("10篇")).toBeInTheDocument();
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-11")).toHaveAttribute("aria-disabled", "true");
+        expect(screen.getByTestId("timeline-calendar-day-2026-05-11")).toHaveAttribute("aria-label", "2026-05-11 0 篇论文");
     });
 
     it("switches to a clicked calendar day and reloads the feed for that exact date", async () => {

@@ -62,6 +62,46 @@ const createPreviewBarStyle = (
     ...extraStyles,
 });
 
+const CALENDAR_HEATMAP_MAX = 20;
+const CALENDAR_HEATMAP_DARK_RGB = { r: 8, g: 109, b: 177 } as const;
+const CALENDAR_HEATMAP_LIGHT_RGB = { r: 255, g: 255, b: 255 } as const;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const interpolateChannel = (start: number, end: number, ratio: number) => (
+    Math.round(start + ((end - start) * ratio))
+);
+
+const toRgbString = (rgb: { r: number; g: number; b: number; }) => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+const createCalendarHeatColor = (paperCount: number) => {
+    if (paperCount <= 0) {
+        return {
+            backgroundColor: "#ffffff",
+            textColor: "#1f2328",
+        };
+    }
+
+    if (paperCount >= CALENDAR_HEATMAP_MAX) {
+        return {
+            backgroundColor: toRgbString(CALENDAR_HEATMAP_DARK_RGB),
+            textColor: "#1f2328",
+        };
+    }
+
+    const ratio = (paperCount - 1) / (CALENDAR_HEATMAP_MAX - 1);
+    const rgb = {
+        r: interpolateChannel(CALENDAR_HEATMAP_LIGHT_RGB.r, CALENDAR_HEATMAP_DARK_RGB.r, ratio),
+        g: interpolateChannel(CALENDAR_HEATMAP_LIGHT_RGB.g, CALENDAR_HEATMAP_DARK_RGB.g, ratio),
+        b: interpolateChannel(CALENDAR_HEATMAP_LIGHT_RGB.b, CALENDAR_HEATMAP_DARK_RGB.b, ratio),
+    };
+
+    return {
+        backgroundColor: toRgbString(rgb),
+        textColor: "#1f2328",
+    };
+};
+
 const TIMELINE_SKELETON_BLUEPRINTS = [
     {
         eyebrow: "88px",
@@ -675,12 +715,18 @@ const TimelinePage = () => {
             const value = addCalendarDays(gridStart, idx);
             const isoDate = formatIsoDate(value);
             const paperCount = availableDateCountMap.get(isoDate) || 0;
+            const { backgroundColor, textColor } = createCalendarHeatColor(paperCount);
             return {
                 isoDate,
                 label: value.getDate(),
                 inCurrentMonth: value.getMonth() === currentCalendarMonth.getMonth(),
                 hasPaper: paperCount > 0,
+                isInteractive: paperCount > 0,
                 paperCount,
+                displayCount: paperCount,
+                heatLevel: clamp(paperCount, 0, CALENDAR_HEATMAP_MAX),
+                backgroundColor,
+                textColor,
             };
         });
     }, [availableDateCountMap, currentCalendarMonth]);
@@ -1560,11 +1606,6 @@ const TimelinePage = () => {
                                     {selectedDate !== "" ? `已选择 ${selectedDate}` : "只可点击有论文的日期"}
                                 </p>
                             </div>
-                            {leadVisibleDate !== "" && (
-                                <span className="timelineCalendarLeadBadge">
-                                    视口日期 {leadVisibleDate}
-                                </span>
-                            )}
                         </div>
                         {loadingCalendar || calendarMeta === null ? (
                             renderCalendarPlaceholder()
@@ -1598,15 +1639,17 @@ const TimelinePage = () => {
                                 </div>
                                 <div className="timelineCalendarGrid">
                                     {calendarDayCells.map((cell) => {
-                                        const isSelected = cell.isoDate === selectedDate;
                                         const isLeadVisible = leadVisibleDate !== "" && cell.isoDate === leadVisibleDate;
                                         const cellClassName = [
                                             "timelineCalendarDayButton",
                                             cell.inCurrentMonth ? "" : " timelineCalendarDayButtonOutside",
-                                            cell.hasPaper ? "" : " timelineCalendarDayButtonDisabled",
-                                            isSelected ? " timelineCalendarDayButtonSelected" : "",
-                                            !isSelected && isLeadVisible ? " timelineCalendarDayButtonLead" : "",
+                                            cell.isInteractive ? "" : " timelineCalendarDayButtonDisabled",
+                                            isLeadVisible ? " timelineCalendarDayButtonLead" : "",
                                         ].join("");
+                                        const cellStyle = {
+                                            "--timeline-calendar-cell-bg": cell.backgroundColor,
+                                            "--timeline-calendar-cell-text": cell.textColor,
+                                        } as React.CSSProperties;
 
                                         return (
                                             <button
@@ -1614,13 +1657,19 @@ const TimelinePage = () => {
                                                 type="button"
                                                 data-testid={`timeline-calendar-day-${cell.isoDate}`}
                                                 className={cellClassName}
-                                                onClick={() => handleSelectDate(cell.isoDate)}
-                                                disabled={!cell.hasPaper}
-                                                aria-label={`${cell.isoDate} ${cell.hasPaper ? `${cell.paperCount} 篇论文` : "无论文"}`}
+                                                style={cellStyle}
+                                                onClick={() => {
+                                                    if (!cell.isInteractive) {
+                                                        return;
+                                                    }
+                                                    handleSelectDate(cell.isoDate);
+                                                }}
+                                                aria-disabled={!cell.isInteractive}
+                                                aria-label={`${cell.isoDate} ${cell.displayCount} 篇论文`}
                                             >
                                                 <span className="timelineCalendarDayNumber">{cell.label}</span>
                                                 <span className="timelineCalendarDayMeta">
-                                                    {cell.hasPaper ? `${cell.paperCount} 篇` : ""}
+                                                    {cell.displayCount}篇
                                                 </span>
                                             </button>
                                         );
@@ -1708,16 +1757,6 @@ const TimelinePage = () => {
                     color: var(--timeline-text-muted);
                 }
 
-                .timelineCalendarLeadBadge {
-                    align-self: flex-start;
-                    padding: 4px 10px;
-                    border-radius: 999px;
-                    background: #f3f7fc;
-                    color: var(--timeline-accent);
-                    font-size: 12px;
-                    font-weight: 600;
-                }
-
                 .timelineCalendarMonthBar {
                     display: flex;
                     align-items: center;
@@ -1769,71 +1808,71 @@ const TimelinePage = () => {
                 .timelineCalendarGrid {
                     display: grid;
                     grid-template-columns: repeat(7, minmax(0, 1fr));
-                    gap: 8px;
+                    gap: 4px;
                 }
 
                 .timelineCalendarDayButton {
+                    --timeline-calendar-cell-bg: #ffffff;
+                    --timeline-calendar-cell-text: #1f2328;
                     display: flex;
                     flex-direction: column;
-                    justify-content: space-between;
-                    gap: 6px;
-                    min-height: 68px;
-                    padding: 10px 8px;
-                    border-radius: 14px;
-                    border: 1px solid var(--timeline-border);
-                    background: #ffffff;
-                    text-align: left;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 2px;
+                    width: 100%;
+                    aspect-ratio: 1 / 1;
+                    padding: 4px;
+                    border-radius: 0;
+                    border: 1px solid transparent;
+                    background: var(--timeline-calendar-cell-bg);
+                    color: var(--timeline-calendar-cell-text);
+                    text-align: center;
                     cursor: pointer;
-                    transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+                    transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
                 }
 
                 .timelineCalendarDayButton:hover,
                 .timelineCalendarDayButton:focus-visible {
                     border-color: var(--timeline-accent);
-                    background: #f8fbff;
+                    background: #ffffff;
+                    color: #1f2328;
                     outline: none;
-                    transform: translateY(-1px);
                 }
 
                 .timelineCalendarDayButtonDisabled {
                     cursor: not-allowed;
-                    background: #f8fafc;
-                    color: #a3acb7;
-                    border-style: dashed;
-                }
-
-                .timelineCalendarDayButtonDisabled:hover,
-                .timelineCalendarDayButtonDisabled:focus-visible {
-                    transform: none;
-                    border-color: var(--timeline-border);
-                    background: #f8fafc;
                 }
 
                 .timelineCalendarDayButtonOutside {
-                    opacity: 0.7;
-                }
-
-                .timelineCalendarDayButtonSelected {
-                    border-color: var(--timeline-accent);
-                    background: var(--timeline-accent-soft);
-                    box-shadow: inset 0 0 0 1px rgba(12, 99, 166, 0.12);
+                    filter: saturate(0.92);
                 }
 
                 .timelineCalendarDayButtonLead {
-                    border-color: #9ab6d3;
-                    background: #f3f7fc;
+                    border-color: var(--timeline-accent);
+                    background: #ffffff;
+                    color: #1f2328;
                 }
 
                 .timelineCalendarDayNumber {
                     font-size: 15px;
                     font-weight: 700;
-                    color: #1f2328;
+                    color: currentColor;
+                    line-height: 1;
                 }
 
                 .timelineCalendarDayMeta {
-                    min-height: 16px;
+                    min-height: 10px;
                     font-size: 11px;
-                    color: var(--timeline-text-muted);
+                    line-height: 1.1;
+                    color: currentColor;
+                    opacity: 0;
+                    transition: opacity 0.16s ease;
+                }
+
+                .timelineCalendarDayButton:hover .timelineCalendarDayMeta,
+                .timelineCalendarDayButton:focus-visible .timelineCalendarDayMeta,
+                .timelineCalendarDayButtonLead .timelineCalendarDayMeta {
+                    opacity: 1;
                 }
 
                 .timelineCalendarPlaceholder {
@@ -1883,8 +1922,9 @@ const TimelinePage = () => {
 
                 .timelineCalendarPlaceholderCell {
                     display: block;
-                    min-height: 68px;
-                    border-radius: 14px;
+                    width: 100%;
+                    aspect-ratio: 1 / 1;
+                    border-radius: 0;
                 }
 
                 .timelineDirectionList {
@@ -2336,12 +2376,11 @@ const TimelinePage = () => {
                     }
 
                     .timelineCalendarGrid {
-                        gap: 6px;
+                        gap: 3px;
                     }
 
                     .timelineCalendarDayButton {
-                        min-height: 60px;
-                        padding: 8px 6px;
+                        padding: 3px;
                     }
                 }
             `}</style>
