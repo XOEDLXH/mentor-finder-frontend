@@ -132,7 +132,6 @@ const ProfileScreen = () => {
             <p>你可以在这里维护个人简介、科研经历、所获荣誉与项目经历等信息。</p>
 
             <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => router.push("/")}>返回首页</button>
                 <button onClick={() => router.push("/search")}>去检索</button>
                 <button onClick={() => router.push(profileHref)}>返回个人主页</button>
             </div>
