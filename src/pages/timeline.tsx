@@ -85,10 +85,58 @@ const TIMELINE_SKELETON_BLUEPRINTS = [
         paragraph: ["100%", "94%", "88%", "50%"],
     },
 ] as const;
+
+const padDatePart = (value: number) => String(value).padStart(2, "0");
+
+const parseIsoDate = (value?: string) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return null;
+    }
+
+    const [year, month, day] = value.split("-").map((item) => Number(item));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return null;
+    }
+
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
+};
+
+const formatIsoDate = (value: Date) => (
+    `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`
+);
+
+const cloneDate = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
+
+const addCalendarDays = (value: Date, days: number) => {
+    const next = cloneDate(value);
+    next.setDate(next.getDate() + days);
+    return next;
+};
+
+const addCalendarMonths = (value: Date, months: number) => {
+    const next = new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
+    next.setMonth(next.getMonth() + months);
+    return next;
+};
+
+const startOfCalendarMonth = (value: Date) => new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
+
+const buildCalendarGridStart = (month: Date) => {
+    const firstDay = startOfCalendarMonth(month);
+    const weekday = (firstDay.getDay() + 6) % 7;
+    return addCalendarDays(firstDay, -weekday);
+};
+
+const formatCalendarMonthLabel = (value: Date) => `${value.getFullYear()} 年 ${value.getMonth() + 1} 月`;
+
 const TimelinePage = () => {
     const router = useRouter();
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");
+    const [calendarMeta, setCalendarMeta] = useState<TimelineCalendarResponse | null>(null);
+    const [displayedMonth, setDisplayedMonth] = useState<Date | null>(null);
+    const [selectedDate, setSelectedDate] = useState("");
+    const [leadVisibleDate, setLeadVisibleDate] = useState("");
     const [papers, setPapers] = useState<TimelinePaper[]>([]);
     const [totalPapers, setTotalPapers] = useState(0);
     const [hasMoreBefore, setHasMoreBefore] = useState(false);
@@ -275,6 +323,79 @@ const TimelinePage = () => {
         inFlightRef.current.replace || inFlightRef.current.prepend || inFlightRef.current.append
     );
 
+    const resetTopOverscrollState = () => {
+        topWheelPullDistanceRef.current = 0;
+        topTouchStartYRef.current = null;
+        topTouchPullDistanceRef.current = 0;
+        topOverscrollConsumedRef.current = false;
+    };
+
+    const resetFeedViewportState = () => {
+        lastFeedScrollTopRef.current = 0;
+        scrollDirectionRef.current = "down";
+        skipNextScrollEventRef.current = false;
+        lastRealPaperBottomRef.current = 0;
+        loadMoreThresholdConsumedRef.current = false;
+        resetTopOverscrollState();
+        if (feedViewportRef.current !== undefined) {
+            feedViewportRef.current.scrollTop = 0;
+        }
+    };
+
+    const prepareFeedForReplace = (showSkeleton: boolean) => {
+        clearInitialSkeletonTimer();
+        inFlightRef.current = {
+            replace: false,
+            prepend: false,
+            append: false,
+        };
+        pendingScrollAdjustmentRef.current = undefined;
+        setLoadingInitial(false);
+        setLoadingPrevious(false);
+        setLoadingNext(false);
+        setHasResolvedInitialFeed(false);
+        setShowInitialSkeleton(showSkeleton);
+        setPapers([]);
+        setTotalPapers(0);
+        setHasMoreBefore(false);
+        setHasMoreAfter(false);
+        setLeadVisibleDate("");
+        papersRef.current = [];
+        paperRefs.current = {};
+        hasMoreBeforeRef.current = false;
+        hasMoreAfterRef.current = false;
+        resetFeedViewportState();
+    };
+
+    const updateLeadVisibleDate = () => {
+        const viewport = feedViewportRef.current;
+        const currentPapers = papersRef.current;
+        if (viewport === undefined || currentPapers.length === 0) {
+            setLeadVisibleDate("");
+            return;
+        }
+
+        const threshold = viewport.scrollTop + 8;
+        for (const paper of currentPapers) {
+            const paperElement = paperRefs.current[paper.id];
+            if (paperElement === undefined) {
+                continue;
+            }
+
+            const paperBottom = paperElement.offsetTop + paperElement.offsetHeight;
+            if (paperBottom > threshold) {
+                setLeadVisibleDate(paper.publish_date || "");
+                return;
+            }
+        }
+
+        setLeadVisibleDate(currentPapers[0]?.publish_date || "");
+    };
+
+    const buildTimelineQueryString = (params: Record<string, string>) => (
+        new URLSearchParams(params).toString()
+    );
+
     const applyFeedResponse = (response: TimelinePapersResponse, mode: TimelineLoadMode) => {
         const normalizedLimit = Math.max(1, Number(response.limit) || DEFAULT_TIMELINE_LIMIT);
         const nextPapers = Array.isArray(response.papers) ? response.papers : [];
@@ -412,7 +533,10 @@ const TimelinePage = () => {
             catch (err) {
                 setDirections([]);
                 setPapers([]);
+                setCalendarMeta(null);
                 setActiveDirection("");
+                setSelectedDate("");
+                setDisplayedMonth(null);
                 setTotalPapers(0);
                 setHasMoreBefore(false);
                 setHasMoreAfter(false);
@@ -430,11 +554,17 @@ const TimelinePage = () => {
         if (activeDirection === "") {
             clearInitialSkeletonTimer();
             setShowInitialSkeleton(false);
+            setCalendarMeta(null);
+            setDisplayedMonth(null);
+            setSelectedDate("");
+            selectedDateRef.current = "";
+            setLeadVisibleDate("");
             setPapers([]);
             setTotalPapers(0);
             setHasMoreBefore(false);
             setHasMoreAfter(false);
             setHasResolvedInitialFeed(false);
+            setLoadingCalendar(false);
             return;
         }
 
@@ -675,6 +805,19 @@ const TimelinePage = () => {
         }
     };
 
+    const triggerTopOverscrollLoad = () => {
+        if (
+            topOverscrollConsumedRef.current
+            || !hasMoreBeforeRef.current
+            || hasAnyFeedLoadInFlight()
+        ) {
+            return;
+        }
+
+        topOverscrollConsumedRef.current = true;
+        loadPreviousBatch();
+    };
+
     const handleFeedViewportScroll = () => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined) {
@@ -814,6 +957,29 @@ const TimelinePage = () => {
         }
         updateLeadVisibleDate();
     }, [papers]);
+
+    const handleSelectDate = (nextDate: string) => {
+        if (
+            activeDirectionRef.current === ""
+            || nextDate === ""
+            || !availableDateSet.has(nextDate)
+        ) {
+            return;
+        }
+
+        directionGenerationRef.current += 1;
+        const generation = directionGenerationRef.current;
+        setSelectedDate(nextDate);
+        selectedDateRef.current = nextDate;
+        setDisplayedMonth(parseIsoDate(nextDate));
+        prepareFeedForReplace(true);
+        setErrorMessage("");
+
+        void fetchTimelineSlice(activeDirectionRef.current, {
+            date: nextDate,
+            limit: String(INITIAL_BATCH_SIZE),
+        }, "replace", generation);
+    };
 
     const renderSkeletonStack = (count: number, position: "top" | "initial" | "bottom") => (
         <div
@@ -1148,6 +1314,30 @@ const TimelinePage = () => {
                     </div>
                 </article>
             ))}
+        </div>
+    );
+
+    const renderCalendarPlaceholder = () => (
+        <div className="timelineCalendarPlaceholder" aria-hidden="true">
+            <div className="timelineCalendarPlaceholderHeader">
+                <span className="timelineSkeletonBlock timelineCalendarPlaceholderTitle" />
+                <div className="timelineCalendarPlaceholderNav">
+                    <span className="timelineSkeletonBlock timelineCalendarPlaceholderNavButton" />
+                    <span className="timelineSkeletonBlock timelineCalendarPlaceholderNavButton" />
+                </div>
+            </div>
+            <div className="timelineCalendarWeekRow">
+                {CALENDAR_WEEKDAY_LABELS.map((label) => (
+                    <span key={`calendar-placeholder-week-${label}`} className="timelineCalendarWeekday">
+                        {label}
+                    </span>
+                ))}
+            </div>
+            <div className="timelineCalendarGrid">
+                {createSkeletonKeys(CALENDAR_GRID_CELL_COUNT, "calendar-cell").map((key) => (
+                    <span key={key} className="timelineSkeletonBlock timelineCalendarPlaceholderCell" />
+                ))}
+            </div>
         </div>
     );
 
@@ -1503,6 +1693,183 @@ const TimelinePage = () => {
                 .timelineCalendarPanelTitle {
                     margin: 0;
                 }
+
+                .timelineCalendarPanelHeader {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
+                .timelineCalendarPanelSubtitle {
+                    margin: 4px 0 0;
+                    font-size: 13px;
+                    color: var(--timeline-text-muted);
+                }
+
+                .timelineCalendarLeadBadge {
+                    align-self: flex-start;
+                    padding: 4px 10px;
+                    border-radius: 999px;
+                    background: #f3f7fc;
+                    color: var(--timeline-accent);
+                    font-size: 12px;
+                    font-weight: 600;
+                }
+
+                .timelineCalendarMonthBar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .timelineCalendarMonthLabel {
+                    font-size: 16px;
+                    font-weight: 700;
+                    text-align: center;
+                    color: #1f2328;
+                }
+
+                .timelineCalendarNavButton {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 10px;
+                    border: 1px solid var(--timeline-border);
+                    background: #fff;
+                    color: #1f2328;
+                    font-size: 22px;
+                    line-height: 1;
+                    cursor: pointer;
+                }
+
+                .timelineCalendarNavButton:hover,
+                .timelineCalendarNavButton:focus-visible {
+                    border-color: var(--timeline-accent);
+                    outline: none;
+                }
+
+                .timelineCalendarWeekRow {
+                    display: grid;
+                    grid-template-columns: repeat(7, minmax(0, 1fr));
+                    gap: 8px;
+                }
+
+                .timelineCalendarWeekday {
+                    text-align: center;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: var(--timeline-text-muted);
+                }
+
+                .timelineCalendarGrid {
+                    display: grid;
+                    grid-template-columns: repeat(7, minmax(0, 1fr));
+                    gap: 8px;
+                }
+
+                .timelineCalendarDayButton {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    gap: 6px;
+                    min-height: 68px;
+                    padding: 10px 8px;
+                    border-radius: 14px;
+                    border: 1px solid var(--timeline-border);
+                    background: #ffffff;
+                    text-align: left;
+                    cursor: pointer;
+                    transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+                }
+
+                .timelineCalendarDayButton:hover,
+                .timelineCalendarDayButton:focus-visible {
+                    border-color: var(--timeline-accent);
+                    background: #f8fbff;
+                    outline: none;
+                    transform: translateY(-1px);
+                }
+
+                .timelineCalendarDayButtonDisabled {
+                    cursor: not-allowed;
+                    background: #f8fafc;
+                    color: #a3acb7;
+                    border-style: dashed;
+                }
+
+                .timelineCalendarDayButtonDisabled:hover,
+                .timelineCalendarDayButtonDisabled:focus-visible {
+                    transform: none;
+                    border-color: var(--timeline-border);
+                    background: #f8fafc;
+                }
+
+                .timelineCalendarDayButtonOutside {
+                    opacity: 0.7;
+                }
+
+                .timelineCalendarDayButtonSelected {
+                    border-color: var(--timeline-accent);
+                    background: var(--timeline-accent-soft);
+                    box-shadow: inset 0 0 0 1px rgba(12, 99, 166, 0.12);
+                }
+
+                .timelineCalendarDayButtonLead {
+                    border-color: #9ab6d3;
+                    background: #f3f7fc;
+                }
+
+                .timelineCalendarDayNumber {
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #1f2328;
+                }
+
+                .timelineCalendarDayMeta {
+                    min-height: 16px;
+                    font-size: 11px;
+                    color: var(--timeline-text-muted);
+                }
+
+                .timelineCalendarPlaceholder {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                }
+
+                .timelineCalendarPlaceholderHeader {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 12px;
+                }
+
+                .timelineCalendarPlaceholderTitle {
+                    width: 132px;
+                    height: 16px;
+                    border-radius: 999px;
+                }
+
+                .timelineCalendarPlaceholderNav {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .timelineCalendarPlaceholderNavButton {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 10px;
+                }
+
+                .timelineCalendarPlaceholderCell {
+                    display: block;
+                    min-height: 68px;
+                    border-radius: 14px;
+                }
+
                 .timelineDirectionList {
                     display: flex;
                     flex-direction: column;
