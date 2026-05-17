@@ -13,18 +13,19 @@ import {
 
 const INITIAL_BATCH_SIZE = 6;
 const WINDOW_BATCH_SIZE = 5;
-const MAX_RENDERED_PAPERS = 20;
 const DEFAULT_TIMELINE_LIMIT = 20;
 const DIRECTION_SKELETON_COUNT = 8;
 const INITIAL_FEED_PREVIEW_COUNT = 4;
+const LOAD_MORE_PREVIEW_COUNT = 1;
 const MIN_INITIAL_SKELETON_MS = 800;
 const INITIAL_SKELETON_FADE_MS = 180;
+const APPEND_SCROLL_ADJUSTMENT_RATIO = 0.002;
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type TimelineLoadMode = "replace" | "prepend" | "append";
 type ScrollAdjustment =
     | { type: "prepend"; addedIds: number[]; direction: "up" | "down"; }
-    | { type: "append-trim"; removedHeight: number; direction: "up" | "down"; }
+    | { type: "append-anchor"; firstNewPaperId?: number; anchorTop: number; direction: "up" | "down"; }
     | undefined;
 
 const createSkeletonKeys = (count: number, prefix: string) => (
@@ -84,7 +85,7 @@ const TimelinePage = () => {
     const [loadingDirections, setLoadingDirections] = useState(true);
     const [loadingInitial, setLoadingInitial] = useState(false);
     const [loadingPrevious, setLoadingPrevious] = useState(false);
-    const [loadingNext, setLoadingNext] = useState(false);
+    const [, setLoadingNext] = useState(false);
     const [hasResolvedInitialFeed, setHasResolvedInitialFeed] = useState(false);
     const [showInitialSkeleton, setShowInitialSkeleton] = useState(false);
     const [feedRevealKey, setFeedRevealKey] = useState(0);
@@ -108,6 +109,8 @@ const TimelinePage = () => {
     const scrollDirectionRef = useRef<"up" | "down">("down");
     const lastFeedScrollTopRef = useRef(0);
     const skipNextScrollEventRef = useRef(false);
+    const lastRealPaperBottomRef = useRef(0);
+    const loadMoreThresholdConsumedRef = useRef(false);
 
     useEffect(() => {
         papersRef.current = papers;
@@ -280,29 +283,23 @@ const TimelinePage = () => {
         if (mode === "append") {
             const uniqueIncoming = nextPapers.filter((paper) => !existingIds.has(paper.id));
             const mergedPapers = [...currentPapers, ...uniqueIncoming];
-            const overflow = Math.max(mergedPapers.length - MAX_RENDERED_PAPERS, 0);
-            const trimmedHead = overflow > 0 ? mergedPapers.slice(0, overflow) : [];
-            const removedHeight = trimmedHead.reduce((sum, paper) => (
-                sum + (paperRefs.current[paper.id]?.offsetHeight || 0)
-            ), 0);
-            const visiblePapers = overflow > 0 ? mergedPapers.slice(overflow) : mergedPapers;
-            const nextStartOffset = currentStartOffset + trimmedHead.length;
 
-            pendingScrollAdjustmentRef.current = removedHeight > 0
-                ? { type: "append-trim", removedHeight, direction: "down" }
-                : undefined;
+            pendingScrollAdjustmentRef.current = uniqueIncoming.length > 0 && pendingScrollAdjustmentRef.current?.type === "append-anchor"
+                ? {
+                    ...pendingScrollAdjustmentRef.current,
+                    firstNewPaperId: uniqueIncoming[0]?.id,
+                }
+                : pendingScrollAdjustmentRef.current;
 
-            setPapers(visiblePapers);
-            setWindowStartOffset(nextStartOffset);
-            setHasMoreBefore(Boolean(response.has_previous) || nextStartOffset > 0);
+            setPapers(mergedPapers);
+            setWindowStartOffset(currentStartOffset);
+            setHasMoreBefore(Boolean(response.has_previous) || currentStartOffset > 0);
             setHasMoreAfter(Boolean(response.has_next));
             return;
         }
 
         const uniqueIncoming = nextPapers.filter((paper) => !existingIds.has(paper.id));
         const mergedPapers = [...uniqueIncoming, ...currentPapers];
-        const overflow = Math.max(mergedPapers.length - MAX_RENDERED_PAPERS, 0);
-        const visiblePapers = overflow > 0 ? mergedPapers.slice(0, mergedPapers.length - overflow) : mergedPapers;
 
         pendingScrollAdjustmentRef.current = uniqueIncoming.length > 0
             ? {
@@ -312,10 +309,10 @@ const TimelinePage = () => {
             }
             : undefined;
 
-        setPapers(visiblePapers);
+        setPapers(mergedPapers);
         setWindowStartOffset(normalizedOffset);
         setHasMoreBefore(Boolean(response.has_previous));
-        setHasMoreAfter(Boolean(response.has_next) || hasMoreAfterRef.current || overflow > 0 || normalizedLimit < currentPapers.length);
+        setHasMoreAfter(Boolean(response.has_next) || hasMoreAfterRef.current || normalizedLimit < currentPapers.length);
     };
 
     const fetchTimelineSlice = async (
@@ -484,6 +481,24 @@ const TimelinePage = () => {
         void fetchTimelineSlice(activeDirectionRef.current, offset, limit, "prepend", directionGenerationRef.current);
     };
 
+    const getFeedViewportBottom = () => {
+        const viewport = feedViewportRef.current;
+        if (viewport === undefined) {
+            return 0;
+        }
+
+        return viewport.getBoundingClientRect().bottom;
+    };
+
+    const getFirstLoadMorePreviewTop = () => {
+        const firstPreview = feedViewportRef.current?.querySelector<HTMLElement>("[data-load-more-preview-first='true']");
+        if (!firstPreview) {
+            return Number.POSITIVE_INFINITY;
+        }
+
+        return firstPreview.getBoundingClientRect().top;
+    };
+
     const loadNextBatch = () => {
         if (
             activeDirectionRef.current === ""
@@ -491,6 +506,16 @@ const TimelinePage = () => {
             || hasAnyFeedLoadInFlight()
         ) {
             return;
+        }
+
+        const lastPaper = papersRef.current[papersRef.current.length - 1];
+        const anchorTop = lastPaper !== undefined ? (paperRefs.current[lastPaper.id]?.offsetTop || 0) : 0;
+        if (anchorTop > 0) {
+            pendingScrollAdjustmentRef.current = {
+                type: "append-anchor",
+                anchorTop,
+                direction: "down",
+            };
         }
 
         void fetchTimelineSlice(
@@ -503,17 +528,22 @@ const TimelinePage = () => {
     };
 
     const maybeLoadNextFromViewport = () => {
-        const viewport = feedViewportRef.current;
         if (
-            viewport === undefined
-            || !hasMoreAfterRef.current
+            !hasMoreAfterRef.current
             || hasAnyFeedLoadInFlight()
-            || scrollDirectionRef.current !== "down"
+            || loadMoreThresholdConsumedRef.current
         ) {
             return;
         }
 
-        if (viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 160) {
+        const viewportBottom = lastRealPaperBottomRef.current || getFeedViewportBottom();
+        if (viewportBottom <= 0) {
+            return;
+        }
+
+        const firstPreviewTop = getFirstLoadMorePreviewTop();
+        if (firstPreviewTop <= viewportBottom) {
+            loadMoreThresholdConsumedRef.current = true;
             loadNextBatch();
         }
     };
@@ -552,13 +582,11 @@ const TimelinePage = () => {
     useIsomorphicLayoutEffect(() => {
         const pendingAdjustment = pendingScrollAdjustmentRef.current;
         const viewport = feedViewportRef.current;
-        if (pendingAdjustment === undefined || viewport === undefined) {
+        if (viewport === undefined) {
             return;
         }
 
-        pendingScrollAdjustmentRef.current = undefined;
-
-        if (pendingAdjustment.type === "prepend") {
+        if (pendingAdjustment?.type === "prepend") {
             const addedHeight = pendingAdjustment.addedIds.reduce((sum, id) => (
                 sum + (paperRefs.current[id]?.offsetHeight || 0)
             ), 0);
@@ -569,16 +597,28 @@ const TimelinePage = () => {
                 lastFeedScrollTopRef.current = viewport.scrollTop;
                 scrollDirectionRef.current = pendingAdjustment.direction;
             }
-
-            return;
         }
 
-        if (pendingAdjustment.removedHeight > 0) {
-            skipNextScrollEventRef.current = true;
-            viewport.scrollTop = Math.max(0, viewport.scrollTop - pendingAdjustment.removedHeight);
-            lastFeedScrollTopRef.current = viewport.scrollTop;
-            scrollDirectionRef.current = pendingAdjustment.direction;
+        if (pendingAdjustment?.type === "append-anchor") {
+            const targetId = pendingAdjustment.firstNewPaperId;
+            const targetElement = targetId !== undefined ? paperRefs.current[targetId] : undefined;
+
+            if (targetElement !== undefined) {
+                const delta = targetElement.offsetTop - pendingAdjustment.anchorTop;
+                const adjustedDelta = delta * APPEND_SCROLL_ADJUSTMENT_RATIO;
+
+                if (adjustedDelta !== 0) {
+                    skipNextScrollEventRef.current = true;
+                    viewport.scrollTop += adjustedDelta;
+                    lastFeedScrollTopRef.current = viewport.scrollTop;
+                    scrollDirectionRef.current = pendingAdjustment.direction;
+                }
+            }
         }
+
+        pendingScrollAdjustmentRef.current = undefined;
+        lastRealPaperBottomRef.current = getFeedViewportBottom();
+        loadMoreThresholdConsumedRef.current = false;
     }, [papers]);
 
     const renderSkeletonStack = (count: number, position: "top" | "initial" | "bottom") => (
@@ -781,10 +821,20 @@ const TimelinePage = () => {
         </div>
     );
 
-    const renderFeedPreviewCards = () => (
+    const renderFeedPreviewCards = ({
+        count = INITIAL_FEED_PREVIEW_COUNT,
+        keyPrefix = "feed-preview",
+        stackClassName = "timelineFeedPreviewStack",
+        testId = "timeline-feed-preview-skeletons",
+    }: {
+        count?: number;
+        keyPrefix?: string;
+        stackClassName?: string;
+        testId?: string;
+    } = {}) => (
         <div
-            className="timelineFeedPreviewStack"
-            data-testid="timeline-feed-preview-skeletons"
+            className={stackClassName}
+            data-testid={testId}
             style={{
                 display: "flex",
                 flexDirection: "column",
@@ -792,19 +842,20 @@ const TimelinePage = () => {
                 width: "100%",
             }}
         >
-            {createSkeletonKeys(INITIAL_FEED_PREVIEW_COUNT, "feed-preview").map((key) => (
+            {createSkeletonKeys(count, keyPrefix).map((key, idx) => (
                 <article
                     key={key}
                     className="timelineFeedPreviewCard"
                     aria-hidden="true"
+                    data-load-more-preview-first={keyPrefix === "feed-load-more" && idx === 0 ? "true" : undefined}
                     style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 14,
-                        minHeight: 206,
-                        padding: 16,
-                        border: "1px solid #ccc",
-                        borderRadius: 8,
+                        gap: 16,
+                        minHeight: 182,
+                        padding: "18px 16px 20px",
+                        border: "1px solid #d8dee8",
+                        borderRadius: 14,
                         background: "#fff",
                         width: "100%",
                         boxSizing: "border-box",
@@ -833,17 +884,21 @@ const TimelinePage = () => {
                         >
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag"
-                                style={createPreviewBarStyle(54, 22, { borderRadius: 6 })}
+                                style={createPreviewBarStyle(56, 22, { borderRadius: 8 })}
+                            />
+                            <span
+                                className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag"
+                                style={createPreviewBarStyle(54, 22, { borderRadius: 8 })}
                             />
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTag timelineFeedPreviewBarTagWide"
-                                style={createPreviewBarStyle(72, 22, { borderRadius: 6 })}
+                                style={createPreviewBarStyle(72, 22, { borderRadius: 8 })}
                             />
                         </div>
                     </div>
                     <span
                         className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarTitle"
-                        style={createPreviewBarStyle("74%", 26)}
+                        style={createPreviewBarStyle("72%", 28)}
                     />
                     <div
                         className="timelineFeedPreviewMetaRow"
@@ -859,7 +914,7 @@ const TimelinePage = () => {
                         />
                         <span
                             className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarMeta"
-                            style={createPreviewBarStyle("38%", 14, { marginTop: 1 })}
+                            style={createPreviewBarStyle("37%", 14, { marginTop: 1 })}
                         />
                     </div>
                     <div
@@ -885,15 +940,15 @@ const TimelinePage = () => {
                         >
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphFull"
-                                style={createPreviewBarStyle("100%", 13)}
+                                style={createPreviewBarStyle("100%", 14)}
                             />
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphFull"
-                                style={createPreviewBarStyle("100%", 13)}
+                                style={createPreviewBarStyle("100%", 14)}
                             />
                             <span
                                 className="timelineDirectionLoadingBar timelineFeedPreviewBar timelineFeedPreviewBarParagraph timelineFeedPreviewBarParagraphShort"
-                                style={createPreviewBarStyle("68%", 13)}
+                                style={createPreviewBarStyle("68%", 14)}
                             />
                         </div>
                     </div>
@@ -914,6 +969,22 @@ const TimelinePage = () => {
     const shouldRenderFeedStatsSkeleton = !shouldRenderFeedHeaderSkeleton && shouldRenderInitialFeedSkeleton;
     const shouldRenderResolvedFeed = !shouldRenderInitialFeedSkeleton && papers.length > 0;
     const shouldRenderEmptyFeedState = !shouldRenderInitialFeedSkeleton && !loadingInitial && hasResolvedInitialFeed && papers.length === 0;
+    const shouldRenderLoadMorePreview = shouldRenderResolvedFeed && hasMoreAfter;
+    const shouldRenderFeedHint = shouldRenderResolvedFeed && !hasMoreAfter;
+
+    useEffect(() => {
+        if (!shouldRenderLoadMorePreview || loadingInitial || hasAnyFeedLoadInFlight()) {
+            return;
+        }
+
+        const frameId = window.requestAnimationFrame(() => {
+            maybeLoadNextFromViewport();
+        });
+
+        return () => {
+            window.cancelAnimationFrame(frameId);
+        };
+    }, [loadingInitial, papers, shouldRenderLoadMorePreview]);
 
     return (
         <div className="timelinePageShell">
@@ -1064,6 +1135,13 @@ const TimelinePage = () => {
                                             </article>
                                         );
                                     })}
+
+                                    {shouldRenderLoadMorePreview && renderFeedPreviewCards({
+                                        count: LOAD_MORE_PREVIEW_COUNT,
+                                        keyPrefix: "feed-load-more",
+                                        testId: "timeline-feed-load-more-preview",
+                                        stackClassName: "timelineFeedPreviewStack timelineFeedPreviewStackLoadMore",
+                                    })}
                                 </div>
                             )}
 
@@ -1073,12 +1151,10 @@ const TimelinePage = () => {
                                 </div>
                             )}
 
-                            {!loadingInitial && loadingNext && renderSkeletonStack(WINDOW_BATCH_SIZE, "bottom")}
-
-                            {shouldRenderResolvedFeed && (
+                            {shouldRenderFeedHint && (
                                 <div className="timelineFeedHint">
-                                    {hasMoreBefore || hasMoreAfter
-                                        ? "继续滚动以加载更多；向上滑到顶部会立即补回更早加载过的论文。"
+                                    {hasMoreBefore
+                                        ? "已到当前方向末尾；向上滑到顶部会立即补回更早加载过的论文。"
                                         : "这个方向的论文已经浏览到底。"}
                                 </div>
                             )}
@@ -1257,18 +1333,23 @@ const TimelinePage = () => {
                 .timelineFeedPreviewStack {
                     display: flex;
                     flex-direction: column;
-                    gap: 18px;
+                    gap: 16px;
+                }
+
+                .timelineFeedPreviewStackLoadMore {
+                    width: 100%;
                 }
 
                 .timelineFeedPreviewCard {
                     display: flex;
                     flex-direction: column;
-                    gap: 14px;
-                    min-height: 206px;
-                    padding: 16px;
-                    border: 1px solid #ccc;
-                    border-radius: 8px;
+                    gap: 16px;
+                    min-height: 182px;
+                    padding: 18px 16px 20px;
+                    border: 1px solid #d8dee8;
+                    border-radius: 14px;
                     background: #fff;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
                 }
 
                 .timelineFeedPreviewHeaderRow {
@@ -1725,16 +1806,6 @@ const TimelinePage = () => {
                     }
                 }
 
-                @keyframes timelinePreviewBarShimmer {
-                    from {
-                        background-position: 200% 0;
-                    }
-
-                    to {
-                        background-position: -200% 0;
-                    }
-                }
-
                 @keyframes timelineSkeletonPulse {
                     0%,
                     100% {
@@ -1743,6 +1814,16 @@ const TimelinePage = () => {
 
                     50% {
                         background-color: #d7e0ea;
+                    }
+                }
+
+                @keyframes timelinePreviewBarShimmer {
+                    from {
+                        background-position: 200% 0;
+                    }
+
+                    to {
+                        background-position: -200% 0;
                     }
                 }
 

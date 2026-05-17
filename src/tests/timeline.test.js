@@ -337,6 +337,95 @@ describe("TimelinePage LaTeX rendering", () => {
         expect(screen.queryByTestId("timeline-skeleton-top")).toBeNull();
     });
 
+    it("applies only a partial scroll adjustment after appending the next batch", async () => {
+        const firstBatch = Array.from({ length: 6 }, (_, idx) => createPaper(idx + 1));
+        const nextBatch = Array.from({ length: 5 }, (_, idx) => createPaper(idx + 7));
+
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=0&limit=6") {
+                return timelineResponse(firstBatch, {
+                    offset: 0,
+                    limit: 6,
+                    total_papers: 30,
+                    has_next: true,
+                });
+            }
+
+            if (url === "/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5") {
+                return timelineResponse(nextBatch, {
+                    offset: 6,
+                    limit: 5,
+                    total_papers: 30,
+                    has_previous: true,
+                    has_next: true,
+                });
+            }
+
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+
+        const viewport = screen.getByTestId("timeline-feed-viewport");
+        Object.defineProperty(viewport, "scrollTop", {
+            configurable: true,
+            writable: true,
+            value: 200,
+        });
+        Object.defineProperty(viewport, "getBoundingClientRect", {
+            configurable: true,
+            value: () => ({
+                top: 0,
+                bottom: 400,
+                left: 0,
+                right: 0,
+                width: 400,
+                height: 400,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+            }),
+        });
+
+        const lastCurrentPaper = screen.getByTestId("timeline-paper-6");
+        Object.defineProperty(lastCurrentPaper, "offsetTop", {
+            configurable: true,
+            value: 900,
+        });
+
+        const preview = screen.getByTestId("timeline-feed-load-more-preview");
+        const firstPreviewCard = preview.querySelector("[data-load-more-preview-first='true']");
+        expect(firstPreviewCard).not.toBeNull();
+        Object.defineProperty(firstPreviewCard, "getBoundingClientRect", {
+            configurable: true,
+            value: () => ({
+                top: 350,
+                bottom: 520,
+                left: 0,
+                right: 0,
+                width: 400,
+                height: 170,
+                x: 0,
+                y: 350,
+                toJSON: () => ({}),
+            }),
+        });
+
+        act(() => {
+            fireEvent.scroll(viewport);
+        });
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&offset=6&limit=5", "GET", false);
+        });
+        expect(await screen.findByTestId("timeline-paper-7")).toBeInTheDocument();
+    });
+
 
     it("renders inline LaTeX in timeline abstracts", async () => {
         mockTimelineApis({
