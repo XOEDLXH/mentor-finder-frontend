@@ -135,12 +135,12 @@ const padDatePart = (value: number) => String(value).padStart(2, "0");
 
 const parseIsoDate = (value?: string) => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        return null;
+        return undefined;
     }
 
     const [year, month, day] = value.split("-").map((item) => Number(item));
     if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-        return null;
+        return undefined;
     }
 
     return new Date(year, month - 1, day, 12, 0, 0, 0);
@@ -178,8 +178,8 @@ const TimelinePage = () => {
     const router = useRouter();
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");
-    const [calendarMeta, setCalendarMeta] = useState<TimelineCalendarResponse | null>(null);
-    const [displayedMonth, setDisplayedMonth] = useState<Date | null>(null);
+    const [calendarMeta, setCalendarMeta] = useState<TimelineCalendarResponse | undefined>(undefined);
+    const [displayedMonth, setDisplayedMonth] = useState<Date | undefined>(undefined);
     const [selectedDate, setSelectedDate] = useState("");
     const [leadVisibleDate, setLeadVisibleDate] = useState("");
     const [isCalendarBrowsingManually, setIsCalendarBrowsingManually] = useState(false);
@@ -218,7 +218,7 @@ const TimelinePage = () => {
     const lastRealPaperBottomRef = useRef(0);
     const loadMoreThresholdConsumedRef = useRef(false);
     const topWheelPullDistanceRef = useRef(0);
-    const topTouchStartYRef = useRef<number | null>(null);
+    const topTouchStartYRef = useRef<number | undefined>(undefined);
     const topTouchPullDistanceRef = useRef(0);
     const topOverscrollConsumedRef = useRef(false);
 
@@ -371,7 +371,7 @@ const TimelinePage = () => {
 
     const resetTopOverscrollState = () => {
         topWheelPullDistanceRef.current = 0;
-        topTouchStartYRef.current = null;
+        topTouchStartYRef.current = undefined;
         topTouchPullDistanceRef.current = 0;
         topOverscrollConsumedRef.current = false;
     };
@@ -579,10 +579,10 @@ const TimelinePage = () => {
             catch (err) {
                 setDirections([]);
                 setPapers([]);
-                setCalendarMeta(null);
+                setCalendarMeta(undefined);
                 setActiveDirection("");
                 setSelectedDate("");
-                setDisplayedMonth(null);
+                setDisplayedMonth(undefined);
                 setTotalPapers(0);
                 setHasMoreBefore(false);
                 setHasMoreAfter(false);
@@ -600,8 +600,8 @@ const TimelinePage = () => {
         if (activeDirection === "") {
             clearInitialSkeletonTimer();
             setShowInitialSkeleton(false);
-            setCalendarMeta(null);
-            setDisplayedMonth(null);
+            setCalendarMeta(undefined);
+            setDisplayedMonth(undefined);
             setSelectedDate("");
             selectedDateRef.current = "";
             setLeadVisibleDate("");
@@ -617,8 +617,8 @@ const TimelinePage = () => {
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
         prepareFeedForReplace(true);
-        setCalendarMeta(null);
-        setDisplayedMonth(null);
+        setCalendarMeta(undefined);
+        setDisplayedMonth(undefined);
         setLoadingCalendar(true);
         setErrorMessage("");
 
@@ -649,7 +649,7 @@ const TimelinePage = () => {
                 setSelectedDate(preservedDate);
                 selectedDateRef.current = preservedDate;
                 const monthSource = preservedDate || response.latest_date;
-                setDisplayedMonth(monthSource !== "" ? parseIsoDate(monthSource) : null);
+                setDisplayedMonth(monthSource !== "" ? parseIsoDate(monthSource) : undefined);
                 setIsCalendarBrowsingManually(false);
 
                 if (preservedDate === "") {
@@ -669,8 +669,8 @@ const TimelinePage = () => {
                     return;
                 }
 
-                setCalendarMeta(null);
-                setDisplayedMonth(null);
+                setCalendarMeta(undefined);
+                setDisplayedMonth(undefined);
                 setIsCalendarBrowsingManually(false);
                 setSelectedDate("");
                 selectedDateRef.current = "";
@@ -709,12 +709,12 @@ const TimelinePage = () => {
     );
 
     const currentCalendarMonth = useMemo(() => {
-        if (displayedMonth !== null) {
+        if (displayedMonth !== undefined) {
             return startOfCalendarMonth(displayedMonth);
         }
 
         const fallbackDate = parseIsoDate(selectedDate || calendarMeta?.latest_date || "");
-        return fallbackDate ? startOfCalendarMonth(fallbackDate) : startOfCalendarMonth(new Date());
+        return fallbackDate !== undefined ? startOfCalendarMonth(fallbackDate) : startOfCalendarMonth(new Date());
     }, [calendarMeta?.latest_date, displayedMonth, selectedDate]);
 
     const handleCalendarMonthChange = (deltaMonths: number) => {
@@ -747,12 +747,12 @@ const TimelinePage = () => {
     const currentVisibleDateRange = useMemo(() => {
         const targetDate = leadVisibleDate || papers[0]?.publish_date || selectedDate;
         if (targetDate === "") {
-            return null;
+            return undefined;
         }
 
         const visibleSameDayPapers = papers.filter((paper) => paper.publish_date === targetDate);
         if (visibleSameDayPapers.length === 0) {
-            return null;
+            return undefined;
         }
 
         const sequences = visibleSameDayPapers
@@ -780,7 +780,7 @@ const TimelinePage = () => {
         }
 
         const nextLeadDate = parseIsoDate(leadVisibleDate);
-        if (nextLeadDate === null) {
+        if (nextLeadDate === undefined) {
             return;
         }
 
@@ -966,12 +966,12 @@ const TimelinePage = () => {
     const handleFeedViewportTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined || viewport.scrollTop > 0) {
-            topTouchStartYRef.current = null;
+            topTouchStartYRef.current = undefined;
             topTouchPullDistanceRef.current = 0;
             return;
         }
 
-        topTouchStartYRef.current = event.touches[0]?.clientY ?? null;
+        topTouchStartYRef.current = event.touches[0]?.clientY;
         topTouchPullDistanceRef.current = 0;
     };
 
@@ -980,7 +980,7 @@ const TimelinePage = () => {
         if (
             viewport === undefined
             || viewport.scrollTop > 0
-            || topTouchStartYRef.current === null
+            || topTouchStartYRef.current === undefined
             || !hasMoreBeforeRef.current
             || hasAnyFeedLoadInFlight()
         ) {
@@ -1000,7 +1000,7 @@ const TimelinePage = () => {
     };
 
     const handleFeedViewportTouchEnd = () => {
-        topTouchStartYRef.current = null;
+        topTouchStartYRef.current = undefined;
         topTouchPullDistanceRef.current = 0;
     };
 
@@ -1654,7 +1654,7 @@ const TimelinePage = () => {
                                 </p>
                             </div>
                         </div>
-                        {loadingCalendar || calendarMeta === null ? (
+                        {loadingCalendar || calendarMeta === undefined ? (
                             renderCalendarPlaceholder()
                         ) : (
                             <>

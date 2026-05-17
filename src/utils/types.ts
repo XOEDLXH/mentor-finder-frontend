@@ -82,8 +82,8 @@ export interface TimelinePaper {
     author_names: string;
     mentor_ids?: number[];
     subjects?: string;
-    day_sequence?: number | null;
-    day_total?: number | null;
+    day_sequence?: number;
+    day_total?: number;
 }
 
 export interface TimelineDirectionSummary {
