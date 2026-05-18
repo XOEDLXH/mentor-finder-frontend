@@ -87,10 +87,17 @@ const WeeklyPushPaperList = ({
             return;
         }
 
-        viewport.scrollBy({
-            left: direction * getWeeklyPushCarouselScrollStep(viewport),
-            behavior: "smooth",
-        });
+        const nextLeft = viewport.scrollLeft + direction * getWeeklyPushCarouselScrollStep(viewport);
+        if (typeof viewport.scrollBy === "function") {
+            viewport.scrollBy({
+                left: direction * getWeeklyPushCarouselScrollStep(viewport),
+                behavior: "smooth",
+            });
+            return;
+        }
+
+        viewport.scrollLeft = nextLeft;
+        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     };
 
     const handleViewportScroll = () => {
@@ -107,7 +114,12 @@ const WeeklyPushPaperList = ({
             return;
         }
 
-        viewport.scrollTo({ left: 0, behavior: "auto" });
+        if (typeof viewport.scrollTo === "function") {
+            viewport.scrollTo({ left: 0, behavior: "auto" });
+        }
+        else {
+            viewport.scrollLeft = 0;
+        }
         syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     }, [papers]);
 
