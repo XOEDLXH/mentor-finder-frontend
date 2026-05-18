@@ -14,9 +14,12 @@ import {
     REGISTER_PASSWORD_WEAK,
     REGISTER_USERNAME_TAKEN,
     REGISTER_USERNAME_INVALID,
+    RESET_PASSWORD_EMAIL_NOT_FOUND,
+    RESET_PASSWORD_SUCCESS,
 } from "../constants/string";
 import LoginScreen from "../pages/login";
 import RegisterScreen from "../pages/register";
+import ResetPasswordScreen from "../pages/reset-password";
 import authReducer, { resetAuth, setName, setRole, setToken } from "../redux/auth";
 
 jest.mock("next/router", () => ({
@@ -330,6 +333,105 @@ describe("LoginScreen", () => {
         fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
 
         expect(mockPush).toHaveBeenCalledWith("/register?redirect=%2Ffollows");
+    });
+
+    it("navigates to reset-password page when clicking forgot password", () => {
+        render(<LoginScreen />);
+
+        fireEvent.click(screen.getByRole("link", { name: "Forgot password?" }));
+
+        expect(mockPush).toHaveBeenCalledWith("/reset-password");
+    });
+});
+
+describe("ResetPasswordScreen", () => {
+    const mockPush = jest.fn();
+    const mockDispatch = jest.fn();
+    const mockRouter = {
+        push: mockPush,
+        query: {},
+    };
+
+    beforeEach(() => {
+        mockPush.mockReset();
+        mockDispatch.mockReset();
+        mockRouter.query = {};
+
+        useRouter.mockReturnValue(mockRouter);
+        useDispatch.mockReturnValue(mockDispatch);
+
+        globalThis.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+        jest.restoreAllMocks();
+    });
+
+    it("requests a password reset verification code for an existing email", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, bypass: false, cooldownSeconds: 60 }),
+        });
+
+        render(<ResetPasswordScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
+
+        await waitFor(() => {
+            expect(globalThis.fetch).toHaveBeenCalledWith("/api/password-reset/verification-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: "alice@example.com" }),
+            });
+        });
+        expect(await screen.findByText(REGISTER_CODE_SENT)).toBeInTheDocument();
+    });
+
+    it("resets password with email code and returns to login", async () => {
+        jest.useFakeTimers();
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0 }),
+        });
+
+        render(<ResetPasswordScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
+        fireEvent.change(screen.getByPlaceholderText("New password"), { target: { value: "newpass123" } });
+        fireEvent.change(screen.getByPlaceholderText("Confirm new password"), { target: { value: "newpass123" } });
+        fireEvent.click(screen.getByRole("button", { name: "Reset password" }));
+
+        await waitFor(() => {
+            expect(globalThis.fetch).toHaveBeenCalledWith("/api/password-reset", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: "alice@example.com",
+                    password: "newpass123",
+                    verificationCode: "123456",
+                }),
+            });
+        });
+        expect(await screen.findByText(RESET_PASSWORD_SUCCESS)).toBeInTheDocument();
+
+        act(() => {
+            jest.advanceTimersByTime(600);
+        });
+        expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+
+    it("shows email-not-found message when reset code request is rejected", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 2 }),
+        });
+
+        render(<ResetPasswordScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "missing@example.com" } });
+        fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
+
+        expect(await screen.findByText(RESET_PASSWORD_EMAIL_NOT_FOUND)).toBeInTheDocument();
     });
 });
 
