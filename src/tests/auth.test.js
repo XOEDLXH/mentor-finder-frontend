@@ -95,7 +95,7 @@ describe("LoginScreen", () => {
 
     it("dispatches auth info and navigates home when login succeeds", async () => {
         globalThis.fetch.mockResolvedValue({
-            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "admin" }),
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", username: "alice", role: "admin" }),
         });
 
         render(<LoginScreen />);
@@ -126,6 +126,22 @@ describe("LoginScreen", () => {
             expect(mockPush).toHaveBeenCalledWith("/");
         });
         expect(globalThis.alert).not.toHaveBeenCalled();
+    });
+
+    it("uses returned username as display name when login is submitted with email", async () => {
+        globalThis.fetch.mockResolvedValue({
+            json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", username: "alice", role: "student" }),
+        });
+
+        render(<LoginScreen />);
+
+        fireEvent.change(screen.getByPlaceholderText("Username or email address"), { target: { value: "alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
+        fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+        await waitFor(() => {
+            expect(mockDispatch).toHaveBeenCalledWith(setName("alice"));
+        });
     });
 
     it("submits login form when the form is submitted", async () => {

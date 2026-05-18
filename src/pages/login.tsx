@@ -87,7 +87,7 @@ const LoginScreen = () => {
                     dispatch(setRole(typeof res.role === "string" ? res.role : ""));
                     dispatch(setUserId(typeof res.userId === "number" ? res.userId : undefined));
 
-                    dispatch(setName(userName));
+                    dispatch(setName(typeof res.username === "string" ? res.username : userName.trim()));
 
                     router.push(redirectTarget);
                 }
