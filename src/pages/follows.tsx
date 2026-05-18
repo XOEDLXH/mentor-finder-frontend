@@ -8,6 +8,7 @@ import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
+import { buildSearchUrl } from "../utils/searchQuery";
 import { FollowUserResult, SearchMentorResult, TimelinePaper } from "../utils/types";
 
 interface FollowedMentorsResponse {
@@ -309,6 +310,18 @@ const FollowsPage = () => {
             }
             return nextSubjects;
         });
+    };
+
+    const navigateToSubjectSearch = (subjectCode: string) => {
+        const url = buildSearchUrl({
+            keyword: subjectCode,
+            mode: "paper",
+            searchMode: "exact",
+            sortMode: "default",
+            page: 1,
+            visibility: "all",
+        });
+        void router.push(url);
     };
 
     const renderUserCard = (user: FollowUserResult, keyPrefix: string) => (
@@ -641,6 +654,13 @@ const FollowsPage = () => {
                                                         onClick={() => toggleSubjectExpand(subject.subject)}
                                                     >
                                                         {expandedSubjects.has(subject.subject) ? "收起论文" : "展开论文"}
+                                                    </button>
+                                                    <button
+                                                        className="subjectSearchButton"
+                                                        type="button"
+                                                        onClick={() => navigateToSubjectSearch(subject.subject)}
+                                                    >
+                                                        前往检索
                                                     </button>
                                                     <button
                                                         className="subjectUnfollowButton"
@@ -1037,6 +1057,16 @@ const FollowsPage = () => {
                     margin-top: 4px;
                     color: #57606a;
                     font-size: 13px;
+                }
+
+                :global(.subjectSearchButton) {
+                    border: 1px solid #0969da;
+                    background: #eef6ff;
+                    color: #0969da;
+                    padding: 8px 10px;
+                    border-radius: 6px;
+                    font-weight: 700;
+                    cursor: pointer;
                 }
 
                 :global(.subjectExpandButton),
