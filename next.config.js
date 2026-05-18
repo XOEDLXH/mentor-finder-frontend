@@ -9,10 +9,16 @@ const nextConfig = {
     // swcMinify: true,
 
     async rewrites() {
-        return [{
-            source: "/api/:path*",
-            destination: `${backendBaseUrl}/:path*`,
-        }];
+        return [
+            {
+                source: "/api/:path*",
+                destination: `${backendBaseUrl}/:path*`,
+            },
+            {
+                source: "/media/:path*",
+                destination: `${backendBaseUrl}/media/:path*`,
+            },
+        ];
     }
 };
 
