@@ -8,6 +8,7 @@ import Pagination from "../components/Pagination";
 import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
+import { buildSearchUrl } from "../utils/searchQuery";
 import { FollowUserResult, SearchMentorResult, TimelinePaper } from "../utils/types";
 
 interface FollowedMentorsResponse {
@@ -24,12 +25,14 @@ interface FollowersResponse {
 
 interface FollowedSubjectResult {
     subject: string;
+    subjectName?: string;
     paperCount: number;
     recentPapers: TimelinePaper[];
 }
 
 interface AvailableSubjectResult {
     subject: string;
+    subjectName?: string;
     paperCount: number;
     followed: boolean;
 }
@@ -309,6 +312,18 @@ const FollowsPage = () => {
         });
     };
 
+    const navigateToSubjectSearch = (subjectCode: string) => {
+        const url = buildSearchUrl({
+            keyword: subjectCode,
+            mode: "paper",
+            searchMode: "exact",
+            sortMode: "default",
+            page: 1,
+            visibility: "all",
+        });
+        void router.push(url);
+    };
+
     const renderUserCard = (user: FollowUserResult, keyPrefix: string) => (
         <div
             className="userCard"
@@ -365,7 +380,8 @@ const FollowsPage = () => {
             if (keyword === "") {
                 return true;
             }
-            return subject.subject.toLowerCase().includes(keyword);
+            return subject.subject.toLowerCase().includes(keyword)
+                || (subject.subjectName || subject.subject).toLowerCase().includes(keyword);
         });
     }, [availableSubjects, followedSubjectSet, subjectSearchKeyword]);
     const followingCount = mentors.filter((mentor) => mentor.followed).length
@@ -591,14 +607,14 @@ const FollowsPage = () => {
                                 <input
                                     type="text"
                                     value={subjectSearchKeyword}
-                                    placeholder="搜索板块代码，例如 cs.AI"
+                                    placeholder="搜索板块名称或代码，例如 人工智能 / cs.AI"
                                     onChange={(event) => setSubjectSearchKeyword(event.target.value)}
                                 />
                             </div>
 
                             {filteredAvailableSubjects.length > 0 && (
                                 <div className="subjectChipGrid" aria-label="可关注板块">
-                                    {filteredAvailableSubjects.slice(0, 24).map((subject) => (
+                                    {filteredAvailableSubjects.map((subject) => (
                                         <button
                                             key={subject.subject}
                                             className="subjectChip"
@@ -606,7 +622,7 @@ const FollowsPage = () => {
                                             disabled={actionSubject === subject.subject}
                                             onClick={() => void toggleSubjectFollow(subject.subject, false)}
                                         >
-                                            <span>{subject.subject}</span>
+                                            <span>{subject.subjectName || subject.subject}</span>
                                             <small>{subject.paperCount} 篇</small>
                                         </button>
                                     ))}
@@ -628,7 +644,7 @@ const FollowsPage = () => {
                                         <article className="subjectCard" key={subject.subject}>
                                             <div className="subjectCardHeader">
                                                 <div>
-                                                    <h4>{subject.subject}</h4>
+                                                    <h4>{subject.subjectName || subject.subject}</h4>
                                                     <p>{subject.paperCount} 篇论文</p>
                                                 </div>
                                                 <div className="subjectActionGroup">
@@ -638,6 +654,13 @@ const FollowsPage = () => {
                                                         onClick={() => toggleSubjectExpand(subject.subject)}
                                                     >
                                                         {expandedSubjects.has(subject.subject) ? "收起论文" : "展开论文"}
+                                                    </button>
+                                                    <button
+                                                        className="subjectSearchButton"
+                                                        type="button"
+                                                        onClick={() => navigateToSubjectSearch(subject.subject)}
+                                                    >
+                                                        前往检索
                                                     </button>
                                                     <button
                                                         className="subjectUnfollowButton"
@@ -957,20 +980,24 @@ const FollowsPage = () => {
 
                 :global(.subjectChipGrid) {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+                    grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
                     gap: 8px;
+                    max-width: 960px;
+                    max-height: 360px;
+                    overflow: auto;
+                    padding-right: 8px;
                 }
 
                 :global(.subjectChip) {
                     display: flex;
-                    min-height: 46px;
+                    min-height: 54px;
                     align-items: center;
                     justify-content: space-between;
                     gap: 8px;
                     border: 1px solid #d0d7de;
                     border-radius: 8px;
                     background: #fff;
-                    padding: 8px 10px;
+                    padding: 10px 12px;
                     color: #1f2328;
                     font-weight: 700;
                 }
@@ -1034,6 +1061,16 @@ const FollowsPage = () => {
                     margin-top: 4px;
                     color: #57606a;
                     font-size: 13px;
+                }
+
+                :global(.subjectSearchButton) {
+                    border: 1px solid #0969da;
+                    background: #eef6ff;
+                    color: #0969da;
+                    padding: 8px 10px;
+                    border-radius: 6px;
+                    font-weight: 700;
+                    cursor: pointer;
                 }
 
                 :global(.subjectExpandButton),
