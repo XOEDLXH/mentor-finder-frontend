@@ -161,6 +161,7 @@ const TopNav = () => {
     const avatarLabel = auth.name.trim() === ""
         ? "U"
         : auth.name.trim().slice(0, 1).toUpperCase();
+    const avatarUrl = typeof auth.avatarUrl === "string" ? auth.avatarUrl.trim() : "";
 
     return (
         <header className="topNav">
@@ -248,7 +249,16 @@ const TopNav = () => {
                                 aria-expanded={avatarMenuOpen}
                                 onClick={() => setAvatarMenuOpen((open) => !open)}
                             >
-                                <span className="topNavAvatarCircle" aria-hidden="true">{avatarLabel}</span>
+                                {avatarUrl === "" ? (
+                                    <span className="topNavAvatarCircle" aria-hidden="true">{avatarLabel}</span>
+                                ) : (
+                                    <img
+                                        className="topNavAvatarCircle topNavAvatarImage"
+                                        src={avatarUrl}
+                                        alt=""
+                                        aria-hidden="true"
+                                    />
+                                )}
                                 <span className="topNavAvatarName">{auth.name || "Account"}</span>
                             </button>
 
