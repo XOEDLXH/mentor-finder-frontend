@@ -614,7 +614,7 @@ const FollowsPage = () => {
 
                             {filteredAvailableSubjects.length > 0 && (
                                 <div className="subjectChipGrid" aria-label="可关注板块">
-                                    {filteredAvailableSubjects.slice(0, 24).map((subject) => (
+                                    {filteredAvailableSubjects.map((subject) => (
                                         <button
                                             key={subject.subject}
                                             className="subjectChip"
@@ -982,6 +982,10 @@ const FollowsPage = () => {
                     display: grid;
                     grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
                     gap: 8px;
+                    max-width: 960px;
+                    max-height: 360px;
+                    overflow: auto;
+                    padding-right: 8px;
                 }
 
                 :global(.subjectChip) {
