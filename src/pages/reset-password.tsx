@@ -1,0 +1,432 @@
+import { FormEvent, RefCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
+import {
+    FAILURE_PREFIX,
+    REGISTER_CODE_BYPASS_HINT,
+    REGISTER_CODE_COOLDOWN,
+    REGISTER_CODE_INVALID,
+    REGISTER_CODE_REQUIRED,
+    REGISTER_CODE_SEND_FAILED,
+    REGISTER_CODE_SENT,
+    REGISTER_EMAIL_INVALID,
+    REGISTER_PASSWORD_MISMATCH,
+    REGISTER_PASSWORD_WEAK,
+    REGISTER_SEND_CODE_BUTTON,
+    REGISTER_SEND_CODE_RESEND,
+    RESET_PASSWORD_EMAIL_NOT_FOUND,
+    RESET_PASSWORD_FAILED,
+    RESET_PASSWORD_SUCCESS,
+} from "../constants/string";
+
+const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+const VERIFICATION_BYPASS_PREFIX = "bypass";
+const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
+
+const isBypassEmail = (emailToCheck: string) =>
+    emailToCheck.trim().toLowerCase().startsWith(VERIFICATION_BYPASS_PREFIX);
+
+const parseJsonSafely = async (response: Response) => {
+    if (typeof response.text === "function") {
+        const rawText = await response.text();
+        if (rawText.trim() === "") {
+            return {};
+        }
+
+        try {
+            return JSON.parse(rawText) as Record<string, unknown>;
+        }
+        catch {
+            return {
+                info: rawText,
+            };
+        }
+    }
+
+    if (typeof response.json === "function") {
+        try {
+            return await response.json() as Record<string, unknown>;
+        }
+        catch {
+            return {};
+        }
+    }
+
+    return {};
+};
+
+const ResetPasswordScreen = () => {
+    const [email, setEmail] = useState("");
+    const [emailBlurred, setEmailBlurred] = useState(false);
+    const [verificationCode, setVerificationCode] = useState("");
+    const [verificationCodeError, setVerificationCodeError] = useState("");
+    const [codeStatusMessage, setCodeStatusMessage] = useState("");
+    const [password, setPassword] = useState("");
+    const [passwordBlurred, setPasswordBlurred] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [confirmPasswordBlurred, setConfirmPasswordBlurred] = useState(false);
+    const [resetErrorMessage, setResetErrorMessage] = useState("");
+    const [resetStatusMessage, setResetStatusMessage] = useState("");
+    const [sendingCode, setSendingCode] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const [codeSentForEmail, setCodeSentForEmail] = useState("");
+
+    const emailInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const verificationCodeInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const passwordInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const confirmPasswordInputRef = useRef<HTMLInputElement | undefined>(undefined);
+    const resendCooldownTimerRef = useRef<number | undefined>(undefined);
+    const router = useRouter();
+
+    const bindEmailInputRef: RefCallback<HTMLInputElement> = (node) => {
+        emailInputRef.current = node ?? undefined;
+    };
+    const bindVerificationCodeInputRef: RefCallback<HTMLInputElement> = (node) => {
+        verificationCodeInputRef.current = node ?? undefined;
+    };
+    const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
+        passwordInputRef.current = node ?? undefined;
+    };
+    const bindConfirmPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
+        confirmPasswordInputRef.current = node ?? undefined;
+    };
+
+    useEffect(() => {
+        return () => {
+            if (resendCooldownTimerRef.current !== undefined) {
+                window.clearInterval(resendCooldownTimerRef.current);
+            }
+        };
+    }, []);
+
+    const startResendCooldown = (seconds: number) => {
+        if (resendCooldownTimerRef.current !== undefined) {
+            window.clearInterval(resendCooldownTimerRef.current);
+        }
+        setResendCooldown(seconds);
+        resendCooldownTimerRef.current = window.setInterval(() => {
+            setResendCooldown((prev) => {
+                if (prev <= 1) {
+                    if (resendCooldownTimerRef.current !== undefined) {
+                        window.clearInterval(resendCooldownTimerRef.current);
+                        resendCooldownTimerRef.current = undefined;
+                    }
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const isEmailValid = (emailToCheck: string) => EMAIL_REGEX.test(emailToCheck.trim());
+
+    const isPasswordStrong = (passwordToCheck: string) => {
+        if (passwordToCheck.length < 8) {
+            return false;
+        }
+
+        let hasLetter = false;
+        let hasDigit = false;
+        for (const char of passwordToCheck) {
+            if (char >= "0" && char <= "9") {
+                hasDigit = true;
+            }
+            if (char.toLowerCase() !== char.toUpperCase()) {
+                hasLetter = true;
+            }
+            if (hasLetter && hasDigit) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const isEmailInvalid = email !== "" && !isEmailValid(email);
+    const shouldShowPasswordMismatchHint =
+        confirmPasswordBlurred && confirmPassword !== "" && password !== confirmPassword;
+    const shouldShowPasswordWeakHint =
+        passwordBlurred && password !== "" && !isPasswordStrong(password) && !shouldShowPasswordMismatchHint;
+
+    const handleSendVerificationCode = () => {
+        setResetErrorMessage("");
+        setVerificationCodeError("");
+        setCodeStatusMessage("");
+        setResetStatusMessage("");
+
+        const trimmedEmail = email.trim();
+        if (trimmedEmail === "" || !isEmailValid(trimmedEmail)) {
+            setEmailBlurred(true);
+            emailInputRef.current?.focus();
+            return;
+        }
+        if (sendingCode || resendCooldown > 0) {
+            return;
+        }
+
+        setSendingCode(true);
+        fetch("/api/password-reset/verification-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: trimmedEmail }),
+        })
+            .then((res) => parseJsonSafely(res))
+            .then((res) => {
+                const code = Number(res.code);
+                if (code === 0) {
+                    if (res.bypass === true) {
+                        setCodeStatusMessage(REGISTER_CODE_BYPASS_HINT);
+                        setCodeSentForEmail(trimmedEmail);
+                        return;
+                    }
+                    const cooldownSeconds = typeof res.cooldownSeconds === "number"
+                        ? res.cooldownSeconds
+                        : DEFAULT_RESEND_COOLDOWN_SECONDS;
+                    setCodeStatusMessage(REGISTER_CODE_SENT);
+                    setCodeSentForEmail(trimmedEmail);
+                    startResendCooldown(cooldownSeconds);
+                }
+                else if (code === 2) {
+                    setResetErrorMessage(RESET_PASSWORD_EMAIL_NOT_FOUND);
+                }
+                else if (code === 6) {
+                    setCodeStatusMessage(REGISTER_CODE_COOLDOWN);
+                    startResendCooldown(DEFAULT_RESEND_COOLDOWN_SECONDS);
+                }
+                else {
+                    setVerificationCodeError(REGISTER_CODE_SEND_FAILED);
+                }
+            })
+            .catch((err) => setVerificationCodeError(FAILURE_PREFIX + err))
+            .finally(() => setSendingCode(false));
+    };
+
+    const submitResetPassword = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        resetPassword();
+    };
+
+    const resetPassword = () => {
+        setResetErrorMessage("");
+        setResetStatusMessage("");
+
+        const trimmedEmail = email.trim();
+        if (trimmedEmail === "" || !isEmailValid(trimmedEmail)) {
+            setEmailBlurred(true);
+            emailInputRef.current?.focus();
+            return;
+        }
+
+        const bypassMode = isBypassEmail(trimmedEmail);
+        if (!bypassMode && verificationCode.trim() === "") {
+            setVerificationCodeError(REGISTER_CODE_REQUIRED);
+            verificationCodeInputRef.current?.focus();
+            return;
+        }
+
+        if (password === "" || !isPasswordStrong(password)) {
+            setPasswordBlurred(true);
+            passwordInputRef.current?.focus();
+            return;
+        }
+
+        if (confirmPassword === "" || password !== confirmPassword) {
+            setConfirmPasswordBlurred(true);
+            confirmPasswordInputRef.current?.focus();
+            return;
+        }
+
+        setSubmitting(true);
+        fetch("/api/password-reset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: trimmedEmail,
+                password,
+                verificationCode: bypassMode ? "" : verificationCode.trim(),
+            }),
+        })
+            .then((res) => parseJsonSafely(res))
+            .then((res) => {
+                const code = Number(res.code);
+                if (code === 0) {
+                    setResetStatusMessage(RESET_PASSWORD_SUCCESS);
+                    setVerificationCode("");
+                    setPassword("");
+                    setConfirmPassword("");
+                    window.setTimeout(() => {
+                        void router.push("/login");
+                    }, 600);
+                }
+                else if (code === 2) {
+                    setResetErrorMessage(RESET_PASSWORD_EMAIL_NOT_FOUND);
+                }
+                else if (code === 5) {
+                    setVerificationCodeError(REGISTER_CODE_INVALID);
+                    verificationCodeInputRef.current?.focus();
+                }
+                else {
+                    setResetErrorMessage(RESET_PASSWORD_FAILED);
+                }
+            })
+            .catch((err) => setResetErrorMessage(FAILURE_PREFIX + err))
+            .finally(() => setSubmitting(false));
+    };
+
+    return (
+        <section className="loginAuthPage" aria-label="Reset password page">
+            <button
+                type="button"
+                className="loginAuthBrand"
+                aria-label="Go to home page"
+                onClick={() => void router.push("/")}
+            >
+                <img
+                    src="/mentorfinder-logo-1.svg"
+                    alt=""
+                    className="loginAuthBrandLogo"
+                />
+            </button>
+
+            <h1 className="loginAuthTitle">Reset your password</h1>
+
+            <form className="loginAuthForm" onSubmit={submitResetPassword}>
+                <label className="registerAuthField">
+                    <span className="registerAuthLabel">Email</span>
+                    <div className="registerAuthEmailRow">
+                        <input
+                            ref={bindEmailInputRef}
+                            type="text"
+                            inputMode="email"
+                            autoComplete="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (codeSentForEmail !== "" && codeSentForEmail !== e.target.value.trim()) {
+                                    setCodeStatusMessage("");
+                                }
+                            }}
+                            onBlur={() => setEmailBlurred(true)}
+                        />
+                        <button
+                            type="button"
+                            className="registerAuthSendCodeButton"
+                            onClick={handleSendVerificationCode}
+                            disabled={
+                                sendingCode
+                                || resendCooldown > 0
+                                || email.trim() === ""
+                                || isBypassEmail(email)
+                            }
+                            aria-label="Send verification code"
+                        >
+                            {sendingCode
+                                ? "Sending..."
+                                : resendCooldown > 0
+                                    ? `${REGISTER_SEND_CODE_RESEND} (${resendCooldown}s)`
+                                    : codeSentForEmail !== ""
+                                        ? REGISTER_SEND_CODE_RESEND
+                                        : REGISTER_SEND_CODE_BUTTON}
+                        </button>
+                    </div>
+                </label>
+                {emailBlurred && isEmailInvalid && (
+                    <p className="registerAuthError">{REGISTER_EMAIL_INVALID}</p>
+                )}
+
+                <label className="loginAuthField">
+                    <span className="loginAuthLabel">Verification code</span>
+                    <input
+                        ref={bindVerificationCodeInputRef}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        placeholder={isBypassEmail(email) ? "Not required for bypass email" : "Enter the 6-digit code"}
+                        value={verificationCode}
+                        onChange={(e) => {
+                            setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                            if (verificationCodeError !== "") {
+                                setVerificationCodeError("");
+                            }
+                        }}
+                        disabled={isBypassEmail(email)}
+                    />
+                </label>
+                {codeStatusMessage !== "" && (
+                    <p className="registerAuthHelper">{codeStatusMessage}</p>
+                )}
+                {verificationCodeError !== "" && (
+                    <p className="registerAuthError">{verificationCodeError}</p>
+                )}
+
+                <label className="loginAuthField">
+                    <span className="loginAuthLabel">New password</span>
+                    <input
+                        ref={bindPasswordInputRef}
+                        type="password"
+                        placeholder="New password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onBlur={() => setPasswordBlurred(true)}
+                    />
+                </label>
+                <p className="registerAuthHelper">
+                    Password must be at least 8 characters and include both letters and numbers.
+                </p>
+                {shouldShowPasswordWeakHint && (
+                    <p className="registerAuthError">{REGISTER_PASSWORD_WEAK}</p>
+                )}
+
+                <label className="loginAuthField">
+                    <span className="loginAuthLabel">Confirm new password</span>
+                    <input
+                        ref={bindConfirmPasswordInputRef}
+                        type="password"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onBlur={() => setConfirmPasswordBlurred(true)}
+                    />
+                </label>
+                {shouldShowPasswordMismatchHint && (
+                    <p className="registerAuthError">{REGISTER_PASSWORD_MISMATCH}</p>
+                )}
+
+                {resetStatusMessage !== "" && (
+                    <p className="registerAuthHelper">{resetStatusMessage}</p>
+                )}
+                {resetErrorMessage !== "" && (
+                    <p className="loginAuthError">{resetErrorMessage}</p>
+                )}
+
+                <button
+                    type="submit"
+                    className="loginAuthSubmit"
+                    disabled={submitting}
+                >
+                    {submitting ? "Resetting..." : "Reset password"}
+                </button>
+            </form>
+
+            <p className="loginAuthSignup">
+                Remembered your password?{" "}
+                <a
+                    href="/login"
+                    className="loginAuthInlineLink"
+                    onClick={(event) => {
+                        event.preventDefault();
+                        if (submitting) {
+                            return;
+                        }
+                        void router.push("/login");
+                    }}
+                >
+                    Sign in
+                </a>
+            </p>
+        </section>
+    );
+};
+
+export default ResetPasswordScreen;
