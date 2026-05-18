@@ -1,6 +1,6 @@
 import { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LatexText from "../components/LatexText";
 import { request } from "../utils/network";
 import {
@@ -15,6 +15,8 @@ const GENERATED_BY_LABELS: Record<string, string> = {
     rule: "规则摘要",
     "thucs-openai": "AI摘要",
 };
+const WEEKLY_PUSH_PAPERS_PER_VIEW = 2;
+const WEEKLY_PUSH_CAROUSEL_GAP = 12;
 
 const formatGeneratedBy = (generatedBy: string) => GENERATED_BY_LABELS[generatedBy] || generatedBy;
 
@@ -23,6 +25,43 @@ const getErrorMessage = (error: unknown) => {
         return error.message;
     }
     return "个性周报生成失败，请稍后重试。";
+};
+
+const fetchPersonalizedWeeklyPush = async (weekStart?: string) => {
+    const query = weekStart
+        ? `?week_start=${encodeURIComponent(weekStart)}`
+        : "";
+    return request<WeeklyPushResponse>(
+        `/api/dataset/weekly-push/personalized${query}`,
+        "GET",
+        true,
+    );
+};
+
+const fetchPersonalizedWeeklyPushHistory = async () => (
+    request<WeeklyPushHistoryResponse>(
+        "/api/dataset/weekly-push/personalized/history",
+        "GET",
+        true,
+    )
+);
+
+const syncWeeklyPushCarouselControls = (
+    viewport: HTMLDivElement,
+    setCanScrollPrev: (value: boolean) => void,
+    setCanScrollNext: (value: boolean) => void,
+) => {
+    const maxScrollLeft = Math.max(viewport.scrollWidth - viewport.clientWidth, 0);
+    setCanScrollPrev(viewport.scrollLeft > 4);
+    setCanScrollNext(viewport.scrollLeft < maxScrollLeft - 4);
+};
+
+const getWeeklyPushCarouselScrollStep = (viewport: HTMLDivElement) => {
+    const firstCard = viewport.querySelector<HTMLElement>("[data-weekly-push-paper-card='true']") ?? undefined;
+    if (firstCard !== undefined) {
+        return firstCard.offsetWidth + WEEKLY_PUSH_CAROUSEL_GAP;
+    }
+    return viewport.clientWidth / WEEKLY_PUSH_PAPERS_PER_VIEW;
 };
 
 interface WeeklyPushPaperListProps {
@@ -36,38 +75,138 @@ const WeeklyPushPaperList = ({
     emptyText,
     showMentorNames = false,
 }: WeeklyPushPaperListProps) => {
+    const viewportRef = useRef<HTMLDivElement | undefined>(undefined);
+    const [canScrollPrev, setCanScrollPrev] = useState(false);
+    const [canScrollNext, setCanScrollNext] = useState(
+        papers.length > WEEKLY_PUSH_PAPERS_PER_VIEW,
+    );
+
+    const scrollCarousel = (direction: -1 | 1) => {
+        const viewport = viewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+
+        const nextLeft = viewport.scrollLeft + direction * getWeeklyPushCarouselScrollStep(viewport);
+        if (typeof viewport.scrollBy === "function") {
+            viewport.scrollBy({
+                left: direction * getWeeklyPushCarouselScrollStep(viewport),
+                behavior: "smooth",
+            });
+            return;
+        }
+
+        viewport.scrollLeft = nextLeft;
+        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+    };
+
+    const handleViewportScroll = () => {
+        const viewport = viewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+    };
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+
+        if (typeof viewport.scrollTo === "function") {
+            viewport.scrollTo({ left: 0, behavior: "auto" });
+        }
+        else {
+            viewport.scrollLeft = 0;
+        }
+        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+    }, [papers]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") {
+            return undefined;
+        }
+
+        const handleResize = () => {
+            const viewport = viewportRef.current;
+            if (viewport === undefined) {
+                return;
+            }
+            syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     if (papers.length === 0) {
         return <div style={{ color: "#666" }}>{emptyText}</div>;
     }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {papers.map((paper) => (
-                <div key={paper.id} style={{ border: "1px solid #eee", borderRadius: 6, padding: 10, backgroundColor: "#fff" }}>
-                    <div style={{ fontWeight: 600 }}>
-                        {paper.arxivUrl ? (
-                            <a href={paper.arxivUrl} target="_blank" rel="noreferrer">
-                                <LatexText text={paper.title} forceInlineMath />
-                            </a>
-                        ) : (
-                            <LatexText text={paper.title} forceInlineMath />
-                        )}
-                    </div>
-                    <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-                        作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"}
-                    </div>
-                    {showMentorNames && paper.mentorNames && paper.mentorNames.length > 0 && (
-                        <div style={{ fontSize: 13, color: "#0f5c4d", marginTop: 4 }}>
-                            关联导师：{paper.mentorNames.join("、")}
-                        </div>
-                    )}
-                    <div className="homeWeeklyPaperAbstractRow">
-                        <div className="homeWeeklyPaperAbstractContent">
-                            <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
-                        </div>
-                    </div>
+        <div className="homeWeeklyPaperCarouselShell">
+            {papers.length > WEEKLY_PUSH_PAPERS_PER_VIEW && (
+                <div className="homeWeeklyPaperCarouselControls">
+                    <button
+                        type="button"
+                        className="homeWeeklyPaperCarouselButton"
+                        onClick={() => scrollCarousel(-1)}
+                        disabled={!canScrollPrev}
+                    >
+                        上一篇
+                    </button>
+                    <button
+                        type="button"
+                        className="homeWeeklyPaperCarouselButton"
+                        onClick={() => scrollCarousel(1)}
+                        disabled={!canScrollNext}
+                    >
+                        下一篇
+                    </button>
                 </div>
-            ))}
+            )}
+            <div
+                ref={(node) => {
+                    viewportRef.current = node ?? undefined;
+                }}
+                className="homeWeeklyPaperCarouselViewport"
+                onScroll={handleViewportScroll}
+            >
+                <div className="homeWeeklyPaperCarouselTrack">
+                    {papers.map((paper) => (
+                        <article
+                            key={paper.id}
+                            data-weekly-push-paper-card="true"
+                            className="homeWeeklyPaperCarouselCard"
+                        >
+                            <div style={{ border: "1px solid #eee", borderRadius: 6, padding: 10, backgroundColor: "#fff", minHeight: "100%" }}>
+                                <div style={{ fontWeight: 600 }}>
+                                    {paper.arxivUrl ? (
+                                        <a href={paper.arxivUrl} target="_blank" rel="noreferrer">
+                                            <LatexText text={paper.title} forceInlineMath />
+                                        </a>
+                                    ) : (
+                                        <LatexText text={paper.title} forceInlineMath />
+                                    )}
+                                </div>
+                                <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
+                                    作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"}
+                                </div>
+                                {showMentorNames && paper.mentorNames && paper.mentorNames.length > 0 && (
+                                    <div style={{ fontSize: 13, color: "#0f5c4d", marginTop: 4 }}>
+                                        关联导师：{paper.mentorNames.join("、")}
+                                    </div>
+                                )}
+                                <div className="homeWeeklyPaperAbstractRow">
+                                    <div className="homeWeeklyPaperAbstractContent">
+                                        <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };
@@ -102,7 +241,9 @@ const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
                                 <div className="homeSubjectPaperMeta">
                                     作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"} ｜ 分类：{paper.subjects.join(", ") || group.subject}
                                 </div>
-                                <p>{paper.abstractPreview || "暂无摘要"}</p>
+                                <div className="homePersonalizedLatexText">
+                                    <LatexText text={paper.abstractPreview || "暂无摘要"} />
+                                </div>
                             </article>
                         ))}
                     </div>
@@ -145,17 +286,23 @@ const WeeklyPushDetailCard = ({
                         <>
                             <div className="homePersonalizedSummaryBlock">
                                 <div className="homePersonalizedSummaryLabel">周概览</div>
-                                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{push.fixedSummary}</div>
+                                <div className="homePersonalizedLatexText">
+                                    <LatexText text={push.fixedSummary} />
+                                </div>
                             </div>
                             <div className="homePersonalizedSummaryBlock homePersonalizedSummaryBlockAccent">
                                 <div className="homePersonalizedSummaryLabel">AI总结</div>
-                                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{push.aiSummary}</div>
+                                <div className="homePersonalizedLatexText">
+                                    <LatexText text={push.aiSummary} />
+                                </div>
                             </div>
                         </>
                     ) : (
                         <div className="homePersonalizedSummaryBlock">
                             <div className="homePersonalizedSummaryLabel">摘要结果</div>
-                            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{push.content}</div>
+                            <div className="homePersonalizedLatexText">
+                                <LatexText text={push.content} />
+                            </div>
                         </div>
                     )}
                 </div>
@@ -188,6 +335,8 @@ const HomeScreen = () => {
     const [weeklyPushHistory, setWeeklyPushHistory] = useState<WeeklyPushHistoryResponse["history"]>([]);
     const [selectedWeekStart, setSelectedWeekStart] = useState("");
     const [personalizedWeeklyPush, setPersonalizedWeeklyPush] = useState<WeeklyPushItem | undefined>(undefined);
+    const [personalizedWeeklyPushHistory, setPersonalizedWeeklyPushHistory] = useState<WeeklyPushHistoryResponse["history"]>([]);
+    const [selectedPersonalizedWeekStart, setSelectedPersonalizedWeekStart] = useState("");
     const [isGeneratingPersonalized, setIsGeneratingPersonalized] = useState(false);
     const [personalizedError, setPersonalizedError] = useState("");
 
@@ -235,6 +384,60 @@ const HomeScreen = () => {
         void loadSelectedPush();
     }, [selectedWeekStart]);
 
+    useEffect(() => {
+        if (!isLoggedIn) {
+            setPersonalizedWeeklyPush(undefined);
+            setPersonalizedWeeklyPushHistory([]);
+            setSelectedPersonalizedWeekStart("");
+            setPersonalizedError("");
+            return;
+        }
+
+        const loadStoredPersonalizedPush = async () => {
+            try {
+                const [latestRes, historyRes] = await Promise.all([
+                    fetchPersonalizedWeeklyPush(),
+                    fetchPersonalizedWeeklyPushHistory(),
+                ]);
+                const history = historyRes.history || [];
+                const latestPush = latestRes.weeklyPush;
+
+                setPersonalizedWeeklyPushHistory(history);
+                setPersonalizedWeeklyPush(latestPush);
+                setSelectedPersonalizedWeekStart(
+                    latestPush?.weekStart || history[0]?.weekStart || "",
+                );
+                setPersonalizedError("");
+            }
+            catch {
+                setPersonalizedWeeklyPush(undefined);
+                setPersonalizedWeeklyPushHistory([]);
+                setSelectedPersonalizedWeekStart("");
+            }
+        };
+
+        void loadStoredPersonalizedPush();
+    }, [isLoggedIn]);
+
+    useEffect(() => {
+        if (!isLoggedIn || selectedPersonalizedWeekStart === "") {
+            return;
+        }
+
+        const loadSelectedPersonalizedPush = async () => {
+            try {
+                const res = await fetchPersonalizedWeeklyPush(selectedPersonalizedWeekStart);
+                setPersonalizedWeeklyPush(res.weeklyPush);
+                setPersonalizedError("");
+            }
+            catch {
+                setPersonalizedWeeklyPush(undefined);
+            }
+        };
+
+        void loadSelectedPersonalizedPush();
+    }, [isLoggedIn, selectedPersonalizedWeekStart]);
+
     const handleGeneratePersonalizedPush = async () => {
         setIsGeneratingPersonalized(true);
         setPersonalizedError("");
@@ -245,7 +448,17 @@ const HomeScreen = () => {
                 "POST",
                 true,
             );
-            setPersonalizedWeeklyPush(res.weeklyPush);
+            const generatedPush = res.weeklyPush;
+            setPersonalizedWeeklyPush(generatedPush);
+            setSelectedPersonalizedWeekStart(generatedPush?.weekStart || "");
+
+            try {
+                const historyRes = await fetchPersonalizedWeeklyPushHistory();
+                setPersonalizedWeeklyPushHistory(historyRes.history || []);
+            }
+            catch {
+                // Keep the freshly generated result visible even if history refresh fails.
+            }
         }
         catch (error) {
             setPersonalizedError(getErrorMessage(error));
@@ -383,6 +596,34 @@ const HomeScreen = () => {
                                         `命中板块：${personalizedWeeklyPush.activeSubjectCount ?? 0} 个`,
                                     ]}
                                 />
+                            </div>
+                        )}
+
+                        {isLoggedIn && personalizedWeeklyPushHistory.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <h4 style={{ margin: "4px 0 0" }}>往期个性周报</h4>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {personalizedWeeklyPushHistory.map((item) => (
+                                        <button
+                                            key={`personalized-${item.weekStart}`}
+                                            type="button"
+                                            onClick={() => setSelectedPersonalizedWeekStart(item.weekStart)}
+                                            style={{
+                                                textAlign: "left",
+                                                padding: 10,
+                                                borderRadius: 6,
+                                                border: selectedPersonalizedWeekStart === item.weekStart ? "1px solid #0d6efd" : "1px solid #ccc",
+                                                backgroundColor: selectedPersonalizedWeekStart === item.weekStart ? "#e7f1ff" : "#fff",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            <div style={{ fontWeight: 600 }}>{item.title}</div>
+                                            <div style={{ fontSize: 13, color: "#666" }}>
+                                                {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
