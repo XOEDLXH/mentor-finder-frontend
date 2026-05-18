@@ -38,6 +38,8 @@ describe("auth reducer", () => {
             token: "",
             name: "",
             role: "",
+            userId: undefined,
+            avatarUrl: "",
         });
     });
 
@@ -52,6 +54,8 @@ describe("auth reducer", () => {
             token: "jwt-token",
             name: "alice",
             role: "student",
+            userId: undefined,
+            avatarUrl: "",
         });
     });
 
@@ -60,6 +64,8 @@ describe("auth reducer", () => {
             token: "jwt-token",
             name: "alice",
             role: "admin",
+            userId: 42,
+            avatarUrl: "/media/avatars/user-42.png",
         };
 
         const state = authReducer(stateWithAuth, resetAuth());
@@ -68,6 +74,8 @@ describe("auth reducer", () => {
             token: "",
             name: "",
             role: "",
+            userId: undefined,
+            avatarUrl: "",
         });
     });
 });

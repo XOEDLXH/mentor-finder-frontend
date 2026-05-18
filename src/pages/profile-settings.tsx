@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import { FAILURE_PREFIX } from "../constants/string";
+import { setAvatarUrl } from "../redux/auth";
 import { RootState } from "../redux/store";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { MentorVerificationRequestResult } from "../utils/types";
@@ -25,6 +26,11 @@ interface MentorVerificationSubmitResponse {
     mentorVerificationRequest?: MentorVerificationRequestResult;
 }
 
+interface AvatarUploadResponse {
+    avatarUrl?: string;
+    profile?: Partial<ProfileSettings>;
+}
+
 const EMPTY_SETTINGS: ProfileSettings = {
     avatarUrl: "",
     signature: "",
@@ -45,11 +51,13 @@ const normalizeSettings = (profile?: Partial<ProfileSettings>): ProfileSettings 
 
 const ProfileSettingsPage = () => {
     const router = useRouter();
+    const dispatch = useDispatch();
     const token = useSelector((state: RootState) => state.auth.token);
     const userId = useSelector((state: RootState) => state.auth.userId);
     const [settings, setSettings] = useState<ProfileSettings>(EMPTY_SETTINGS);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [mentorVerificationName, setMentorVerificationName] = useState("");
@@ -94,6 +102,7 @@ const ProfileSettingsPage = () => {
         try {
             const res = await request<ProfileResponse>("/api/profile/me", "PUT", true, settings);
             setSettings(normalizeSettings(res.profile));
+            dispatch(setAvatarUrl(typeof res.profile?.avatarUrl === "string" ? res.profile.avatarUrl : ""));
             setSuccessMessage("个人设置保存成功");
         } catch (err) {
             if (err instanceof NetworkError && err.type === NetworkErrorType.UNAUTHORIZED) {
@@ -103,6 +112,54 @@ const ProfileSettingsPage = () => {
             setErrorMessage(FAILURE_PREFIX + String(err));
         } finally {
             setSaving(false);
+        }
+    };
+
+    const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file === undefined) {
+            return;
+        }
+        event.target.value = "";
+
+        if (!file.type.startsWith("image/")) {
+            setErrorMessage("请选择图片文件作为头像");
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            setErrorMessage("头像图片不能超过 2MB");
+            return;
+        }
+
+        setUploadingAvatar(true);
+        setSuccessMessage("");
+        setErrorMessage("");
+
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        try {
+            const response = await fetch("/api/profile/avatar", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+            const payload = await response.json() as AvatarUploadResponse & { code?: number; info?: string };
+            if (Number(payload.code) !== 0) {
+                setErrorMessage(String(payload.info ?? "头像上传失败"));
+                return;
+            }
+
+            setSettings(normalizeSettings(payload.profile));
+            dispatch(setAvatarUrl(typeof payload.profile?.avatarUrl === "string" ? payload.profile.avatarUrl : ""));
+            setSuccessMessage("头像上传成功");
+        } catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        } finally {
+            setUploadingAvatar(false);
         }
     };
 
@@ -181,6 +238,19 @@ const ProfileSettingsPage = () => {
                             placeholder="粘贴图片 URL，留空则使用默认头像"
                             onChange={(e) => setSettings((prev) => ({ ...prev, avatarUrl: e.target.value }))}
                         />
+
+                        <label htmlFor="avatarFile">上传本地头像</label>
+                        <input
+                            id="avatarFile"
+                            type="file"
+                            accept="image/png,image/jpeg,image/gif,image/webp"
+                            onChange={(event) => void uploadAvatar(event)}
+                            disabled={uploadingAvatar}
+                        />
+                        <p className="avatarUploadHint">
+                            支持 PNG、JPG、GIF、WebP，大小不超过 2MB。
+                        </p>
+                        {uploadingAvatar && <p className="avatarUploadHint">头像上传中...</p>}
 
                         <label htmlFor="signature">个性签名</label>
                         <textarea
@@ -317,6 +387,7 @@ const ProfileSettingsPage = () => {
                 }
 
                 .settingsSection input[type="text"],
+                .settingsSection input[type="file"],
                 .settingsSection textarea {
                     width: 100%;
                     box-sizing: border-box;
@@ -324,6 +395,10 @@ const ProfileSettingsPage = () => {
                     border: 1px solid #bbb;
                     border-radius: 4px;
                     font-size: 15px;
+                }
+
+                .settingsSection input[type="file"] {
+                    background: #fafafa;
                 }
 
                 .settingsSection textarea {
@@ -348,6 +423,13 @@ const ProfileSettingsPage = () => {
                         linear-gradient(135deg, transparent 0 18%, #5ba8e6 18% 30%, transparent 30% 100%),
                         linear-gradient(45deg, #f7fbff 0 25%, transparent 25% 50%, #76b9ec 50% 74%, transparent 74% 100%),
                         #d9eefc;
+                }
+
+                .avatarUploadHint {
+                    margin: -4px 0 0;
+                    color: #555;
+                    font-size: 13px;
+                    line-height: 1.5;
                 }
 
                 .visibilityOptions {

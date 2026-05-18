@@ -155,6 +155,23 @@ describe("TopNav", () => {
         expect(screen.getByRole("button", { name: /alice/i })).toBeInTheDocument();
     });
 
+    it("uses the saved avatar image in the account button", () => {
+        mockAuthState = {
+            token: "jwt-token",
+            name: "alice",
+            role: "student",
+            userId: 42,
+            avatarUrl: "/media/avatars/user-42.png",
+        };
+
+        renderTopNav();
+
+        expect(screen.getByRole("button", { name: /alice/i }).querySelector("img")).toHaveAttribute(
+            "src",
+            "/media/avatars/user-42.png",
+        );
+    });
+
     it("shows profile, follows and sign out in the avatar menu for students", () => {
         mockAuthState = {
             token: "jwt-token",
