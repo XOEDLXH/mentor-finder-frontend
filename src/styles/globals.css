@@ -364,6 +364,11 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   font-weight: 700;
 }
 
+.topNavAvatarImage {
+  object-fit: cover;
+  background: #f6f8fa;
+}
+
 .topNavAvatarName {
   max-width: 132px;
   white-space: nowrap;
