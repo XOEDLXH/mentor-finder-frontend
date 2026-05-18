@@ -512,6 +512,42 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   text-align: center;
 }
 
+.homeWeeklyPaperCarouselShell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.homeWeeklyPaperCarouselControls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.homeWeeklyPaperCarouselButton {
+  min-width: 74px;
+}
+
+.homeWeeklyPaperCarouselViewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.homeWeeklyPaperCarouselTrack {
+  display: flex;
+  gap: 12px;
+}
+
+.homeWeeklyPaperCarouselCard {
+  flex: 0 0 calc((100% - 12px) / 2);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
 .homePageShell {
   width: 100%;
   max-width: 1180px;
@@ -634,6 +670,22 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   letter-spacing: 0.04em;
   color: #59636e;
   margin-bottom: 6px;
+}
+
+.homePersonalizedLatexText {
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.homePersonalizedLatexText .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homePersonalizedLatexText .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+  text-align: center;
 }
 
 .homeSubjectGroupStack {
@@ -1453,6 +1505,10 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
 
   .homePersonalizedStats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .homeWeeklyPaperCarouselCard {
+    flex-basis: 100%;
   }
 }
 
