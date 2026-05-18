@@ -28,3 +28,7 @@ export const REGISTER_CODE_COOLDOWN = "Please wait a moment before requesting an
 export const REGISTER_CODE_BYPASS_HINT = "Bypass email detected. Verification code is not required.";
 export const REGISTER_SEND_CODE_BUTTON = "Send code";
 export const REGISTER_SEND_CODE_RESEND = "Resend";
+
+export const RESET_PASSWORD_FAILED = "Failed to reset password.";
+export const RESET_PASSWORD_SUCCESS = "Password reset successfully. Please sign in with your new password.";
+export const RESET_PASSWORD_EMAIL_NOT_FOUND = "No account was found for this email.";
