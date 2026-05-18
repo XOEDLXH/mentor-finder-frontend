@@ -131,6 +131,19 @@ const LoginScreen = () => {
                 <label className="loginAuthField">
                     <div className="loginAuthPasswordRow">
                         <span className="loginAuthLabel">Password</span>
+                        <a
+                            href="/reset-password"
+                            className="loginAuthInlineLink"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                if (submitting) {
+                                    return;
+                                }
+                                void router.push("/reset-password");
+                            }}
+                        >
+                            Forgot password?
+                        </a>
                     </div>
                     <input
                         ref={bindPasswordInputRef}
