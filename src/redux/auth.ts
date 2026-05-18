@@ -5,6 +5,7 @@ export interface AuthState {
     name: string;
     role: string;
     userId: number | undefined;
+    avatarUrl: string;
 }
 
 const initialState: AuthState = {
@@ -12,6 +13,7 @@ const initialState: AuthState = {
     name: "",
     role: "",
     userId: undefined,
+    avatarUrl: "",
 };
 
 const AUTH_STORAGE_KEY = "mentorfinder_auth";
@@ -21,7 +23,7 @@ const saveAuthToStorage = (state: AuthState) => {
         return;
     }
 
-    if (state.token === "" && state.name === "" && state.role === "" && state.userId === undefined) {
+    if (state.token === "" && state.name === "" && state.role === "" && state.userId === undefined && state.avatarUrl === "") {
         window.localStorage.removeItem(AUTH_STORAGE_KEY);
         return;
     }
@@ -46,6 +48,7 @@ export const loadAuthFromStorage = (): AuthState => {
             name: typeof parsed.name === "string" ? parsed.name : "",
             role: typeof parsed.role === "string" ? parsed.role : "",
             userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
+            avatarUrl: typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : "",
         };
     }
     catch {
@@ -66,32 +69,38 @@ export const authSlice = createSlice({
             state.name = action.payload.name;
             state.role = action.payload.role;
             state.userId = action.payload.userId;
+            state.avatarUrl = action.payload.avatarUrl;
         },
         setToken: (state, action: PayloadAction<string>) => {
             state.token = action.payload;
-            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId });
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
         setName: (state, action: PayloadAction<string>) => {
             state.name = action.payload;
-            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId });
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
         setRole: (state, action: PayloadAction<string>) => {
             state.role = action.payload;
-            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId });
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
         setUserId: (state, action: PayloadAction<number | undefined>) => {
             state.userId = action.payload;
-            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId });
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
+        },
+        setAvatarUrl: (state, action: PayloadAction<string>) => {
+            state.avatarUrl = action.payload;
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
         resetAuth: (state) => {
             state.token = "";
             state.name = "";
             state.role = "";
             state.userId = undefined;
-            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId });
+            state.avatarUrl = "";
+            saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
     },
 });
 
-export const { hydrateAuth, setToken, setName, setRole, setUserId, resetAuth } = authSlice.actions;
+export const { hydrateAuth, setToken, setName, setRole, setUserId, setAvatarUrl, resetAuth } = authSlice.actions;
 export default authSlice.reducer;
