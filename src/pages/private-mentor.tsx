@@ -37,6 +37,19 @@ const PrivateMentorScreen = () => {
     const [customMentorDraft, setCustomMentorDraft] = useState({
         Chinese_name: "",
         English_name: "",
+        research_direction: "",
+        email: "",
+        profile: "",
+    });
+
+    const [editDialogTarget, setEditDialogTarget] = useState<PrivateMentorResult | undefined>(undefined);
+    const [editDialogSubmitting, setEditDialogSubmitting] = useState(false);
+    const [editDialogDraft, setEditDialogDraft] = useState({
+        Chinese_name: "",
+        English_name: "",
+        research_direction: "",
+        email: "",
+        profile: "",
     });
 
     const isNetworkErrorInstance = (err: unknown): err is NetworkError => {
@@ -140,6 +153,9 @@ const PrivateMentorScreen = () => {
     const addPrivateMentor = async () => {
         const chineseName = customMentorDraft.Chinese_name.trim();
         const englishName = customMentorDraft.English_name.trim();
+        const researchDirection = customMentorDraft.research_direction.trim();
+        const email = customMentorDraft.email.trim();
+        const profile = customMentorDraft.profile.trim();
 
         if (isPrivateMentorLimitReached) {
             setPrivateMentorMessage(`私有导师最多添加 ${PRIVATE_MENTOR_LIMIT} 位，请先删除后再添加`);
@@ -158,9 +174,18 @@ const PrivateMentorScreen = () => {
             await request("/api/dataset/mentors/custom", "POST", true, {
                 Chinese_name: chineseName,
                 English_name: englishName,
+                research_direction: researchDirection,
+                email,
+                profile,
             });
 
-            setCustomMentorDraft({ Chinese_name: "", English_name: "" });
+            setCustomMentorDraft({
+                Chinese_name: "",
+                English_name: "",
+                research_direction: "",
+                email: "",
+                profile: "",
+            });
             await fetchMyPrivateMentors();
             setPrivateMentorMessage("私有导师添加成功");
         }
@@ -169,6 +194,64 @@ const PrivateMentorScreen = () => {
         }
         finally {
             setPrivateMentorSaving(false);
+        }
+    };
+
+    const openEditDialog = (mentor: PrivateMentorResult) => {
+        setEditDialogTarget(mentor);
+        setEditDialogDraft({
+            Chinese_name: mentor.Chinese_name || "",
+            English_name: mentor.English_name || "",
+            research_direction: mentor.research_direction === "待补充" ? "" : (mentor.research_direction || ""),
+            email: mentor.email || "",
+            profile: mentor.profile || "",
+        });
+    };
+
+    const closeEditDialog = () => {
+        if (editDialogSubmitting) {
+            return;
+        }
+        setEditDialogTarget(undefined);
+    };
+
+    const submitEditDialog = async () => {
+        if (editDialogTarget === undefined) {
+            return;
+        }
+
+        const chineseName = editDialogDraft.Chinese_name.trim();
+        const englishName = editDialogDraft.English_name.trim();
+        const researchDirection = editDialogDraft.research_direction.trim();
+        const email = editDialogDraft.email.trim();
+        const profile = editDialogDraft.profile.trim();
+
+        if (chineseName === "" && englishName === "") {
+            setPrivateMentorMessage("中文名和英文名至少填写一个");
+            return;
+        }
+
+        setEditDialogSubmitting(true);
+        setPrivateMentorMessage("");
+
+        try {
+            await request(`/api/dataset/mentors/${editDialogTarget.id}`, "PUT", true, {
+                Chinese_name: chineseName,
+                English_name: englishName,
+                research_direction: researchDirection,
+                email,
+                profile,
+            });
+
+            setEditDialogTarget(undefined);
+            await fetchMyPrivateMentors();
+            setPrivateMentorMessage("私有导师信息已更新");
+        }
+        catch (err) {
+            setPrivateMentorMessage(formatPrivateMentorError(err));
+        }
+        finally {
+            setEditDialogSubmitting(false);
         }
     };
 
@@ -222,6 +305,120 @@ const PrivateMentorScreen = () => {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760 }}>
+            {editDialogTarget !== undefined && (
+                <div
+                    aria-label="编辑私有导师弹窗遮罩"
+                    role="presentation"
+                    onClick={closeEditDialog}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 1100,
+                        background: "rgba(15, 23, 42, 0.42)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 20,
+                    }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="edit-private-mentor-dialog-title"
+                        onClick={(event) => event.stopPropagation()}
+                        style={{
+                            width: "min(100%, 520px)",
+                            borderRadius: 20,
+                            background: "#ffffff",
+                            border: "1px solid #d0d7de",
+                            boxShadow: "0 24px 64px rgba(15, 23, 42, 0.24)",
+                            padding: 24,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 12,
+                        }}
+                    >
+                        <h3 id="edit-private-mentor-dialog-title" style={{ margin: 0, color: "#1f2328" }}>
+                            编辑私有导师信息
+                        </h3>
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                                type="text"
+                                placeholder="导师中文名（可选）"
+                                value={editDialogDraft.Chinese_name}
+                                onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, Chinese_name: e.target.value }))}
+                                disabled={editDialogSubmitting}
+                                style={{ flex: 1 }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="导师英文名（可选）"
+                                value={editDialogDraft.English_name}
+                                onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, English_name: e.target.value }))}
+                                disabled={editDialogSubmitting}
+                                style={{ flex: 1 }}
+                            />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="研究方向（可选）"
+                            value={editDialogDraft.research_direction}
+                            onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, research_direction: e.target.value }))}
+                            disabled={editDialogSubmitting}
+                        />
+                        <input
+                            type="email"
+                            placeholder="导师邮箱（可选）"
+                            value={editDialogDraft.email}
+                            onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, email: e.target.value }))}
+                            disabled={editDialogSubmitting}
+                        />
+                        <textarea
+                            placeholder="导师画像（可选）"
+                            value={editDialogDraft.profile}
+                            onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, profile: e.target.value }))}
+                            disabled={editDialogSubmitting}
+                            rows={4}
+                            style={{ resize: "vertical", fontFamily: "inherit", fontSize: "inherit" }}
+                        />
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <button
+                                type="button"
+                                onClick={() => void submitEditDialog()}
+                                disabled={
+                                    editDialogSubmitting ||
+                                    (editDialogDraft.Chinese_name.trim() === "" && editDialogDraft.English_name.trim() === "")
+                                }
+                                style={{
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    fontWeight: 700,
+                                }}
+                            >
+                                {editDialogSubmitting ? "保存中..." : "保存修改"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeEditDialog}
+                                disabled={editDialogSubmitting}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 44,
+                                    borderRadius: 12,
+                                    border: "1px solid rgb(209, 217, 224)",
+                                    background: "rgb(246, 248, 250)",
+                                    color: "rgb(37, 41, 46)",
+                                    fontWeight: 600,
+                                    boxShadow: "none",
+                                }}
+                            >
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {deleteDialogTarget !== undefined && (
                 <div
                     aria-label="删除私有导师确认弹窗遮罩"
@@ -406,6 +603,28 @@ const PrivateMentorScreen = () => {
                         style={{ flex: 1 }}
                     />
                 </div>
+                <input
+                    type="text"
+                    placeholder="研究方向（可选）"
+                    value={customMentorDraft.research_direction}
+                    onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, research_direction: e.target.value }))}
+                    disabled={privateMentorSaving || privateMentorLoading}
+                />
+                <input
+                    type="email"
+                    placeholder="导师邮箱（可选）"
+                    value={customMentorDraft.email}
+                    onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, email: e.target.value }))}
+                    disabled={privateMentorSaving || privateMentorLoading}
+                />
+                <textarea
+                    placeholder="导师画像（可选）"
+                    value={customMentorDraft.profile}
+                    onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, profile: e.target.value }))}
+                    disabled={privateMentorSaving || privateMentorLoading}
+                    rows={3}
+                    style={{ resize: "vertical", fontFamily: "inherit", fontSize: "inherit" }}
+                />
                 <div style={{ display: "flex", gap: 8 }}>
                     <button
                         onClick={() => void addPrivateMentor()}
@@ -463,6 +682,12 @@ const PrivateMentorScreen = () => {
                                 <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
                                 <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                    <button
+                                        onClick={() => openEditDialog(mentor)}
+                                        disabled={privateMentorSaving || privateMentorLoading || privateMentorDeletingId !== undefined}
+                                    >
+                                        编辑信息
+                                    </button>
                                     <button
                                         onClick={() => openDeleteDialog(mentor)}
                                         disabled={privateMentorSaving || privateMentorLoading || privateMentorDeletingId !== undefined}
