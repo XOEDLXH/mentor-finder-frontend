@@ -323,7 +323,7 @@ describe("LoginScreen", () => {
 
         expect(screen.getByRole("heading", { name: "Sign in to MentorFinder" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
-        expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Continue with TsinghuaID" })).not.toBeInTheDocument();
         expect(screen.getByText("New to MentorFinder?")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Create an account" })).toBeInTheDocument();
         expect(screen.queryByText("Continue with Apple")).not.toBeInTheDocument();
@@ -833,7 +833,7 @@ describe("RegisterScreen", () => {
         expect(screen.getByRole("heading", { name: "Sign up for MentorFinder" })).toBeInTheDocument();
         expect(screen.getByText("Already have an account?")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Sign in →" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Continue with TsinghuaID" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Continue with TsinghuaID" })).not.toBeInTheDocument();
         expect(screen.getByText("Create your account")).toBeInTheDocument();
         expect(screen.getByText("Explore MentorFinder's unique features for both students and teachers")).toBeInTheDocument();
         expect(screen.getByText("See what's included")).toBeInTheDocument();
