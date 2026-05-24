@@ -2166,10 +2166,13 @@ const TimelinePage = () => {
                     border-radius: 20px;
                     padding: 18px 16px;
                     background: var(--timeline-surface);
-                    height: 100%;
                     overflow-y: auto;
                     overscroll-behavior: contain;
                     box-sizing: border-box;
+                }
+
+                .timelineCalendarPanel {
+                    align-self: start;
                 }
 
                 .timelineDirectionsPanelTitle,
