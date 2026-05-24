@@ -2206,7 +2206,174 @@ const TimelinePage = () => {
                     color: #1f2328;
                 }
 
+                .timelineCalendarMonthLabelSrOnly {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
+                }
 
+                .timelineCalendarMonthLabelDivider {
+                    color: var(--timeline-text-muted);
+                    font-weight: 500;
+                }
+
+                .timelineCalendarPickerTrigger {
+                    border: none;
+                    border-radius: 10px;
+                    background: transparent;
+                    color: #1f2328;
+                    padding: 6px 10px;
+                    font-size: 16px;
+                    font-weight: 700;
+                    line-height: 1;
+                }
+
+                .timelineCalendarPickerTrigger:hover:not(:disabled),
+                .timelineCalendarPickerTrigger:focus-visible {
+                    background: transparent;
+                    color: var(--timeline-accent);
+                    outline: none;
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .timelineCalendarPicker {
+                    position: absolute;
+                    top: calc(100% + 10px);
+                    left: 50%;
+                    z-index: 3;
+                    width: min(100%, 280px);
+                    min-width: 260px;
+                    transform: translateX(-50%);
+                    border: 1px solid var(--timeline-border);
+                    border-radius: 18px;
+                    background: #ffffff;
+                    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+                    padding: 14px;
+                }
+
+                .timelineCalendarPickerColumns {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 12px;
+                }
+
+                .timelineCalendarPickerColumn {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    min-width: 0;
+                }
+
+                .timelineCalendarPickerColumnActive .timelineCalendarPickerColumnLabel {
+                    color: var(--timeline-accent);
+                }
+
+                .timelineCalendarPickerColumnLabel {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: var(--timeline-text-muted);
+                    text-align: center;
+                    letter-spacing: 0.04em;
+                }
+
+                .timelineCalendarPickerWheel {
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    max-height: ${CALENDAR_PICKER_ITEM_HEIGHT * CALENDAR_PICKER_VISIBLE_ROWS}px;
+                    overflow-y: auto;
+                    overscroll-behavior: contain;
+                    scroll-snap-type: y mandatory;
+                    scroll-padding-block: ${CALENDAR_PICKER_ITEM_HEIGHT * 2}px;
+                    scrollbar-width: none;
+                    padding: 0;
+                    border-radius: 14px;
+                    background: transparent;
+                    outline: none;
+                }
+
+                .timelineCalendarPickerWheel::-webkit-scrollbar {
+                    display: none;
+                }
+
+                .timelineCalendarPickerWheel:focus-visible {
+                    box-shadow: 0 0 0 3px rgba(12, 99, 166, 0.14);
+                }
+
+                .timelineCalendarPickerWheelSpacer {
+                    flex: 0 0 ${CALENDAR_PICKER_ITEM_HEIGHT * 2}px;
+                }
+
+                .timelineCalendarPickerOption {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: ${CALENDAR_PICKER_ITEM_HEIGHT}px;
+                    padding: 0 10px;
+                    border: none;
+                    border-radius: 0;
+                    background: transparent;
+                    color: #1f2328;
+                    font-size: 15px;
+                    font-weight: 500;
+                    line-height: 1;
+                    scroll-snap-align: center;
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .timelineCalendarPickerOption:hover,
+                .timelineCalendarPickerOption:focus-visible {
+                    background: transparent;
+                    color: var(--timeline-accent);
+                    outline: none;
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .timelineCalendarPickerOptionActive {
+                    background: transparent;
+                    color: var(--timeline-accent);
+                    font-weight: 700;
+                }
+
+                .timelineCalendarPickerActions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    margin-top: 14px;
+                }
+
+                .timelineCalendarPickerActionButton {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 33.77px;
+                    box-sizing: border-box;
+                    padding: 0 12px;
+                    border-radius: 10px;
+                    border: 1px solid var(--border-soft);
+                    background: var(--surface-panel);
+                    color: var(--ink-strong);
+                    font-size: 14px;
+                    font-weight: 600;
+                    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+                }
+
+                .timelineCalendarPickerActionButton:hover:not(:disabled),
+                .timelineCalendarPickerActionButton:focus-visible {
+                    border-color: var(--border-strong);
+                    box-shadow: var(--shadow-soft);
+                    transform: translateY(-1px);
+                    outline: none;
+                }
 
                 .timelineCalendarNavButton {
                     display: inline-flex;
