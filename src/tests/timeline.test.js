@@ -80,6 +80,13 @@ describe("TimelinePage date mode", () => {
         && params.every((param) => url.includes(param))
     );
 
+    const expectVisibleCalendarMonth = (yearLabel, monthLabel) => {
+        const yearTrigger = screen.getByRole("button", { name: "选择年份" });
+        const monthTrigger = screen.getByRole("button", { name: "选择月份" });
+        expect(yearTrigger).toHaveTextContent(yearLabel);
+        expect(monthTrigger).toHaveTextContent(monthLabel);
+    };
+
     const setupViewportGeometry = () => {
         const viewport = screen.getByTestId("timeline-feed-viewport");
         Object.defineProperty(viewport, "clientHeight", {
@@ -499,7 +506,7 @@ describe("TimelinePage date mode", () => {
         setViewportScrollTop(viewport, 260);
 
         await waitFor(() => {
-            expect(screen.getByText("2026 年 3 月")).toBeInTheDocument();
+            expectVisibleCalendarMonth("2026年", "3月");
         });
 
         act(() => {
@@ -507,7 +514,7 @@ describe("TimelinePage date mode", () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText("2026 年 4 月")).toBeInTheDocument();
+            expectVisibleCalendarMonth("2026年", "4月");
         });
         expect(screen.getByTestId("timeline-calendar-day-2026-04-01")).toHaveClass("timelineCalendarDayButtonLead");
     });
@@ -555,9 +562,165 @@ describe("TimelinePage date mode", () => {
         fireEvent.click(screen.getByRole("button", { name: "查看下个月" }));
 
         await waitFor(() => {
-            expect(screen.getByText("2026 年 4 月")).toBeInTheDocument();
+            expectVisibleCalendarMonth("2026年", "4月");
         });
-        expect(screen.queryByText("2026 年 3 月")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "选择年份" })).toHaveTextContent("2026年");
+        expect(screen.getByRole("button", { name: "选择月份" })).not.toHaveTextContent("3月");
+    });
+
+    it("opens the inline picker from year and month triggers with the current month preselected", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    available_dates: [
+                        { date: "2025-12-01", paper_count: 2 },
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                        { date: "2026-05-10", paper_count: 1 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([createPaper(1)], { total_papers: 1 });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+
+        fireEvent.click(screen.getByRole("button", { name: "选择年份" }));
+
+        const picker = screen.getByTestId("timeline-calendar-picker");
+        expect(picker).toBeInTheDocument();
+        expect(within(screen.getByTestId("timeline-calendar-year-wheel")).getByRole("button", { name: "2026年" })).toHaveClass("timelineCalendarPickerOptionActive");
+        expect(within(screen.getByTestId("timeline-calendar-month-wheel")).getByRole("button", { name: "5月" })).toHaveClass("timelineCalendarPickerOptionActive");
+
+        fireEvent.click(within(picker).getByRole("button", { name: "取消" }));
+        expect(screen.queryByTestId("timeline-calendar-picker")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "选择月份" }));
+        expect(screen.getByTestId("timeline-calendar-picker")).toBeInTheDocument();
+    });
+
+    it("derives year and month options from available dates and confirms month browsing without refetching papers", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    available_dates: [
+                        { date: "2025-12-01", paper_count: 2 },
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                        { date: "2026-05-10", paper_count: 1 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([createPaper(1)], { total_papers: 1 });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+        expect(screen.getByText("已选择 2026-05-10")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "选择年份" }));
+
+        const yearWheel = screen.getByTestId("timeline-calendar-year-wheel");
+        const monthWheel = screen.getByTestId("timeline-calendar-month-wheel");
+
+        expect(within(yearWheel).getByRole("button", { name: "2025年" })).toBeInTheDocument();
+        expect(within(yearWheel).getByRole("button", { name: "2026年" })).toBeInTheDocument();
+        expect(within(monthWheel).queryByRole("button", { name: "1月" })).toBeNull();
+        expect(within(monthWheel).getByRole("button", { name: "5月" })).toBeInTheDocument();
+
+        fireEvent.click(within(yearWheel).getByRole("button", { name: "2025年" }));
+        expect(within(monthWheel).getByRole("button", { name: "12月" })).toHaveClass("timelineCalendarPickerOptionActive");
+        expect(within(monthWheel).queryByRole("button", { name: "5月" })).toBeNull();
+
+        fireEvent.click(screen.getByRole("button", { name: "确定" }));
+
+        await waitFor(() => {
+            expectVisibleCalendarMonth("2025年", "12月");
+        });
+        expect(screen.getByText("已选择 2026-05-10")).toBeInTheDocument();
+        expect(request).not.toHaveBeenCalledWith("/api/timeline?direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0&date=2025-12-01&limit=6", "GET", false);
+    });
+
+    it("closes the picker on escape and outside click without changing the visible month", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    available_dates: [
+                        { date: "2026-03-30", paper_count: 3 },
+                        { date: "2026-04-01", paper_count: 2 },
+                    ],
+                });
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "date=2026-05-10", "limit=6"])) {
+                return timelineResponse([createPaper(1)], { total_papers: 1 });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await screen.findByRole("heading", { name: "Compression Paper 1" });
+
+        fireEvent.click(screen.getByRole("button", { name: "选择月份" }));
+        expect(screen.getByTestId("timeline-calendar-picker")).toBeInTheDocument();
+        fireEvent.keyDown(document, { key: "Escape" });
+        await waitFor(() => {
+            expect(screen.queryByTestId("timeline-calendar-picker")).not.toBeInTheDocument();
+        });
+        expectVisibleCalendarMonth("2026年", "5月");
+
+        fireEvent.click(screen.getByRole("button", { name: "选择月份" }));
+        expect(screen.getByTestId("timeline-calendar-picker")).toBeInTheDocument();
+        fireEvent.mouseDown(document.body);
+        await waitFor(() => {
+            expect(screen.queryByTestId("timeline-calendar-picker")).not.toBeInTheDocument();
+        });
+        expectVisibleCalendarMonth("2026年", "5月");
+    });
+
+    it("disables the year and month triggers when there are no selectable calendar months", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/timeline") {
+                return mockTimelineOverview();
+            }
+            if (isTimelineUrl(url, ["direction=%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0", "calendar=1"])) {
+                return mockCalendarMeta({
+                    default_date: "",
+                    latest_date: "",
+                    earliest_date: "",
+                    available_dates: [],
+                });
+            }
+            return {};
+        });
+
+        render(<TimelinePage />);
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "选择年份" })).toBeInTheDocument();
+        });
+
+        const yearTrigger = screen.getByRole("button", { name: "选择年份" });
+        const monthTrigger = screen.getByRole("button", { name: "选择月份" });
+
+        expect(yearTrigger).toBeDisabled();
+        expect(monthTrigger).toBeDisabled();
+        fireEvent.click(yearTrigger);
+        expect(screen.queryByTestId("timeline-calendar-picker")).not.toBeInTheDocument();
     });
 
     it("renders inline LaTeX in titles and mentor links in author rows", async () => {
