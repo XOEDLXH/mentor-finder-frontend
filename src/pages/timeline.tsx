@@ -7,7 +7,6 @@ import {
     type TouchEvent as ReactTouchEvent,
     type WheelEvent as ReactWheelEvent,
 } from "react";
-import { useRouter } from "next/router";
 
 import LatexText from "../components/LatexText";
 import { FAILURE_PREFIX } from "../constants/string";
@@ -175,7 +174,6 @@ const buildCalendarGridStart = (month: Date) => {
 const formatCalendarMonthLabel = (value: Date) => `${value.getFullYear()} 年 ${value.getMonth() + 1} 月`;
 
 const TimelinePage = () => {
-    const router = useRouter();
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");
     const [calendarMeta, setCalendarMeta] = useState<TimelineCalendarResponse | undefined>(undefined);
@@ -1467,10 +1465,6 @@ const TimelinePage = () => {
                 <div>
                     <h2 style={{ margin: "0 0 8px" }}>论文时间线</h2>
                     <p style={{ margin: 0 }}>按研究方向和日期查看论文动态，右侧日历可以快速跳到任意有论文的那一天。</p>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => router.push("/")}>返回首页</button>
-                    <button onClick={() => router.push("/search")}>去检索</button>
                 </div>
             </div>
 
