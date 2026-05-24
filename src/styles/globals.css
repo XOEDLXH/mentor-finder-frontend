@@ -861,40 +861,6 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   line-height: 1.45;
 }
 
-.loginAuthDivider {
-  width: min(100%, 340px);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #656d76;
-  font-size: 12px;
-  line-height: 1;
-}
-
-.loginAuthDivider::before,
-.loginAuthDivider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #d8dee4;
-}
-
-.loginAuthSecondary {
-  width: min(100%, 340px);
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
-  background: #f6f8fa;
-  color: #57606a;
-  font-weight: 600;
-  padding: 10px 14px;
-  box-shadow: none;
-}
-
-.loginAuthSecondary:hover:not(:disabled) {
-  transform: none;
-  box-shadow: none;
-}
-
 .loginAuthSignup {
   margin: 0;
   color: #59636e;
@@ -1221,41 +1187,6 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   width: auto;
   height: 38px;
   max-width: 100%;
-}
-
-.registerAuthSocialButton {
-  width: 100%;
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
-  background: #f6f8fa;
-  color: #57606a;
-  font-weight: 600;
-  padding: 11px 14px;
-  box-shadow: none;
-}
-
-.registerAuthSocialButton:hover:not(:disabled) {
-  transform: none;
-  box-shadow: none;
-}
-
-.registerAuthDivider {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #656d76;
-  font-size: 12px;
-  line-height: 1;
-  margin: 22px 0 18px;
-}
-
-.registerAuthDivider::before,
-.registerAuthDivider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #d8dee4;
 }
 
 .registerAuthField {

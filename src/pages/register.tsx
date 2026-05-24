@@ -486,19 +486,6 @@ const RegisterScreen = () => {
                         </button>
                     </h2>
 
-                    <button
-                        type="button"
-                        className="registerAuthSocialButton"
-                        disabled
-                        aria-label="Continue with TsinghuaID"
-                    >
-                        Continue with TsinghuaID
-                    </button>
-
-                    <div className="registerAuthDivider" aria-hidden="true">
-                        <span>or</span>
-                    </div>
-
                     <form onSubmit={submitRegister}>
                         <label className="registerAuthField">
                             <span className="registerAuthLabel">Email</span>

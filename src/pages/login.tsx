@@ -167,19 +167,6 @@ const LoginScreen = () => {
                 </button>
             </form>
 
-            <div className="loginAuthDivider" aria-hidden="true">
-                <span>or</span>
-            </div>
-
-            <button
-                type="button"
-                className="loginAuthSecondary"
-                disabled
-                aria-label="Continue with TsinghuaID"
-            >
-                Continue with TsinghuaID
-            </button>
-
             <p className="loginAuthSignup">
                 New to MentorFinder?{" "}
                 <a
