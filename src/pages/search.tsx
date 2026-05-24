@@ -943,7 +943,10 @@ const SearchScreen = () => {
         catch (err) {
             if (isNetworkErrorInstance(err)) {
                 const rawMsg = String(err);
-                if (rawMsg.includes("Mentor already exists")) {
+                if (rawMsg.includes("[email] format is invalid")) {
+                    setPrivateMentorMsg("邮箱格式不正确");
+                }
+                else if (rawMsg.includes("Mentor already exists")) {
                     setPrivateMentorMsg("该导师已在你的私有导师列表中，请勿重复添加");
                 }
                 else if (rawMsg.includes("Private mentor limit reached")) {

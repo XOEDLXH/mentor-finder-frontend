@@ -58,6 +58,12 @@ const PrivateMentorScreen = () => {
 
     const formatPrivateMentorError = useCallback((err: unknown) => {
         if (isNetworkErrorInstance(err)) {
+            const rawMsg = String(err);
+
+            if (rawMsg.includes("[email] format is invalid")) {
+                return "邮箱格式不正确";
+            }
+
             if (err.type === NetworkErrorType.UNAUTHORIZED) {
                 return "请先登录后再管理私有导师";
             }
@@ -66,7 +72,7 @@ const PrivateMentorScreen = () => {
                 return "当前账号无权限创建私有导师";
             }
 
-            return String(err);
+            return rawMsg;
         }
 
         return FAILURE_PREFIX + String(err);
@@ -649,7 +655,18 @@ const PrivateMentorScreen = () => {
                     <p style={{ margin: 0, color: "#cf222e", fontSize: 13 }}>私有导师数量已达上限（{PRIVATE_MENTOR_LIMIT}位），请先删除部分私有导师后再添加。</p>
                 )}
 
-                {privateMentorMessage !== "" && <p style={{ margin: 0 }}>{privateMentorMessage}</p>}
+                {privateMentorMessage !== "" && (
+                    <p
+                        style={{
+                            margin: 0,
+                            color: privateMentorMessage.includes("成功") || privateMentorMessage.includes("已更新")
+                                ? undefined
+                                : "#cf222e",
+                        }}
+                    >
+                        {privateMentorMessage}
+                    </p>
+                )}
 
                 <p style={{ margin: 0 }}>
                     共 {privateMentors.length} 位私有导师，当前显示 {displayedPrivateMentors.length} 位。
