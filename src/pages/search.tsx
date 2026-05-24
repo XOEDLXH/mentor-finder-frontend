@@ -31,6 +31,17 @@ const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
 const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量，超过后显示“查看更多”按钮展开完整列表
 const SEARCH_VIEW_STATE_STORAGE_PREFIX = "search-view-state:";
 const INITIAL_HISTORY_ENTRY_KEY = "search-entry-initial";
+const SEARCH_PAGINATION_CONTROL_HEIGHT = 33.77;
+const SEARCH_ACTION_BUTTON_STYLE: CSSProperties = {
+    flexShrink: 0,
+    height: SEARCH_PAGINATION_CONTROL_HEIGHT,
+    boxSizing: "border-box",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 12px",
+    whiteSpace: "nowrap",
+};
 
 interface PrivateMentorsResponse {
     mentors?: PrivateMentorResult[];
@@ -1830,7 +1841,11 @@ const SearchScreen = () => {
                     onKeyDown={handleEnter}
                     style={{ flex: "1 1 260px", minWidth: 0 }}
                 />
-                <button onClick={clearKeyword} disabled={keyword.trim() === "" || loading} style={{ flexShrink: 0 }}>
+                <button
+                    onClick={clearKeyword}
+                    disabled={keyword.trim() === "" || loading}
+                    style={SEARCH_ACTION_BUTTON_STYLE}
+                >
                     清空
                 </button>
                 <button
@@ -1841,7 +1856,7 @@ const SearchScreen = () => {
                         }));
                     }}
                     disabled={keyword.trim() === "" || loading}
-                    style={{ flexShrink: 0 }}
+                    style={SEARCH_ACTION_BUTTON_STYLE}
                 >
                     搜索
                 </button>
@@ -2070,7 +2085,7 @@ const SearchScreen = () => {
                             totalPages={totalPages}
                             loading={loading}
                             centered
-                            controlHeight={33.77}
+                            controlHeight={SEARCH_PAGINATION_CONTROL_HEIGHT}
                             jumpInputWidth={120}
                             activePageHighlightColor="rgb(8, 109, 177)"
                             onPageChange={(newPage) => {
@@ -2296,7 +2311,7 @@ const SearchScreen = () => {
                         totalPages={totalPages}
                         loading={loading}
                         centered
-                        controlHeight={33.77}
+                        controlHeight={SEARCH_PAGINATION_CONTROL_HEIGHT}
                         jumpInputWidth={120}
                         activePageHighlightColor="rgb(8, 109, 177)"
                         onPageChange={(newPage) => {
@@ -2323,7 +2338,7 @@ const SearchScreen = () => {
                             totalPages={totalPages}
                             loading={loading}
                             centered
-                            controlHeight={33.77}
+                            controlHeight={SEARCH_PAGINATION_CONTROL_HEIGHT}
                             jumpInputWidth={120}
                             activePageHighlightColor="rgb(8, 109, 177)"
                             onPageChange={(newPage) => {
@@ -2441,7 +2456,7 @@ const SearchScreen = () => {
                         totalPages={totalPages}
                         loading={loading}
                         centered
-                        controlHeight={33.77}
+                        controlHeight={SEARCH_PAGINATION_CONTROL_HEIGHT}
                         jumpInputWidth={120}
                         activePageHighlightColor="rgb(8, 109, 177)"
                         onPageChange={(newPage) => {
