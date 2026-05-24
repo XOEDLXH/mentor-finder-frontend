@@ -32,9 +32,12 @@ const TOP_OVERSCROLL_WHEEL_THRESHOLD = 72;
 const TOP_OVERSCROLL_TOUCH_THRESHOLD = 54;
 const CALENDAR_GRID_CELL_COUNT = 42;
 const CALENDAR_WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
+const CALENDAR_PICKER_ITEM_HEIGHT = 40;
+const CALENDAR_PICKER_VISIBLE_ROWS = 5;
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type TimelineLoadMode = "replace" | "prepend" | "append";
+type CalendarPickerColumn = "year" | "month";
 type ScrollAdjustment =
     | { type: "prepend"; addedIds: number[]; direction: "up" | "down"; }
     | { type: "append-anchor"; firstNewPaperId?: number; anchorTop: number; direction: "up" | "down"; }
@@ -172,6 +175,34 @@ const buildCalendarGridStart = (month: Date) => {
 };
 
 const formatCalendarMonthLabel = (value: Date) => `${value.getFullYear()} 年 ${value.getMonth() + 1} 月`;
+const formatCalendarYearTriggerLabel = (year: number) => `${year}年`;
+const formatCalendarMonthTriggerLabel = (month: number) => `${month}月`;
+const formatFallbackCalendarYearTriggerLabel = (calendarMeta?: TimelineCalendarResponse) => {
+    const fallbackDate = parseIsoDate(calendarMeta?.latest_date || calendarMeta?.default_date || "");
+    return fallbackDate !== undefined ? formatCalendarYearTriggerLabel(fallbackDate.getFullYear()) : "年份";
+};
+const formatFallbackCalendarMonthTriggerLabel = (calendarMeta?: TimelineCalendarResponse) => {
+    const fallbackDate = parseIsoDate(calendarMeta?.latest_date || calendarMeta?.default_date || "");
+    return fallbackDate !== undefined ? formatCalendarMonthTriggerLabel(fallbackDate.getMonth() + 1) : "月份";
+};
+
+const findNearestNumericOption = (target: number, options: number[]) => {
+    if (options.length === 0) {
+        return undefined;
+    }
+
+    return options.reduce((best, current) => {
+        const currentDistance = Math.abs(current - target);
+        const bestDistance = Math.abs(best - target);
+        if (currentDistance < bestDistance) {
+            return current;
+        }
+        if (currentDistance === bestDistance && current < best) {
+            return current;
+        }
+        return best;
+    });
+};
 
 const TimelinePage = () => {
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
@@ -194,6 +225,10 @@ const TimelinePage = () => {
     const [showInitialSkeleton, setShowInitialSkeleton] = useState(false);
     const [feedRevealKey, setFeedRevealKey] = useState(0);
     const [errorMessage, setErrorMessage] = useState("");
+    const [isCalendarPickerOpen, setIsCalendarPickerOpen] = useState(false);
+    const [calendarPickerDraftYear, setCalendarPickerDraftYear] = useState(0);
+    const [calendarPickerDraftMonth, setCalendarPickerDraftMonth] = useState(1);
+    const [calendarPickerActiveColumn, setCalendarPickerActiveColumn] = useState<CalendarPickerColumn>("month");
     const feedViewportRef = useRef<HTMLDivElement | undefined>(undefined);
     const paperRefs = useRef<Record<number, HTMLElement | undefined>>({});
     const papersRef = useRef<TimelinePaper[]>([]);
@@ -219,6 +254,9 @@ const TimelinePage = () => {
     const topTouchStartYRef = useRef<number | undefined>(undefined);
     const topTouchPullDistanceRef = useRef(0);
     const topOverscrollConsumedRef = useRef(false);
+    const calendarPickerAnchorRef = useRef<HTMLDivElement | undefined>(undefined);
+    const calendarPickerYearWheelRef = useRef<HTMLDivElement | undefined>(undefined);
+    const calendarPickerMonthWheelRef = useRef<HTMLDivElement | undefined>(undefined);
 
     useLayoutEffect(() => {
         papersRef.current = papers;
@@ -706,6 +744,35 @@ const TimelinePage = () => {
         [calendarMeta],
     );
 
+    const availableCalendarMonthsByYear = useMemo(() => {
+        const monthsByYear = new Map<number, Set<number>>();
+        for (const item of calendarMeta?.available_dates || []) {
+            const parsedDate = parseIsoDate(item.date);
+            if (parsedDate === undefined) {
+                continue;
+            }
+
+            const year = parsedDate.getFullYear();
+            const month = parsedDate.getMonth() + 1;
+            const currentMonths = monthsByYear.get(year) ?? new Set<number>();
+            currentMonths.add(month);
+            monthsByYear.set(year, currentMonths);
+        }
+
+        return new Map(
+            Array.from(monthsByYear.entries())
+                .sort(([leftYear], [rightYear]) => leftYear - rightYear)
+                .map(([year, months]) => [year, Array.from(months).sort((left, right) => left - right)]),
+        );
+    }, [calendarMeta?.available_dates]);
+
+    const availableCalendarYears = useMemo(
+        () => Array.from(availableCalendarMonthsByYear.keys()).sort((left, right) => left - right),
+        [availableCalendarMonthsByYear],
+    );
+
+    const hasSelectableCalendarMonths = availableCalendarYears.length > 0;
+
     const currentCalendarMonth = useMemo(() => {
         if (displayedMonth !== undefined) {
             return startOfCalendarMonth(displayedMonth);
@@ -715,9 +782,150 @@ const TimelinePage = () => {
         return fallbackDate !== undefined ? startOfCalendarMonth(fallbackDate) : startOfCalendarMonth(new Date());
     }, [calendarMeta?.latest_date, displayedMonth, selectedDate]);
 
+    const normalizeCalendarPickerDraft = useMemo(() => {
+        return (targetYear: number, targetMonth: number) => {
+            if (availableCalendarYears.length === 0) {
+                return undefined;
+            }
+
+            const resolvedYear = availableCalendarYears.includes(targetYear)
+                ? targetYear
+                : findNearestNumericOption(targetYear, availableCalendarYears) ?? availableCalendarYears[0];
+            const resolvedMonths = availableCalendarMonthsByYear.get(resolvedYear) ?? [];
+            const resolvedMonth = resolvedMonths.includes(targetMonth)
+                ? targetMonth
+                : findNearestNumericOption(targetMonth, resolvedMonths) ?? resolvedMonths[0];
+
+            if (resolvedMonth === undefined) {
+                return undefined;
+            }
+
+            return {
+                year: resolvedYear,
+                month: resolvedMonth,
+            };
+        };
+    }, [availableCalendarMonthsByYear, availableCalendarYears]);
+
+    const availableCalendarMonthsForDraftYear = useMemo(
+        () => availableCalendarMonthsByYear.get(calendarPickerDraftYear) ?? [],
+        [availableCalendarMonthsByYear, calendarPickerDraftYear],
+    );
+
     const handleCalendarMonthChange = (deltaMonths: number) => {
+        setIsCalendarPickerOpen(false);
         setIsCalendarBrowsingManually(true);
         setDisplayedMonth(addCalendarMonths(currentCalendarMonth, deltaMonths));
+    };
+
+    const scrollCalendarPickerOptionIntoView = (
+        wheelRef: React.MutableRefObject<HTMLDivElement | undefined>,
+        value: number,
+    ) => {
+        const wheel = wheelRef.current;
+        if (wheel === undefined) {
+            return;
+        }
+
+        const option = wheel.querySelector<HTMLElement>(`[data-picker-value="${value}"]`);
+        if (option === null) {
+            return;
+        }
+
+        window.requestAnimationFrame(() => {
+            option.scrollIntoView({
+                block: "center",
+                inline: "nearest",
+            });
+        });
+    };
+
+    const closeCalendarPicker = () => {
+        setIsCalendarPickerOpen(false);
+    };
+
+    const openCalendarPicker = (column: CalendarPickerColumn) => {
+        if (!hasSelectableCalendarMonths) {
+            return;
+        }
+
+        if (isCalendarPickerOpen) {
+            setCalendarPickerActiveColumn(column);
+            return;
+        }
+
+        const normalizedDraft = normalizeCalendarPickerDraft(
+            currentCalendarMonth.getFullYear(),
+            currentCalendarMonth.getMonth() + 1,
+        );
+        if (normalizedDraft === undefined) {
+            return;
+        }
+
+        setCalendarPickerDraftYear(normalizedDraft.year);
+        setCalendarPickerDraftMonth(normalizedDraft.month);
+        setCalendarPickerActiveColumn(column);
+        setIsCalendarPickerOpen(true);
+    };
+
+    const handleCalendarPickerYearDraftChange = (nextYear: number) => {
+        const nextMonths = availableCalendarMonthsByYear.get(nextYear) ?? [];
+        if (nextMonths.length === 0) {
+            return;
+        }
+
+        setCalendarPickerDraftYear(nextYear);
+        setCalendarPickerDraftMonth(
+            nextMonths.includes(calendarPickerDraftMonth)
+                ? calendarPickerDraftMonth
+                : findNearestNumericOption(calendarPickerDraftMonth, nextMonths) ?? nextMonths[0],
+        );
+        setCalendarPickerActiveColumn("year");
+    };
+
+    const handleCalendarPickerMonthDraftChange = (nextMonth: number) => {
+        setCalendarPickerDraftMonth(nextMonth);
+        setCalendarPickerActiveColumn("month");
+    };
+
+    const handleCalendarPickerWheel = (column: CalendarPickerColumn, deltaY: number) => {
+        if (deltaY === 0) {
+            return;
+        }
+
+        const options = column === "year"
+            ? availableCalendarYears
+            : availableCalendarMonthsForDraftYear;
+        if (options.length <= 1) {
+            return;
+        }
+
+        const currentValue = column === "year" ? calendarPickerDraftYear : calendarPickerDraftMonth;
+        const currentIndex = Math.max(options.indexOf(currentValue), 0);
+        const nextIndex = clamp(currentIndex + (deltaY > 0 ? 1 : -1), 0, options.length - 1);
+        const nextValue = options[nextIndex];
+        if (nextValue === undefined || nextValue === currentValue) {
+            return;
+        }
+
+        if (column === "year") {
+            handleCalendarPickerYearDraftChange(nextValue);
+            return;
+        }
+
+        handleCalendarPickerMonthDraftChange(nextValue);
+    };
+
+    const applyCalendarPickerSelection = () => {
+        const normalizedDraft = normalizeCalendarPickerDraft(calendarPickerDraftYear, calendarPickerDraftMonth);
+        if (normalizedDraft === undefined) {
+            closeCalendarPicker();
+            return;
+        }
+
+        setIsCalendarBrowsingManually(true);
+        setDisplayedMonth(new Date(normalizedDraft.year, normalizedDraft.month - 1, 1, 12, 0, 0, 0));
+        closeCalendarPicker();
     };
 
     const calendarDayCells = useMemo(() => {
@@ -804,6 +1012,67 @@ const TimelinePage = () => {
 
         setIsCalendarBrowsingManually(false);
     }, [leadVisibleDate]);
+
+    useEffect(() => {
+        if (!isCalendarPickerOpen) {
+            return;
+        }
+
+        const handleDocumentMouseDown = (event: MouseEvent) => {
+            const pickerAnchor = calendarPickerAnchorRef.current;
+            if (pickerAnchor !== undefined && pickerAnchor.contains(event.target as Node)) {
+                return;
+            }
+            closeCalendarPicker();
+        };
+
+        const handleDocumentKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                closeCalendarPicker();
+            }
+        };
+
+        document.addEventListener("mousedown", handleDocumentMouseDown, true);
+        document.addEventListener("keydown", handleDocumentKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", handleDocumentMouseDown, true);
+            document.removeEventListener("keydown", handleDocumentKeyDown);
+        };
+    }, [isCalendarPickerOpen]);
+
+    useEffect(() => {
+        if (!isCalendarPickerOpen) {
+            return;
+        }
+
+        const activeWheel = calendarPickerActiveColumn === "year"
+            ? calendarPickerYearWheelRef.current
+            : calendarPickerMonthWheelRef.current;
+        activeWheel?.focus();
+    }, [calendarPickerActiveColumn, isCalendarPickerOpen]);
+
+    useEffect(() => {
+        if (!isCalendarPickerOpen) {
+            return;
+        }
+
+        scrollCalendarPickerOptionIntoView(calendarPickerYearWheelRef, calendarPickerDraftYear);
+    }, [calendarPickerDraftYear, isCalendarPickerOpen]);
+
+    useEffect(() => {
+        if (!isCalendarPickerOpen) {
+            return;
+        }
+
+        scrollCalendarPickerOptionIntoView(calendarPickerMonthWheelRef, calendarPickerDraftMonth);
+    }, [calendarPickerDraftMonth, isCalendarPickerOpen]);
+
+    useEffect(() => {
+        if (loadingCalendar || calendarMeta === undefined || !hasSelectableCalendarMonths) {
+            closeCalendarPicker();
+        }
+    }, [calendarMeta, hasSelectableCalendarMonths, loadingCalendar]);
 
     const getFeedViewportBottom = () => {
         const viewport = feedViewportRef.current;
@@ -1661,7 +1930,120 @@ const TimelinePage = () => {
                                     >
                                         ‹
                                     </button>
-                                    <div className="timelineCalendarMonthLabel">{formatCalendarMonthLabel(currentCalendarMonth)}</div>
+                                    <div className="timelineCalendarMonthPickerAnchor" ref={calendarPickerAnchorRef}>
+                                        <span className="timelineCalendarMonthLabelSrOnly">
+                                            {formatCalendarMonthLabel(currentCalendarMonth)}
+                                        </span>
+                                        <div className="timelineCalendarMonthLabel">
+                                            <button
+                                                type="button"
+                                                className="timelineCalendarPickerTrigger"
+                                                aria-label="选择年份"
+                                                aria-expanded={isCalendarPickerOpen}
+                                                aria-haspopup="dialog"
+                                                disabled={!hasSelectableCalendarMonths}
+                                                onClick={() => openCalendarPicker("year")}
+                                            >
+                                                {hasSelectableCalendarMonths
+                                                    ? formatCalendarYearTriggerLabel(currentCalendarMonth.getFullYear())
+                                                    : formatFallbackCalendarYearTriggerLabel(calendarMeta)}
+                                            </button>
+                                            <span className="timelineCalendarMonthLabelDivider" aria-hidden="true">/</span>
+                                            <button
+                                                type="button"
+                                                className="timelineCalendarPickerTrigger"
+                                                aria-label="选择月份"
+                                                aria-expanded={isCalendarPickerOpen}
+                                                aria-haspopup="dialog"
+                                                disabled={!hasSelectableCalendarMonths}
+                                                onClick={() => openCalendarPicker("month")}
+                                            >
+                                                {hasSelectableCalendarMonths
+                                                    ? formatCalendarMonthTriggerLabel(currentCalendarMonth.getMonth() + 1)
+                                                    : formatFallbackCalendarMonthTriggerLabel(calendarMeta)}
+                                            </button>
+                                        </div>
+                                        {isCalendarPickerOpen && (
+                                            <div className="timelineCalendarPicker" data-testid="timeline-calendar-picker">
+                                                <div className="timelineCalendarPickerColumns">
+                                                    <div
+                                                        className={`timelineCalendarPickerColumn${calendarPickerActiveColumn === "year" ? " timelineCalendarPickerColumnActive" : ""}`}
+                                                    >
+                                                        <div className="timelineCalendarPickerColumnLabel">年份</div>
+                                                        <div
+                                                            ref={calendarPickerYearWheelRef}
+                                                            className="timelineCalendarPickerWheel"
+                                                            data-testid="timeline-calendar-year-wheel"
+                                                            tabIndex={0}
+                                                            onWheel={(event) => {
+                                                                event.preventDefault();
+                                                                handleCalendarPickerWheel("year", event.deltaY);
+                                                            }}
+                                                        >
+                                                            <div className="timelineCalendarPickerWheelSpacer" aria-hidden="true" />
+                                                            {availableCalendarYears.map((year) => (
+                                                                <button
+                                                                    key={year}
+                                                                    type="button"
+                                                                    data-picker-value={year}
+                                                                    className={`timelineCalendarPickerOption${calendarPickerDraftYear === year ? " timelineCalendarPickerOptionActive" : ""}`}
+                                                                    onClick={() => handleCalendarPickerYearDraftChange(year)}
+                                                                >
+                                                                    {formatCalendarYearTriggerLabel(year)}
+                                                                </button>
+                                                            ))}
+                                                            <div className="timelineCalendarPickerWheelSpacer" aria-hidden="true" />
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`timelineCalendarPickerColumn${calendarPickerActiveColumn === "month" ? " timelineCalendarPickerColumnActive" : ""}`}
+                                                    >
+                                                        <div className="timelineCalendarPickerColumnLabel">月份</div>
+                                                        <div
+                                                            ref={calendarPickerMonthWheelRef}
+                                                            className="timelineCalendarPickerWheel"
+                                                            data-testid="timeline-calendar-month-wheel"
+                                                            tabIndex={0}
+                                                            onWheel={(event) => {
+                                                                event.preventDefault();
+                                                                handleCalendarPickerWheel("month", event.deltaY);
+                                                            }}
+                                                        >
+                                                            <div className="timelineCalendarPickerWheelSpacer" aria-hidden="true" />
+                                                            {availableCalendarMonthsForDraftYear.map((month) => (
+                                                                <button
+                                                                    key={month}
+                                                                    type="button"
+                                                                    data-picker-value={month}
+                                                                    className={`timelineCalendarPickerOption${calendarPickerDraftMonth === month ? " timelineCalendarPickerOptionActive" : ""}`}
+                                                                    onClick={() => handleCalendarPickerMonthDraftChange(month)}
+                                                                >
+                                                                    {formatCalendarMonthTriggerLabel(month)}
+                                                                </button>
+                                                            ))}
+                                                            <div className="timelineCalendarPickerWheelSpacer" aria-hidden="true" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="timelineCalendarPickerActions">
+                                                    <button
+                                                        type="button"
+                                                        className="timelineCalendarPickerActionButton"
+                                                        onClick={closeCalendarPicker}
+                                                    >
+                                                        取消
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="timelineCalendarPickerActionButton"
+                                                        onClick={applyCalendarPickerSelection}
+                                                    >
+                                                        确定
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                     <button
                                         type="button"
                                         className="timelineCalendarNavButton"
@@ -1805,12 +2187,26 @@ const TimelinePage = () => {
                     gap: 12px;
                 }
 
+                .timelineCalendarMonthPickerAnchor {
+                    position: relative;
+                    display: flex;
+                    flex: 1;
+                    justify-content: center;
+                }
+
                 .timelineCalendarMonthLabel {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    min-height: 34px;
                     font-size: 16px;
                     font-weight: 700;
                     text-align: center;
                     color: #1f2328;
                 }
+
+
 
                 .timelineCalendarNavButton {
                     display: inline-flex;
