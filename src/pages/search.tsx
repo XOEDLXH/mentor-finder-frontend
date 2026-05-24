@@ -251,6 +251,9 @@ const SearchScreen = () => {
     const [privateMentorMsg, setPrivateMentorMsg] = useState("");
     const [customMentorChineseName, setCustomMentorChineseName] = useState("");
     const [customMentorEnglishName, setCustomMentorEnglishName] = useState("");
+    const [customMentorResearchDirection, setCustomMentorResearchDirection] = useState("");
+    const [customMentorEmail, setCustomMentorEmail] = useState("");
+    const [customMentorProfile, setCustomMentorProfile] = useState("");
     const [showSearchLogicHelp, setShowSearchLogicHelp] = useState(false);
 
     const [mentorEditingId, setMentorEditingId] = useState<number | undefined>(undefined);
@@ -903,6 +906,9 @@ const SearchScreen = () => {
     const addPrivateMentorInSearch = useCallback(async () => {
         const chineseName = customMentorChineseName.trim();
         const englishName = customMentorEnglishName.trim();
+        const researchDirection = customMentorResearchDirection.trim();
+        const email = customMentorEmail.trim();
+        const profile = customMentorProfile.trim();
 
         if (chineseName === "" && englishName === "") {
             setPrivateMentorMsg("中文名和英文名至少填写一个");
@@ -921,9 +927,15 @@ const SearchScreen = () => {
             await request("/api/dataset/mentors/custom", "POST", true, {
                 Chinese_name: chineseName,
                 English_name: englishName,
+                research_direction: researchDirection,
+                email,
+                profile,
             });
             setCustomMentorChineseName("");
             setCustomMentorEnglishName("");
+            setCustomMentorResearchDirection("");
+            setCustomMentorEmail("");
+            setCustomMentorProfile("");
             await fetchMyPrivateMentors();
             await refreshCurrentSearch(resolveSearchState({ page: 1 }));
             setPrivateMentorMsg("私有导师添加成功");
@@ -948,7 +960,7 @@ const SearchScreen = () => {
         finally {
             setPrivateMentorSaving(false);
         }
-    }, [customMentorChineseName, customMentorEnglishName, fetchMyPrivateMentors, privateMentors.length, refreshCurrentSearch, resolveSearchState]);
+    }, [customMentorChineseName, customMentorEnglishName, customMentorResearchDirection, customMentorEmail, customMentorProfile, fetchMyPrivateMentors, privateMentors.length, refreshCurrentSearch, resolveSearchState]);
 
     useEffect(() => {
         if (!router.isReady) {
@@ -2022,6 +2034,28 @@ const SearchScreen = () => {
                                     style={{ flex: 1 }}
                                 />
                             </div>
+                            <input
+                                type="text"
+                                placeholder="研究方向（可选）"
+                                value={customMentorResearchDirection}
+                                onChange={(e) => setCustomMentorResearchDirection(e.target.value)}
+                                disabled={privateMentorSaving}
+                            />
+                            <input
+                                type="email"
+                                placeholder="导师邮箱（可选）"
+                                value={customMentorEmail}
+                                onChange={(e) => setCustomMentorEmail(e.target.value)}
+                                disabled={privateMentorSaving}
+                            />
+                            <textarea
+                                placeholder="导师画像（可选）"
+                                value={customMentorProfile}
+                                onChange={(e) => setCustomMentorProfile(e.target.value)}
+                                disabled={privateMentorSaving}
+                                rows={3}
+                                style={{ resize: "vertical", fontFamily: "inherit", fontSize: "inherit" }}
+                            />
                             <div style={{ display: "flex", gap: 8 }}>
                                 <button
                                     onClick={() => void addPrivateMentorInSearch()}
