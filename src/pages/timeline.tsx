@@ -828,7 +828,7 @@ const TimelinePage = () => {
         }
 
         const option = wheel.querySelector<HTMLElement>(`[data-picker-value="${value}"]`);
-        if (option === null) {
+        if (!option) {
             return;
         }
 
@@ -1930,7 +1930,12 @@ const TimelinePage = () => {
                                     >
                                         ‹
                                     </button>
-                                    <div className="timelineCalendarMonthPickerAnchor" ref={calendarPickerAnchorRef}>
+                                    <div
+                                        className="timelineCalendarMonthPickerAnchor"
+                                        ref={(element) => {
+                                            calendarPickerAnchorRef.current = element ?? undefined;
+                                        }}
+                                    >
                                         <span className="timelineCalendarMonthLabelSrOnly">
                                             {formatCalendarMonthLabel(currentCalendarMonth)}
                                         </span>
@@ -1971,7 +1976,9 @@ const TimelinePage = () => {
                                                     >
                                                         <div className="timelineCalendarPickerColumnLabel">年份</div>
                                                         <div
-                                                            ref={calendarPickerYearWheelRef}
+                                                            ref={(element) => {
+                                                                calendarPickerYearWheelRef.current = element ?? undefined;
+                                                            }}
                                                             className="timelineCalendarPickerWheel"
                                                             data-testid="timeline-calendar-year-wheel"
                                                             tabIndex={0}
@@ -2000,7 +2007,9 @@ const TimelinePage = () => {
                                                     >
                                                         <div className="timelineCalendarPickerColumnLabel">月份</div>
                                                         <div
-                                                            ref={calendarPickerMonthWheelRef}
+                                                            ref={(element) => {
+                                                                calendarPickerMonthWheelRef.current = element ?? undefined;
+                                                            }}
                                                             className="timelineCalendarPickerWheel"
                                                             data-testid="timeline-calendar-month-wheel"
                                                             tabIndex={0}
