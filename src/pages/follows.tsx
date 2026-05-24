@@ -419,7 +419,16 @@ const FollowsPage = () => {
         return (
             <div className="followsPage">
                 <div className="pageHeader">
-                    <h2 className="pageTitle">{activeView === "following" ? "我的关注" : "我的粉丝"}</h2>
+                    <div className="pageTitleGroup">
+                        <h2 className="pageTitle">{activeView === "following" ? "我的关注" : "我的粉丝"}</h2>
+                        <button
+                            type="button"
+                            className="addPrivateMentorButton"
+                            onClick={() => router.push("/private-mentor")}
+                        >
+                            添加个人导师
+                        </button>
+                    </div>
                     <div className="viewSwitchGroup" role="group" aria-label="关注页面切换">
                         <div className="viewSwitch">
                             <span
@@ -754,6 +763,34 @@ const FollowsPage = () => {
 
                 .pageTitle {
                     margin: 0;
+                }
+
+                .pageTitleGroup {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+
+                .addPrivateMentorButton {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 36px;
+                    padding: 0 14px;
+                    border: 1px solid #d0d7de;
+                    border-radius: 12px;
+                    background: rgba(246, 248, 250, 0.96);
+                    color: rgb(37, 41, 46);
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+                }
+
+                .addPrivateMentorButton:hover {
+                    background: rgb(8, 109, 177);
+                    border-color: rgb(8, 109, 177);
+                    color: #ffffff;
                 }
 
                 .viewSwitchGroup {
