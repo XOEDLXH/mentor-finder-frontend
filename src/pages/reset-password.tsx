@@ -2,7 +2,6 @@ import { FormEvent, RefCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import {
     FAILURE_PREFIX,
-    REGISTER_CODE_BYPASS_HINT,
     REGISTER_CODE_COOLDOWN,
     REGISTER_CODE_INVALID,
     REGISTER_CODE_REQUIRED,
@@ -19,11 +18,7 @@ import {
 } from "../constants/string";
 
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
-const VERIFICATION_BYPASS_PREFIX = "bypass";
 const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
-
-const isBypassEmail = (emailToCheck: string) =>
-    emailToCheck.trim().toLowerCase().startsWith(VERIFICATION_BYPASS_PREFIX);
 
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
@@ -173,11 +168,6 @@ const ResetPasswordScreen = () => {
             .then((res) => {
                 const code = Number(res.code);
                 if (code === 0) {
-                    if (res.bypass === true) {
-                        setCodeStatusMessage(REGISTER_CODE_BYPASS_HINT);
-                        setCodeSentForEmail(trimmedEmail);
-                        return;
-                    }
                     const cooldownSeconds = typeof res.cooldownSeconds === "number"
                         ? res.cooldownSeconds
                         : DEFAULT_RESEND_COOLDOWN_SECONDS;
@@ -216,8 +206,7 @@ const ResetPasswordScreen = () => {
             return;
         }
 
-        const bypassMode = isBypassEmail(trimmedEmail);
-        if (!bypassMode && verificationCode.trim() === "") {
+        if (verificationCode.trim() === "") {
             setVerificationCodeError(REGISTER_CODE_REQUIRED);
             verificationCodeInputRef.current?.focus();
             return;
@@ -242,7 +231,7 @@ const ResetPasswordScreen = () => {
             body: JSON.stringify({
                 email: trimmedEmail,
                 password,
-                verificationCode: bypassMode ? "" : verificationCode.trim(),
+                verificationCode: verificationCode.trim(),
             }),
         })
             .then((res) => parseJsonSafely(res))
@@ -316,7 +305,6 @@ const ResetPasswordScreen = () => {
                                 sendingCode
                                 || resendCooldown > 0
                                 || email.trim() === ""
-                                || isBypassEmail(email)
                             }
                             aria-label="Send verification code"
                         >
@@ -342,7 +330,7 @@ const ResetPasswordScreen = () => {
                         inputMode="numeric"
                         autoComplete="one-time-code"
                         maxLength={6}
-                        placeholder={isBypassEmail(email) ? "Not required for bypass email" : "Enter the 6-digit code"}
+                        placeholder="Enter the 6-digit code"
                         value={verificationCode}
                         onChange={(e) => {
                             setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6));
@@ -350,7 +338,6 @@ const ResetPasswordScreen = () => {
                                 setVerificationCodeError("");
                             }
                         }}
-                        disabled={isBypassEmail(email)}
                     />
                 </label>
                 {codeStatusMessage !== "" && (

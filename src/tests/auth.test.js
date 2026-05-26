@@ -394,7 +394,7 @@ describe("ResetPasswordScreen", () => {
 
     it("requests a password reset verification code for an existing email", async () => {
         globalThis.fetch.mockResolvedValue({
-            json: jest.fn().mockResolvedValue({ code: 0, bypass: false, cooldownSeconds: 60 }),
+            json: jest.fn().mockResolvedValue({ code: 0, cooldownSeconds: 60 }),
         });
 
         render(<ResetPasswordScreen />);
@@ -502,7 +502,7 @@ describe("RegisterScreen", () => {
         const emailInput = screen.getByPlaceholderText("Email");
         const passwordInput = screen.getByPlaceholderText("Password");
 
-        fireEvent.change(emailInput, { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(emailInput, { target: { value: "alice@example.com" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         expect(passwordInput).toHaveFocus();
@@ -512,7 +512,7 @@ describe("RegisterScreen", () => {
     it("focuses confirm password when password is filled but confirmation is missing", () => {
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
@@ -523,7 +523,7 @@ describe("RegisterScreen", () => {
     it("focuses username when other fields are valid but username is missing", () => {
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
@@ -590,10 +590,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: " alice " } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
 
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
@@ -609,8 +610,8 @@ describe("RegisterScreen", () => {
             body: JSON.stringify({
                 username: "alice",
                 password: "abc12345",
-                email: "bypass-alice@example.com",
-                verificationCode: "",
+                email: "alice@example.com",
+                verificationCode: "123456",
             }),
         });
 
@@ -630,10 +631,11 @@ describe("RegisterScreen", () => {
 
         const { container } = render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.submit(container.querySelector(".registerAuthFormWrap form"));
 
         await waitFor(() => {
@@ -645,8 +647,8 @@ describe("RegisterScreen", () => {
                 body: JSON.stringify({
                     username: "alice",
                     password: "abc12345",
-                    email: "bypass-alice@example.com",
-                    verificationCode: "",
+                    email: "alice@example.com",
+                    verificationCode: "123456",
                 }),
             });
         });
@@ -662,10 +664,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -683,10 +686,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -701,10 +705,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -722,10 +727,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -743,10 +749,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -765,10 +772,11 @@ describe("RegisterScreen", () => {
 
         render(<RegisterScreen />);
 
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Username"), { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -793,9 +801,10 @@ describe("RegisterScreen", () => {
         expect(screen.getByText(REGISTER_USERNAME_INVALID)).toBeInTheDocument();
 
         fireEvent.change(usernameInput, { target: { value: "alice" } });
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -812,10 +821,11 @@ describe("RegisterScreen", () => {
         render(<RegisterScreen />);
 
         const usernameInput = screen.getByPlaceholderText("Username");
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-alice@example.com" } });
+        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
         fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "abc12345" } });
         fireEvent.change(screen.getByPlaceholderText("Confirm your password"), { target: { value: "abc12345" } });
         fireEvent.change(usernameInput, { target: { value: "alice" } });
+        fireEvent.change(screen.getByPlaceholderText("Enter the 6-digit code"), { target: { value: "123456" } });
         fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
         await waitFor(() => {
@@ -913,7 +923,7 @@ describe("RegisterScreen", () => {
 
     it("requests verification code from backend when send-code button is clicked", async () => {
         globalThis.fetch.mockResolvedValue({
-            json: jest.fn().mockResolvedValue({ code: 0, bypass: false, cooldownSeconds: 60 }),
+            json: jest.fn().mockResolvedValue({ code: 0, cooldownSeconds: 60 }),
         });
 
         render(<RegisterScreen />);
@@ -934,16 +944,7 @@ describe("RegisterScreen", () => {
         });
     });
 
-    it("disables verification code input and send-code button for bypass emails", () => {
-        render(<RegisterScreen />);
-
-        fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "bypass-tester@example.com" } });
-
-        expect(screen.getByPlaceholderText("Not required for bypass email")).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Send verification code" })).toBeDisabled();
-    });
-
-    it("blocks registration when verification code is missing on non-bypass email", async () => {
+    it("blocks registration when verification code is missing", async () => {
         render(<RegisterScreen />);
 
         fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "newuser@example.com" } });
@@ -976,7 +977,7 @@ describe("RegisterScreen", () => {
         expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it("includes the verification code in the register body for non-bypass emails", async () => {
+    it("includes the verification code in the register body", async () => {
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
         });
@@ -1006,7 +1007,7 @@ describe("RegisterScreen", () => {
 
     it("disables send-code button and shows resend countdown after successful send", async () => {
         globalThis.fetch.mockResolvedValue({
-            json: jest.fn().mockResolvedValue({ code: 0, bypass: false, cooldownSeconds: 60 }),
+            json: jest.fn().mockResolvedValue({ code: 0, cooldownSeconds: 60 }),
         });
 
         render(<RegisterScreen />);
