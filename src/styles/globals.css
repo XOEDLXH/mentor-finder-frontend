@@ -512,6 +512,25 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   text-align: center;
 }
 
+.homeWeeklyPaperMeta {
+  margin-top: 4px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.homeWeeklyPaperAuthors {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.homeWeeklyPaperDate {
+  margin-top: 2px;
+}
+
 .homeWeeklyPaperCarouselShell {
   display: flex;
   flex-direction: column;

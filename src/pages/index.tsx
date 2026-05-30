@@ -189,8 +189,13 @@ const WeeklyPushPaperList = ({
                                         <LatexText text={paper.title} forceInlineMath />
                                     )}
                                 </div>
-                                <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-                                    作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"}
+                                <div className="homeWeeklyPaperMeta">
+                                    <div className="homeWeeklyPaperAuthors">
+                                        作者：{paper.authorNames || "未知"}
+                                    </div>
+                                    <div className="homeWeeklyPaperDate">
+                                        {paper.publishDate || "未知日期"}
+                                    </div>
                                 </div>
                                 {showMentorNames && paper.mentorNames && paper.mentorNames.length > 0 && (
                                     <div style={{ fontSize: 13, color: "#0f5c4d", marginTop: 4 }}>
