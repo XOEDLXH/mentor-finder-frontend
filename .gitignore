@@ -1,4 +1,5 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Keep generated artifacts and machine-local files out of version control.
 
 # dependencies
 /node_modules

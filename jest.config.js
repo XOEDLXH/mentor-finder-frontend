@@ -1,4 +1,4 @@
-// Jest.config.js
+// Load Next.js-aware Jest defaults so env files and framework transforms match app runtime.
 const nextJest = require("next/jest");
 
 const createJestConfig = nextJest({
@@ -6,7 +6,7 @@ const createJestConfig = nextJest({
     dir: "./"
 });
 
-// Jest.config.js
+// Keep project-specific test behavior separate from the Next.js preset above.
 const customConfig = {
     // Automatically clear mock calls and instances between every test
     "clearMocks": true,

@@ -1,6 +1,7 @@
 // Jest.setup.js
 import "@testing-library/jest-dom";
 
+// Mock IntersectionObserver so scroll-driven components can be tested in jsdom.
 class MockIntersectionObserver {
     constructor(callback) {
         this.callback = callback;
@@ -51,6 +52,7 @@ Object.defineProperty(global, "IntersectionObserver", {
 
 global.__mockIntersectionObserver = MockIntersectionObserver;
 
+// jsdom does not implement these browser scrolling APIs, so tests stub them with no-ops.
 if (typeof window.scrollBy !== "function") {
     window.scrollBy = () => {};
 }
