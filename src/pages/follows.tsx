@@ -466,27 +466,51 @@ const FollowsPage = () => {
             {activeView === "following" ? (
             <div className="content">
                 <aside className="sidebar" aria-label="关注筛选">
-                    <button
-                        className={activeCategory === "mentor" ? "filterButton filterButtonActive" : "filterButton"}
-                        type="button"
-                        onClick={() => setActiveCategory("mentor")}
-                    >
-                        导师（{mentors.filter((mentor) => mentor.followed).length}）
-                    </button>
-                    <button
-                        className={activeCategory === "user" ? "filterButton filterButtonActive" : "filterButton"}
-                        type="button"
-                        onClick={() => setActiveCategory("user")}
-                    >
-                        用户（{users.filter((user) => user.followed).length}）
-                    </button>
-                    <button
-                        className={activeCategory === "subject" ? "filterButton filterButtonActive" : "filterButton"}
-                        type="button"
-                        onClick={() => setActiveCategory("subject")}
-                    >
-                        板块（{subjects.length}）
-                    </button>
+                    <div className="categorySwitchGroup" role="group" aria-label="关注类型切换">
+                        <div className="categorySwitch">
+                            <span
+                                className={[
+                                    "categorySwitchThumb",
+                                    activeCategory === "user" ? "categorySwitchThumbUser" : "",
+                                    activeCategory === "subject" ? "categorySwitchThumbSubject" : "",
+                                ].filter(Boolean).join(" ")}
+                                aria-hidden="true"
+                            />
+                            <button
+                                className={activeCategory === "mentor" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
+                                type="button"
+                                aria-pressed={activeCategory === "mentor"}
+                                onClick={() => setActiveCategory("mentor")}
+                            >
+                                <span className="categorySwitchButtonLabel">导师</span>
+                                <span className="categorySwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(mentors.filter((mentor) => mentor.followed).length)}
+                                </span>
+                            </button>
+                            <button
+                                className={activeCategory === "user" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
+                                type="button"
+                                aria-pressed={activeCategory === "user"}
+                                onClick={() => setActiveCategory("user")}
+                            >
+                                <span className="categorySwitchButtonLabel">用户</span>
+                                <span className="categorySwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(users.filter((user) => user.followed).length)}
+                                </span>
+                            </button>
+                            <button
+                                className={activeCategory === "subject" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
+                                type="button"
+                                aria-pressed={activeCategory === "subject"}
+                                onClick={() => setActiveCategory("subject")}
+                            >
+                                <span className="categorySwitchButtonLabel">板块</span>
+                                <span className="categorySwitchButtonCount" aria-hidden="true">
+                                    {formatViewSwitchCount(subjects.length)}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 </aside>
 
                 <main className="main">
@@ -807,6 +831,10 @@ const FollowsPage = () => {
                     min-width: 260px;
                 }
 
+                .categorySwitchGroup {
+                    width: 100%;
+                }
+
                 .viewSwitch {
                     position: relative;
                     display: grid;
@@ -899,28 +927,96 @@ const FollowsPage = () => {
                 }
 
                 .sidebar {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    border: 1px solid #ddd;
-                    border-radius: 8px;
-                    padding: 8px;
+                    min-width: 0;
                 }
 
-                .filterButton {
+                .categorySwitch {
+                    position: relative;
+                    display: grid;
+                    grid-template-rows: repeat(3, minmax(0, 1fr));
+                    gap: 0;
                     width: 100%;
-                    border: 1px solid #222;
-                    border-radius: 6px;
-                    background: #f7f7f7;
-                    padding: 10px 12px;
+                    padding: 2px;
+                    border: 1px solid #d0d7de;
+                    border-radius: 16px;
+                    background: rgba(246, 248, 250, 0.96);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 1px 2px rgba(15, 23, 42, 0.04);
+                    overflow: hidden;
+                }
+
+                .categorySwitchThumb {
+                    position: absolute;
+                    top: 2px;
+                    left: 2px;
+                    right: 2px;
+                    height: calc((100% - 4px) / 3);
+                    border-radius: 14px;
+                    background: rgb(8, 109, 177);
+                    border: 1px solid rgb(8, 109, 177);
+                    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+                    transform: translateY(0);
+                    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+                    will-change: transform;
+                }
+
+                .categorySwitchThumbUser {
+                    transform: translateY(100%);
+                }
+
+                .categorySwitchThumbSubject {
+                    transform: translateY(200%);
+                }
+
+                .categorySwitchButton {
+                    position: relative;
+                    z-index: 1;
+                    display: inline-flex;
+                    min-height: 54px;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                    border: 0;
+                    border-radius: 14px;
+                    background: transparent;
+                    box-shadow: none;
+                    color: #59636e;
+                    padding: 0 16px;
+                    font-size: 16px;
                     font-weight: 600;
+                    appearance: none;
+                    -webkit-appearance: none;
+                    transition: color 180ms ease;
                     text-align: left;
                 }
 
-                .filterButtonActive {
-                    border-color: #0969da;
-                    background: #eef6ff;
-                    color: #0969da;
+                .categorySwitchButtonLabel,
+                .categorySwitchButtonCount {
+                    color: inherit;
+                }
+
+                .categorySwitchButtonCount {
+                    display: inline-flex;
+                    min-width: 4ch;
+                    justify-content: flex-end;
+                    font-size: 14px;
+                    font-weight: 700;
+                    font-variant-numeric: tabular-nums;
+                }
+
+                .categorySwitchButtonActive {
+                    font-weight: 700;
+                    color: #fff;
+                }
+
+                .categorySwitchButton:hover,
+                .categorySwitchButton:focus-visible {
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .categorySwitchButton:focus-visible {
+                    outline: 2px solid rgba(8, 109, 177, 0.35);
+                    outline-offset: 2px;
                 }
 
                 .main {
