@@ -27,6 +27,7 @@ const Pagination = ({
 }: PaginationProps) => {
     const [jumpInput, setJumpInput] = useState("");
 
+    // Treat empty datasets as a single virtual page so the controls stay in a stable shape.
     const safeTotal = Math.max(totalPages, 1);
     const controlStyle = controlHeight === undefined
         ? undefined
@@ -50,6 +51,7 @@ const Pagination = ({
 
     const pageNumbers = useMemo(() => {
         const pages: number[] = [];
+        // Keep the visible page window compact and centered around the current page when possible.
         const windowSize = Math.min(5, safeTotal);
         const halfWindow = Math.floor(windowSize / 2);
         const start = Math.max(1, Math.min(currentPage - halfWindow, safeTotal - windowSize + 1));
@@ -61,6 +63,7 @@ const Pagination = ({
     }, [currentPage, safeTotal]);
 
     const handleJump = () => {
+        // Ignore invalid input instead of forcing a page change or showing an alert.
         const num = Number(jumpInput);
         if (Number.isFinite(num) && num >= 1 && num <= safeTotal) {
             onPageChange(num);
@@ -108,6 +111,7 @@ const Pagination = ({
                 <button
                     key={num}
                     onClick={() => {
+                        // Avoid redundant fetches when the current page button is pressed again.
                         if (num !== currentPage) {
                             onPageChange(num);
                         }
