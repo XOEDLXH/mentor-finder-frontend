@@ -57,7 +57,6 @@ describe("follow confirmation", () => {
         subject: "cs.AI",
         subjectName: "人工智能",
         paperCount: 2,
-        recentPapers: [],
     };
     // Fixture representing an available subject that is not yet followed.
     const availableSubject = {
@@ -140,7 +139,8 @@ describe("follow confirmation", () => {
         await screen.findByRole("heading", { name: "张三" });
         expect(request).toHaveBeenCalledWith("/api/follow/mentors", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
-        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/available", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/followed", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
     });
 
@@ -171,7 +171,8 @@ describe("follow confirmation", () => {
 
         expect(await screen.findByTestId("follow-user-skeleton")).toBeInTheDocument();
         expect(request).toHaveBeenCalledWith("/api/follow/users", "GET", true);
-        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/available", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/followed", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
 
         await act(async () => {
@@ -184,19 +185,25 @@ describe("follow confirmation", () => {
         expect(screen.queryByTestId("follow-user-skeleton")).not.toBeInTheDocument();
     });
 
-    it("lazy loads followed subjects with a skeleton when the subject tab is first opened", async () => {
-        // Tests the lazy-loading module for the followed-subjects tab.
-        // This verifies the same behavior as the user tab, but for subject
-        // subscriptions and their corresponding skeleton placeholder.
+    it("lazy loads subject sections independently when the subject tab is first opened", async () => {
+        // Tests the split subject-loading module.
+        // The discoverable subject list and the followed-subject summaries
+        // should load in parallel with separate skeletons so one can render
+        // without waiting for the other.
         jest.useFakeTimers();
-        const subjectDeferred = createDeferred();
+        const availableDeferred = createDeferred();
+        const followedDeferred = createDeferred();
         request.mockImplementation((url) => {
             if (url === "/api/follow/mentors") {
                 return Promise.resolve({ mentors: [mentor] });
             }
 
-            if (url === "/api/follow/subjects") {
-                return subjectDeferred.promise;
+            if (url === "/api/follow/subjects/available") {
+                return availableDeferred.promise;
+            }
+
+            if (url === "/api/follow/subjects/followed") {
+                return followedDeferred.promise;
             }
 
             return Promise.resolve({});
@@ -208,22 +215,83 @@ describe("follow confirmation", () => {
         await screen.findByRole("heading", { name: "张三" });
         fireEvent.click(screen.getByRole("button", { name: "板块（0）" }));
 
-        expect(await screen.findByTestId("follow-subject-skeleton")).toBeInTheDocument();
-        expect(request).toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(await screen.findByTestId("follow-subject-search-skeleton")).toBeInTheDocument();
+        expect(await screen.findByTestId("follow-followed-subject-skeleton")).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/subjects/available", "GET", true);
+        expect(request).toHaveBeenCalledWith("/api/follow/subjects/followed", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
 
         await act(async () => {
-            subjectDeferred.resolve({
+            followedDeferred.resolve({
                 subjects: [followedSubject],
+            });
+        });
+
+        await finishFollowSkeleton();
+        await screen.findByRole("heading", { name: "人工智能" });
+        expect(screen.getByTestId("follow-subject-search-skeleton")).toBeInTheDocument();
+        expect(screen.queryByTestId("follow-followed-subject-skeleton")).not.toBeInTheDocument();
+
+        await act(async () => {
+            availableDeferred.resolve({
                 availableSubjects: [availableSubject],
             });
         });
 
-        expect(screen.getByTestId("follow-subject-skeleton")).toBeInTheDocument();
         await finishFollowSkeleton();
+        await screen.findByText("机器学习");
+        expect(screen.queryByTestId("follow-subject-search-skeleton")).not.toBeInTheDocument();
+    });
+
+    it("loads followed-subject papers only after the user expands one subject", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/mentors") {
+                return { mentors: [mentor] };
+            }
+
+            if (url === "/api/follow/subjects/available") {
+                return { availableSubjects: [availableSubject] };
+            }
+
+            if (url === "/api/follow/subjects/followed") {
+                return { subjects: [followedSubject] };
+            }
+
+            if (url === "/api/follow/subjects/cs.AI/papers") {
+                return {
+                    subject: "cs.AI",
+                    recentPapers: [
+                        {
+                            id: 101,
+                            title: "New AI paper",
+                            author_names: "Author A",
+                            publish_date: "2026-05-01",
+                            arxiv_url: "https://arxiv.org/abs/2501.00001",
+                            abstract: "abstract",
+                        },
+                    ],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "板块（0）" }));
         await screen.findByRole("heading", { name: "人工智能" });
-        expect(screen.queryByTestId("follow-subject-skeleton")).not.toBeInTheDocument();
+
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/cs.AI/papers", "GET", true);
+
+        fireEvent.click(screen.getByRole("button", { name: "展开论文" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith("/api/follow/subjects/cs.AI/papers", "GET", true);
+        });
+        await screen.findByText("New AI paper");
+        expect(screen.getByText("Author A")).toBeInTheDocument();
     });
 
     it("lazy loads followers with a skeleton when the fans view is first opened", async () => {
@@ -254,7 +322,8 @@ describe("follow confirmation", () => {
         expect(await screen.findByTestId("follow-follower-skeleton")).toBeInTheDocument();
         expect(request).toHaveBeenCalledWith("/api/follow/followers", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
-        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/available", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/followed", "GET", true);
 
         await act(async () => {
             followerDeferred.resolve({ users: [follower] });
