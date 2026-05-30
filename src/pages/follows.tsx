@@ -631,7 +631,7 @@ const FollowsPage = () => {
                                             disabled={actionSubject === subject.subject}
                                             onClick={() => void toggleSubjectFollow(subject.subject, false)}
                                         >
-                                            <span>{subject.subjectName || subject.subject}</span>
+                                            <span className="subjectChipLabel">{subject.subjectName || subject.subject}</span>
                                             <small>{subject.paperCount} 篇</small>
                                         </button>
                                     ))}
@@ -1019,17 +1019,18 @@ const FollowsPage = () => {
                     display: grid;
                     grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
                     gap: 8px;
-                    max-width: 960px;
+                    width: 100%;
                     max-height: 360px;
                     overflow: auto;
                     padding-right: 8px;
+                    box-sizing: border-box;
                 }
 
                 :global(.subjectChip) {
-                    display: flex;
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) auto;
                     min-height: 54px;
                     align-items: center;
-                    justify-content: space-between;
                     gap: 8px;
                     border: 1px solid #d0d7de;
                     border-radius: 8px;
@@ -1037,13 +1038,22 @@ const FollowsPage = () => {
                     padding: 10px 12px;
                     color: #1f2328;
                     font-weight: 700;
+                    text-align: left;
+                }
+
+                :global(.subjectChipLabel) {
+                    min-width: 0;
+                    overflow-wrap: anywhere;
+                    line-height: 1.35;
                 }
 
                 :global(.subjectChip small) {
+                    flex: 0 0 auto;
                     color: #57606a;
                     font-size: 12px;
                     font-weight: 600;
                     white-space: nowrap;
+                    align-self: center;
                 }
 
                 :global(.subjectChip:hover:not(:disabled)),
