@@ -7,6 +7,7 @@ import { RootState } from "../redux/store";
 import { request } from "../utils/network";
 import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
 import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 
 interface NavItem {
     label: string;
@@ -238,6 +239,7 @@ const TopNav = () => {
                             className="topNavSearch"
                             placeholder="Search or jump to..."
                             aria-label="Search or jump to"
+                            maxLength={INPUT_LIMITS.KEYWORD}
                             value={searchKeyword}
                             onChange={(event) => setSearchKeyword(event.target.value)}
                             onKeyDown={handleSearchKeyDown}

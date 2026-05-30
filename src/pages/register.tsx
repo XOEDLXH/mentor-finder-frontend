@@ -15,6 +15,7 @@ import {
     REGISTER_USERNAME_TAKEN,
     REGISTER_USERNAME_INVALID,
 } from "../constants/string";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
@@ -510,6 +511,7 @@ const RegisterScreen = () => {
                                     inputMode="email"
                                     autoComplete="email"
                                     placeholder="Email"
+                                    maxLength={INPUT_LIMITS.EMAIL}
                                     value={email}
                                     onChange={(e) => {
                                         setEmail(e.target.value);
@@ -575,6 +577,7 @@ const RegisterScreen = () => {
                                 ref={bindPasswordInputRef}
                                 type="password"
                                 placeholder="Password"
+                                maxLength={INPUT_LIMITS.PASSWORD}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 onBlur={() => setPasswordBlurred(true)}
@@ -593,6 +596,7 @@ const RegisterScreen = () => {
                                 ref={bindConfirmPasswordInputRef}
                                 type="password"
                                 placeholder="Confirm your password"
+                                maxLength={INPUT_LIMITS.PASSWORD}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 onBlur={() => setConfirmPasswordBlurred(true)}
@@ -608,6 +612,7 @@ const RegisterScreen = () => {
                                 ref={bindUserNameInputRef}
                                 type="text"
                                 placeholder="Username"
+                                maxLength={INPUT_LIMITS.USERNAME}
                                 value={userName}
                                 onChange={(e) => {
                                     setUserName(e.target.value);

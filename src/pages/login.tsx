@@ -1,5 +1,6 @@
 import { FormEvent, RefCallback, useRef, useState } from "react";
 import { LOGIN_FAILED } from "../constants/string";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
@@ -133,6 +134,7 @@ const LoginScreen = () => {
                         ref={bindUserNameInputRef}
                         type="text"
                         placeholder="Username or email address"
+                        maxLength={INPUT_LIMITS.EMAIL}
                         value={userName}
                         onChange={(e) => setUserName(e.target.value)}
                     />
@@ -159,6 +161,7 @@ const LoginScreen = () => {
                         ref={bindPasswordInputRef}
                         type="password"
                         placeholder="Password"
+                        maxLength={INPUT_LIMITS.PASSWORD}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />

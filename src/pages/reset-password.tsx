@@ -15,6 +15,7 @@ import {
     RESET_PASSWORD_FAILED,
     RESET_PASSWORD_SUCCESS,
 } from "../constants/string";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { describeRequestError } from "../utils/errorMessage";
 
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
@@ -306,6 +307,7 @@ const ResetPasswordScreen = () => {
                             inputMode="email"
                             autoComplete="email"
                             placeholder="Email"
+                            maxLength={INPUT_LIMITS.EMAIL}
                             value={email}
                             onChange={(e) => {
                                 setEmail(e.target.value);
@@ -371,6 +373,7 @@ const ResetPasswordScreen = () => {
                         ref={bindPasswordInputRef}
                         type="password"
                         placeholder="New password"
+                        maxLength={INPUT_LIMITS.PASSWORD}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         onBlur={() => setPasswordBlurred(true)}
@@ -389,6 +392,7 @@ const ResetPasswordScreen = () => {
                         ref={bindConfirmPasswordInputRef}
                         type="password"
                         placeholder="Confirm new password"
+                        maxLength={INPUT_LIMITS.PASSWORD}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         onBlur={() => setConfirmPasswordBlurred(true)}

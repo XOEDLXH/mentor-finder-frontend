@@ -9,6 +9,7 @@ import Pagination from "../components/Pagination";
 import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { RootState } from "../redux/store";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import {
     buildSearchUrl,
     DEFAULT_SEARCH_QUERY_STATE,
@@ -2165,6 +2166,7 @@ const SearchScreen = () => {
                 <input
                     type="text"
                     value={keyword}
+                    maxLength={INPUT_LIMITS.KEYWORD}
                     placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
                     onChange={(e) => setKeyword(e.target.value)}
                     onKeyDown={handleEnter}
@@ -2231,30 +2233,35 @@ const SearchScreen = () => {
                             <input
                                 type="text"
                                 placeholder="导师中文名"
+                                maxLength={INPUT_LIMITS.NAME}
                                 value={mentorDraft.Chinese_name}
                                 onChange={(e) => setMentorDraft((prev) => ({ ...prev, Chinese_name: e.target.value }))}
                             />
                             <input
                                 type="text"
                                 placeholder="导师英文名（可选）"
+                                maxLength={INPUT_LIMITS.NAME}
                                 value={mentorDraft.English_name}
                                 onChange={(e) => setMentorDraft((prev) => ({ ...prev, English_name: e.target.value }))}
                             />
                             <input
                                 type="text"
                                 placeholder="研究方向"
+                                maxLength={INPUT_LIMITS.RESEARCH_DIRECTION}
                                 value={mentorDraft.research_direction}
                                 onChange={(e) => setMentorDraft((prev) => ({ ...prev, research_direction: e.target.value }))}
                             />
                             <input
                                 type="text"
                                 placeholder="邮箱（可选）"
+                                maxLength={INPUT_LIMITS.EMAIL}
                                 value={mentorDraft.email}
                                 onChange={(e) => setMentorDraft((prev) => ({ ...prev, email: e.target.value }))}
                             />
                             <input
                                 type="text"
                                 placeholder="导师画像（可选）"
+                                maxLength={INPUT_LIMITS.MENTOR_PROFILE}
                                 value={mentorDraft.profile}
                                 onChange={(e) => setMentorDraft((prev) => ({ ...prev, profile: e.target.value }))}
                             />
@@ -2286,6 +2293,7 @@ const SearchScreen = () => {
                             <input
                                 type="text"
                                 placeholder="论文标题"
+                                maxLength={INPUT_LIMITS.PAPER_TITLE}
                                 value={paperDraft.title}
                                 onChange={(e) => setPaperDraft((prev) => ({ ...prev, title: e.target.value }))}
                             />
@@ -2297,11 +2305,13 @@ const SearchScreen = () => {
                             <input
                                 type="text"
                                 placeholder="作者名单（逗号分隔）"
+                                maxLength={INPUT_LIMITS.AUTHOR_NAMES}
                                 value={paperDraft.author_names}
                                 onChange={(e) => setPaperDraft((prev) => ({ ...prev, author_names: e.target.value }))}
                             />
                             <textarea
                                 placeholder="摘要（可选）"
+                                maxLength={INPUT_LIMITS.PAPER_ABSTRACT}
                                 value={paperDraft.abstract}
                                 onChange={(e) => setPaperDraft((prev) => ({ ...prev, abstract: e.target.value }))}
                                 style={{ minHeight: 80 }}
@@ -2352,6 +2362,7 @@ const SearchScreen = () => {
                                 <input
                                     type="text"
                                     placeholder="导师中文名（可选）"
+                                    maxLength={INPUT_LIMITS.NAME}
                                     value={customMentorChineseName}
                                     onChange={(e) => setCustomMentorChineseName(e.target.value)}
                                     disabled={privateMentorSaving}
@@ -2360,6 +2371,7 @@ const SearchScreen = () => {
                                 <input
                                     type="text"
                                     placeholder="导师英文名（可选）"
+                                    maxLength={INPUT_LIMITS.NAME}
                                     value={customMentorEnglishName}
                                     onChange={(e) => setCustomMentorEnglishName(e.target.value)}
                                     disabled={privateMentorSaving}
@@ -2369,6 +2381,7 @@ const SearchScreen = () => {
                             <input
                                 type="text"
                                 placeholder="研究方向（可选）"
+                                maxLength={INPUT_LIMITS.RESEARCH_DIRECTION}
                                 value={customMentorResearchDirection}
                                 onChange={(e) => setCustomMentorResearchDirection(e.target.value)}
                                 disabled={privateMentorSaving}
@@ -2376,12 +2389,14 @@ const SearchScreen = () => {
                             <input
                                 type="email"
                                 placeholder="导师邮箱（可选）"
+                                maxLength={INPUT_LIMITS.EMAIL}
                                 value={customMentorEmail}
                                 onChange={(e) => setCustomMentorEmail(e.target.value)}
                                 disabled={privateMentorSaving}
                             />
                             <textarea
                                 placeholder="导师画像（可选）"
+                                maxLength={INPUT_LIMITS.MENTOR_PROFILE}
                                 value={customMentorProfile}
                                 onChange={(e) => setCustomMentorProfile(e.target.value)}
                                 disabled={privateMentorSaving}

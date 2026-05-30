@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import { RootState } from "../redux/store";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { AdminUserResult, MentorVerificationRequestResult, SearchMentorResult } from "../utils/types";
@@ -313,6 +314,7 @@ const AdminUsersPage = () => {
                     <input
                         type="text"
                         value={searchKeyword}
+                        maxLength={INPUT_LIMITS.KEYWORD}
                         placeholder="按用户名、邮箱或真实姓名搜索"
                         onChange={(e) => setSearchKeyword(e.target.value)}
                         style={{ flex: 1 }}
@@ -340,6 +342,7 @@ const AdminUsersPage = () => {
                     <input
                         type="text"
                         value={mentorSearchKeyword}
+                        maxLength={INPUT_LIMITS.KEYWORD}
                         placeholder="搜索公共导师，便于绑定 mentor 角色"
                         onChange={(e) => setMentorSearchKeyword(e.target.value)}
                         style={{ flex: 1 }}
@@ -390,6 +393,7 @@ const AdminUsersPage = () => {
                                             <input
                                                 type="text"
                                                 value={verificationMentorSearchKeywordByRequestId[requestItem.id] || ""}
+                                                maxLength={INPUT_LIMITS.KEYWORD}
                                                 placeholder="搜索并选择要绑定的公共导师"
                                                 onChange={(e) => setVerificationMentorSearchKeywordByRequestId((prev) => ({
                                                     ...prev,
