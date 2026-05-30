@@ -26,7 +26,10 @@ export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
     visibility: "all",
 };
 
-export const MAX_SEARCH_QUERY_URL_ENCODED_LENGTH = 1800;
+// Cloud deployment starts failing once the encoded keyword is a little above
+// the observed safe boundary from the regression tests. Keep a small margin so
+// all search entry points stay below the gateway/request-line limit.
+export const MAX_SEARCH_QUERY_URL_ENCODED_LENGTH = 924;
 
 // Type guards used when decoding URL query strings from untrusted sources.
 const isSafeSearchMode = (value: unknown): value is SearchMode => {

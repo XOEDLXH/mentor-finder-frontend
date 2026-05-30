@@ -734,6 +734,7 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitForMentorResultHeading("测试导师");
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
@@ -1054,6 +1055,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
+        await waitForSearchSkeletonsToFinish();
         await screen.findByText(/Compression/i);
 
         const titleHeading = container.querySelector("h3");
@@ -1789,11 +1791,13 @@ describe("SearchScreen", () => {
         });
 
         const expandedSourceEntryKey = window.history.state.key;
-        const expandedSourceViewState = JSON.parse(
-            window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
-        );
-        expect(expandedSourceViewState.expandedProfileMentorIds).toEqual([88]);
-        expect(expandedSourceViewState.expandedPaperMentorIds).toEqual([88]);
+        await waitFor(() => {
+            const expandedSourceViewState = JSON.parse(
+                window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
+            );
+            expect(expandedSourceViewState.expandedProfileMentorIds).toEqual([88]);
+            expect(expandedSourceViewState.expandedPaperMentorIds).toEqual([88]);
+        });
 
         Object.defineProperty(window, "scrollY", {
             value: 460,
