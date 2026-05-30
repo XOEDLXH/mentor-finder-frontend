@@ -374,6 +374,8 @@ describe("HomeScreen subject group interactions", () => {
 
         const aiCardButton = await screen.findByRole("button", { name: "查看板块 cs.AI 的 2 篇论文" });
         expect(aiCardButton).toBeInTheDocument();
+        expect(within(aiCardButton).getByText("cs.AI")).toBeInTheDocument();
+        expect(within(aiCardButton).getByText("人工智能 (Artificial Intelligence)")).toBeInTheDocument();
         expect(within(aiCardButton).getByText("2篇")).toBeInTheDocument();
         expect(screen.queryByText("AI Paper One 摘要预览")).not.toBeInTheDocument();
         expect(screen.queryByText("AI Paper One")).not.toBeInTheDocument();
@@ -382,6 +384,8 @@ describe("HomeScreen subject group interactions", () => {
 
         const dialog = await screen.findByRole("dialog", { name: "cs.AI" });
         expect(dialog).toBeInTheDocument();
+        expect(screen.getByText("cs.AI")).toBeInTheDocument();
+        expect(screen.getByText("人工智能 (Artificial Intelligence)")).toBeInTheDocument();
         expect(screen.getByText("AI Paper One")).toBeInTheDocument();
         expect(screen.getByText("AI Paper Two")).toBeInTheDocument();
         expect(screen.getByText("AI Paper One 摘要预览")).toBeInTheDocument();

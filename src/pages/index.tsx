@@ -2,6 +2,7 @@ import { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
 import { useEffect, useRef, useState } from "react";
 import LatexText from "../components/LatexText";
+import { getArxivSubjectDisplayName } from "../constants/arxivSubjects";
 import { request } from "../utils/network";
 import {
     WeeklyPushHistoryResponse,
@@ -458,6 +459,10 @@ const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
         );
     }
 
+    const selectedSubjectDisplayName = selectedGroup === undefined
+        ? ""
+        : getArxivSubjectDisplayName(selectedGroup.subject);
+
     return (
         <>
             <div className="homeSubjectCarouselShell">
@@ -489,23 +494,33 @@ const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
                     onScroll={handleViewportScroll}
                 >
                     <div className="homeSubjectCarouselTrack">
-                        {groups.map((group) => (
-                            <button
-                                key={group.subject}
-                                type="button"
-                                data-weekly-push-subject-card="true"
-                                className="homeSubjectCarouselCard"
-                                onClick={() => setSelectedGroup(group)}
-                                aria-label={`查看板块 ${group.subject} 的 ${group.paperCount} 篇论文`}
-                            >
-                                <div className="homeSubjectCarouselCardContent">
-                                    <div className="homeSubjectCarouselTitle">
-                                        <LatexText text={group.subject} forceInlineMath />
+                        {groups.map((group) => {
+                            const subjectDisplayName = getArxivSubjectDisplayName(group.subject);
+                            return (
+                                <button
+                                    key={group.subject}
+                                    type="button"
+                                    data-weekly-push-subject-card="true"
+                                    className="homeSubjectCarouselCard"
+                                    onClick={() => setSelectedGroup(group)}
+                                    aria-label={`查看板块 ${group.subject} 的 ${group.paperCount} 篇论文`}
+                                >
+                                    <div className="homeSubjectCarouselCardContent">
+                                        <div className="homeSubjectCarouselHeader">
+                                            <div className="homeSubjectCarouselCode">
+                                                {group.subject}
+                                            </div>
+                                            {subjectDisplayName !== "" && subjectDisplayName !== group.subject && (
+                                                <div className="homeSubjectCarouselDisplayName">
+                                                    {subjectDisplayName}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="homeSubjectCarouselCount">{group.paperCount}篇</div>
                                     </div>
-                                    <div className="homeSubjectCarouselCount">{group.paperCount}篇</div>
-                                </div>
-                            </button>
-                        ))}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
@@ -538,9 +553,17 @@ const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
                         </button>
                         <div className="homeSubjectModalHeader">
                             <div className="homeSubjectModalEyebrow">关注板块动态</div>
-                            <h5 id="home-subject-modal-title" className="homeSubjectModalTitle">
-                                <LatexText text={selectedGroup.subject} forceInlineMath />
-                            </h5>
+                            <div className="homeSubjectModalCode">{selectedGroup.subject}</div>
+                            {selectedSubjectDisplayName !== "" && selectedSubjectDisplayName !== selectedGroup.subject && (
+                                <div id="home-subject-modal-title" className="homeSubjectModalDisplayName homeSubjectModalDisplayNameHeading">
+                                    {selectedSubjectDisplayName}
+                                </div>
+                            )}
+                            {!(selectedSubjectDisplayName !== "" && selectedSubjectDisplayName !== selectedGroup.subject) && (
+                                <h5 id="home-subject-modal-title" className="homeSubjectModalTitle">
+                                    <LatexText text={selectedGroup.subject} forceInlineMath />
+                                </h5>
+                            )}
                             <div className="homeSubjectModalCount">{selectedGroup.paperCount}篇</div>
                         </div>
                         <div className="homeSubjectModalBody">
