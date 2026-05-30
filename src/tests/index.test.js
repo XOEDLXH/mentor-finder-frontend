@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 
@@ -247,5 +248,217 @@ describe("HomeScreen weekly paper abstracts", () => {
         await waitFor(() => {
             expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(1);
         });
+    });
+});
+
+describe("HomeScreen subject group interactions", () => {
+    const buildPersonalizedWeeklyPush = () => ({
+        weekStart: "2026-05-01",
+        weekEnd: "2026-05-07",
+        paperCount: 2,
+        title: "个性周报",
+        fixedSummary: "规则摘要",
+        aiSummary: "AI 摘要",
+        content: "个性周报正文",
+        generatedBy: "thucs-openai",
+        updatedAt: "2026-05-12 12:00:00",
+        papers: [{
+            id: 11,
+            title: "Mentor weekly paper",
+            publishDate: "2026-05-01",
+            authorNames: "Alice",
+            abstract: "导师论文摘要",
+            tldr: "",
+            mentorNames: ["张老师"],
+        }],
+        mentorGroups: [],
+        subjectGroups: [
+            {
+                subject: "cs.AI",
+                paperCount: 2,
+                papers: [
+                    {
+                        id: 101,
+                        title: "AI Paper One",
+                        publishDate: "2026-05-03",
+                        authorNames: "Alice, Bob",
+                        subject: "cs.AI",
+                        subjects: ["cs.AI", "cs.LG"],
+                        abstractPreview: "AI Paper One 摘要预览",
+                    },
+                    {
+                        id: 102,
+                        title: "AI Paper Two",
+                        publishDate: "2026-05-04",
+                        authorNames: "Carol",
+                        subject: "cs.AI",
+                        subjects: ["cs.AI"],
+                        abstractPreview: "AI Paper Two 摘要预览",
+                    },
+                ],
+            },
+            {
+                subject: "cs.CL",
+                paperCount: 1,
+                papers: [
+                    {
+                        id: 103,
+                        title: "CL Paper One",
+                        publishDate: "2026-05-05",
+                        authorNames: "Dave",
+                        subject: "cs.CL",
+                        subjects: ["cs.CL"],
+                        abstractPreview: "CL Paper One 摘要预览",
+                    },
+                ],
+            },
+        ],
+        subjectDistribution: [{ subject: "cs.AI", count: 2 }, { subject: "cs.CL", count: 1 }],
+        trackedMentorCount: 1,
+        activeMentorCount: 1,
+        trackedSubjectCount: 2,
+        activeSubjectCount: 2,
+    });
+
+    const buildStore = () => configureStore({
+        reducer: {
+            auth: authReducer,
+        },
+        preloadedState: {
+            auth: {
+                name: "student",
+                token: "token",
+                role: "student",
+            },
+        },
+    });
+
+    const renderLoggedInHome = () => render(
+        <Provider store={buildStore()}>
+            <HomeScreen />
+        </Provider>,
+    );
+
+    beforeEach(() => {
+        request.mockReset();
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/weekly-push/latest") {
+                return { weeklyPush: undefined };
+            }
+
+            if (url === "/api/dataset/weekly-push/history") {
+                return { history: [] };
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized/history") {
+                return { history: [] };
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized" && method === "GET") {
+                return { weeklyPush: undefined };
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized" && method === "POST") {
+                return { weeklyPush: buildPersonalizedWeeklyPush() };
+            }
+
+            return {};
+        });
+    });
+
+    it("renders horizontal subject cards and opens the selected subject modal", async () => {
+        const user = userEvent.setup();
+        renderLoggedInHome();
+
+        await user.click(await screen.findByRole("button", { name: "生成个性周报" }));
+
+        const aiCardButton = await screen.findByRole("button", { name: "查看板块 cs.AI 的 2 篇论文" });
+        expect(aiCardButton).toBeInTheDocument();
+        expect(within(aiCardButton).getByText("2篇")).toBeInTheDocument();
+        expect(screen.queryByText("AI Paper One 摘要预览")).not.toBeInTheDocument();
+        expect(screen.queryByText("AI Paper One")).not.toBeInTheDocument();
+
+        await user.click(aiCardButton);
+
+        const dialog = await screen.findByRole("dialog", { name: "cs.AI" });
+        expect(dialog).toBeInTheDocument();
+        expect(screen.getByText("AI Paper One")).toBeInTheDocument();
+        expect(screen.getByText("AI Paper Two")).toBeInTheDocument();
+        expect(screen.getByText("AI Paper One 摘要预览")).toBeInTheDocument();
+        expect(screen.getByText(/作者：Alice, Bob/)).toBeInTheDocument();
+        expect(document.body.style.overflow).toBe("hidden");
+
+        await user.click(screen.getByRole("button", { name: "关闭 cs.AI 板块详情" }));
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "cs.AI" })).not.toBeInTheDocument();
+        });
+        expect(document.body.style.overflow).toBe("");
+    });
+
+    it("closes the subject modal via overlay click and Escape key", async () => {
+        const user = userEvent.setup();
+        renderLoggedInHome();
+
+        await user.click(await screen.findByRole("button", { name: "生成个性周报" }));
+        await user.click(await screen.findByRole("button", { name: "查看板块 cs.CL 的 1 篇论文" }));
+
+        const dialog = await screen.findByRole("dialog", { name: "cs.CL" });
+        const overlay = dialog.parentElement;
+        expect(overlay).not.toBeNull();
+
+        fireEvent.click(overlay);
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "cs.CL" })).not.toBeInTheDocument();
+        });
+
+        await user.click(await screen.findByRole("button", { name: "查看板块 cs.CL 的 1 篇论文" }));
+        await screen.findByRole("dialog", { name: "cs.CL" });
+
+        fireEvent.keyDown(window, { key: "Escape" });
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "cs.CL" })).not.toBeInTheDocument();
+        });
+        expect(document.body.style.overflow).toBe("");
+    });
+
+    it("keeps the empty placeholder when there are no followed subject updates", async () => {
+        const emptyPush = {
+            ...buildPersonalizedWeeklyPush(),
+            subjectGroups: [],
+            trackedSubjectCount: 0,
+            activeSubjectCount: 0,
+        };
+
+        request.mockImplementation(async (url, method) => {
+            if (url === "/api/dataset/weekly-push/latest") {
+                return { weeklyPush: undefined };
+            }
+
+            if (url === "/api/dataset/weekly-push/history") {
+                return { history: [] };
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized/history") {
+                return { history: [] };
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized" && method === "GET") {
+                return { weeklyPush: undefined };
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized" && method === "POST") {
+                return { weeklyPush: emptyPush };
+            }
+
+            return {};
+        });
+
+        const user = userEvent.setup();
+        renderLoggedInHome();
+
+        await user.click(await screen.findByRole("button", { name: "生成个性周报" }));
+
+        expect(await screen.findByText("你关注的板块本周暂无新增论文。")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /查看板块/ })).not.toBeInTheDocument();
     });
 });
