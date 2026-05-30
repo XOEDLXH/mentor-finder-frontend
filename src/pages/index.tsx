@@ -329,7 +329,6 @@ const WeeklyPushDetailCard = ({
 
 const HomeScreen = () => {
     const auth = useSelector((state: RootState) => state.auth);
-    const userName = auth.name;
     const isLoggedIn = auth.token !== "";
     const [weeklyPush, setWeeklyPush] = useState<WeeklyPushItem | undefined>(undefined);
     const [weeklyPushHistory, setWeeklyPushHistory] = useState<WeeklyPushHistoryResponse["history"]>([]);
@@ -471,54 +470,11 @@ const HomeScreen = () => {
     return (
         <div className="homePageShell">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <h2 style={{ margin: 0 }}>找导师</h2>
-                <p style={{ margin: 0 }}>每周论文动态汇总。</p>
-                {userName !== "" && <p style={{ margin: 0 }}>欢迎回来，{userName}</p>}
+                <h2 style={{ margin: 0 }}>每周论文动态汇总</h2>
             </div>
 
             <div className="homePageLayout">
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-                    <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
-                        <h3 style={{ margin: "0 0 8px" }}>每周论文推送</h3>
-                        {weeklyPush ? (
-                            <WeeklyPushDetailCard
-                                push={weeklyPush}
-                                emptyPaperText="本周暂无论文明细。"
-                            />
-                        ) : (
-                            <div style={{ color: "#666" }}>暂无周推送，请等待定时任务生成。</div>
-                        )}
-                    </section>
-
-                    {weeklyPushHistory.length > 0 && (
-                        <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
-                            <h3 style={{ margin: "0 0 8px" }}>往期周报</h3>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                {weeklyPushHistory.map((item) => (
-                                    <button
-                                        key={item.weekStart}
-                                        onClick={() => setSelectedWeekStart(item.weekStart)}
-                                        style={{
-                                            textAlign: "left",
-                                            padding: 10,
-                                            borderRadius: 6,
-                                            border: selectedWeekStart === item.weekStart ? "1px solid #0d6efd" : "1px solid #ccc",
-                                            backgroundColor: selectedWeekStart === item.weekStart ? "#e7f1ff" : "#fff",
-                                            cursor: "pointer",
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: 600 }}>{item.title}</div>
-                                        <div style={{ fontSize: 13, color: "#666" }}>
-                                            {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                </div>
-
-                <aside className="homePageSidebar">
                     <section className="homePersonalizedPanel">
                         <div className="homePersonalizedPanelHeader">
                             <div>
@@ -633,7 +589,46 @@ const HomeScreen = () => {
                             </div>
                         )}
                     </section>
-                </aside>
+
+                    <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
+                        <h3 style={{ margin: "0 0 8px" }}>每周论文推送</h3>
+                        {weeklyPush ? (
+                            <WeeklyPushDetailCard
+                                push={weeklyPush}
+                                emptyPaperText="本周暂无论文明细。"
+                            />
+                        ) : (
+                            <div style={{ color: "#666" }}>暂无周推送，请等待定时任务生成。</div>
+                        )}
+                    </section>
+
+                    {weeklyPushHistory.length > 0 && (
+                        <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
+                            <h3 style={{ margin: "0 0 8px" }}>往期周报</h3>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                {weeklyPushHistory.map((item) => (
+                                    <button
+                                        key={item.weekStart}
+                                        onClick={() => setSelectedWeekStart(item.weekStart)}
+                                        style={{
+                                            textAlign: "left",
+                                            padding: 10,
+                                            borderRadius: 6,
+                                            border: selectedWeekStart === item.weekStart ? "1px solid #0d6efd" : "1px solid #ccc",
+                                            backgroundColor: selectedWeekStart === item.weekStart ? "#e7f1ff" : "#fff",
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        <div style={{ fontWeight: 600 }}>{item.title}</div>
+                                        <div style={{ fontSize: 13, color: "#666" }}>
+                                            {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                </div>
             </div>
         </div>
     );

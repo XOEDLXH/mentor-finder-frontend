@@ -550,21 +550,14 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
 
 .homePageShell {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1400px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .homePageLayout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.95fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.homePageSidebar {
-  min-width: 0;
+  display: block;
 }
 
 .homePersonalizedPanel {
