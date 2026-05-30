@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 
-import HomeScreen from "../pages/index";
+import HomeScreen, { WeeklyPushDetailCard } from "../pages/index";
 import authReducer from "../redux/auth";
 import { request } from "../utils/network";
 
@@ -320,59 +320,22 @@ describe("HomeScreen subject group interactions", () => {
         activeSubjectCount: 2,
     });
 
-    const buildStore = () => configureStore({
-        reducer: {
-            auth: authReducer,
-        },
-        preloadedState: {
-            auth: {
-                name: "student",
-                token: "token",
-                role: "student",
-            },
-        },
-    });
-
-    const renderLoggedInHome = () => render(
-        <Provider store={buildStore()}>
-            <HomeScreen />
-        </Provider>,
+    const renderSubjectGroups = (pushOverrides = {}) => render(
+        <WeeklyPushDetailCard
+            push={{
+                ...buildPersonalizedWeeklyPush(),
+                ...pushOverrides,
+            }}
+            emptyPaperText="你关注的导师本周暂无新增论文明细。"
+            showMentorNames
+            showPersonalizedSummary
+            metaItems={[]}
+        />,
     );
-
-    beforeEach(() => {
-        request.mockReset();
-        request.mockImplementation(async (url, method) => {
-            if (url === "/api/dataset/weekly-push/latest") {
-                return { weeklyPush: undefined };
-            }
-
-            if (url === "/api/dataset/weekly-push/history") {
-                return { history: [] };
-            }
-
-            if (url === "/api/dataset/weekly-push/personalized/history") {
-                return { history: [] };
-            }
-
-            if (url === "/api/dataset/weekly-push/personalized" && method === "GET") {
-                return { weeklyPush: undefined };
-            }
-
-            if (url === "/api/dataset/weekly-push/personalized" && method === "POST") {
-                return { weeklyPush: buildPersonalizedWeeklyPush() };
-            }
-
-            return {};
-        });
-    });
 
     it("renders horizontal subject cards and opens the selected subject modal", async () => {
         const user = userEvent.setup();
-        renderLoggedInHome();
-
-        const generateButton = await screen.findByRole("button", { name: "生成个性周报" });
-        await user.click(generateButton);
-        await screen.findByRole("button", { name: "重新生成个性周报" });
+        renderSubjectGroups();
 
         const aiCardButton = await screen.findByRole("button", { name: "查看板块 cs.AI 的 2 篇论文" });
         expect(aiCardButton).toBeInTheDocument();
@@ -384,89 +347,54 @@ describe("HomeScreen subject group interactions", () => {
 
         await user.click(aiCardButton);
 
-        const dialog = await screen.findByRole("dialog", { name: "cs.AI" });
+        const dialog = await screen.findByRole("dialog", { name: "人工智能 (Artificial Intelligence)" });
         expect(dialog).toBeInTheDocument();
-        expect(screen.getByText("cs.AI")).toBeInTheDocument();
-        expect(screen.getByText("人工智能 (Artificial Intelligence)")).toBeInTheDocument();
-        expect(screen.getByText("AI Paper One")).toBeInTheDocument();
-        expect(screen.getByText("AI Paper Two")).toBeInTheDocument();
-        expect(screen.getByText("AI Paper One 摘要预览")).toBeInTheDocument();
-        expect(screen.getByText(/作者：Alice, Bob/)).toBeInTheDocument();
+        expect(within(dialog).getByText("cs.AI")).toBeInTheDocument();
+        expect(within(dialog).getByText("人工智能 (Artificial Intelligence)")).toBeInTheDocument();
+        expect(within(dialog).getByText("AI Paper One")).toBeInTheDocument();
+        expect(within(dialog).getByText("AI Paper Two")).toBeInTheDocument();
+        expect(within(dialog).getByText("AI Paper One 摘要预览")).toBeInTheDocument();
+        expect(within(dialog).getByText(/作者：Alice, Bob/)).toBeInTheDocument();
         expect(document.body.style.overflow).toBe("hidden");
 
         await user.click(screen.getByRole("button", { name: "关闭 cs.AI 板块详情" }));
         await waitFor(() => {
-            expect(screen.queryByRole("dialog", { name: "cs.AI" })).not.toBeInTheDocument();
+            expect(screen.queryByRole("dialog", { name: "人工智能 (Artificial Intelligence)" })).not.toBeInTheDocument();
         });
         expect(document.body.style.overflow).toBe("");
     });
 
     it("closes the subject modal via overlay click and Escape key", async () => {
         const user = userEvent.setup();
-        renderLoggedInHome();
+        renderSubjectGroups();
 
-        const generateButton = await screen.findByRole("button", { name: "生成个性周报" });
-        await user.click(generateButton);
-        await screen.findByRole("button", { name: "重新生成个性周报" });
         await user.click(await screen.findByRole("button", { name: "查看板块 cs.CL 的 1 篇论文" }));
 
-        const dialog = await screen.findByRole("dialog", { name: "cs.CL" });
+        const dialog = await screen.findByRole("dialog", { name: "自然语言处理 (NLP)" });
         const overlay = dialog.parentElement;
         expect(overlay).not.toBeNull();
 
         fireEvent.click(overlay);
         await waitFor(() => {
-            expect(screen.queryByRole("dialog", { name: "cs.CL" })).not.toBeInTheDocument();
+            expect(screen.queryByRole("dialog", { name: "自然语言处理 (NLP)" })).not.toBeInTheDocument();
         });
 
         await user.click(await screen.findByRole("button", { name: "查看板块 cs.CL 的 1 篇论文" }));
-        await screen.findByRole("dialog", { name: "cs.CL" });
+        await screen.findByRole("dialog", { name: "自然语言处理 (NLP)" });
 
         fireEvent.keyDown(window, { key: "Escape" });
         await waitFor(() => {
-            expect(screen.queryByRole("dialog", { name: "cs.CL" })).not.toBeInTheDocument();
+            expect(screen.queryByRole("dialog", { name: "自然语言处理 (NLP)" })).not.toBeInTheDocument();
         });
         expect(document.body.style.overflow).toBe("");
     });
 
     it("keeps the empty placeholder when there are no followed subject updates", async () => {
-        const emptyPush = {
-            ...buildPersonalizedWeeklyPush(),
+        renderSubjectGroups({
             subjectGroups: [],
             trackedSubjectCount: 0,
             activeSubjectCount: 0,
-        };
-
-        request.mockImplementation(async (url, method) => {
-            if (url === "/api/dataset/weekly-push/latest") {
-                return { weeklyPush: undefined };
-            }
-
-            if (url === "/api/dataset/weekly-push/history") {
-                return { history: [] };
-            }
-
-            if (url === "/api/dataset/weekly-push/personalized/history") {
-                return { history: [] };
-            }
-
-            if (url === "/api/dataset/weekly-push/personalized" && method === "GET") {
-                return { weeklyPush: undefined };
-            }
-
-            if (url === "/api/dataset/weekly-push/personalized" && method === "POST") {
-                return { weeklyPush: emptyPush };
-            }
-
-            return {};
         });
-
-        const user = userEvent.setup();
-        renderLoggedInHome();
-
-        const generateButton = await screen.findByRole("button", { name: "生成个性周报" });
-        await user.click(generateButton);
-        await screen.findByRole("button", { name: "重新生成个性周报" });
 
         expect(await screen.findByText("你关注的板块本周暂无新增论文。")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /查看板块/ })).not.toBeInTheDocument();

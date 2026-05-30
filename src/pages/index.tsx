@@ -327,7 +327,7 @@ interface WeeklyPushSubjectGroupsProps {
     groups: WeeklyPushSubjectGroup[];
 }
 
-const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
+export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
     const viewportRef = useRef<HTMLDivElement | undefined>(undefined);
     const modalCloseButtonRef = useRef<HTMLButtonElement | undefined>(undefined);
     const previousOverflowRef = useRef("");
@@ -599,7 +599,7 @@ interface WeeklyPushDetailCardProps {
     metaItems?: string[];
 }
 
-const WeeklyPushDetailCard = ({
+export const WeeklyPushDetailCard = ({
     push,
     emptyPaperText,
     showMentorNames = false,
