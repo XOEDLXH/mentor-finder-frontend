@@ -98,7 +98,7 @@ const ProfileSettingsPage = () => {
     }, [token]);
 
     useEffect(() => {
-        setUsernameInput(currentUsername);
+        setUsernameInput(currentUsername ?? "");
     }, [currentUsername]);
 
     const updateUsername = async () => {
