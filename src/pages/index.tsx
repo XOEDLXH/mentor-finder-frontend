@@ -75,12 +75,12 @@ interface WeeklyPaperAbstractPreviewProps {
 }
 
 const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) => {
-    const containerRef = useRef<HTMLDivElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | undefined>(undefined);
     const [isTruncated, setIsTruncated] = useState(false);
 
     useEffect(() => {
         const container = containerRef.current;
-        if (container === null) {
+        if (container === undefined) {
             return undefined;
         }
 
@@ -117,7 +117,9 @@ const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) =
 
     return (
         <div
-            ref={containerRef}
+            ref={(node) => {
+                containerRef.current = node ?? undefined;
+            }}
             className={`homeWeeklyPaperAbstractRow${isTruncated ? " homeWeeklyPaperAbstractRowTruncated" : ""}`}
         >
             <div className="homeWeeklyPaperAbstractContent">
@@ -141,7 +143,7 @@ const WeeklyPushPaperList = ({
         x: number;
         y: number;
         text: string;
-    } | null>(null);
+    } | undefined>(undefined);
 
     const scrollCarousel = (direction: -1 | 1) => {
         const viewport = viewportRef.current;
@@ -255,15 +257,15 @@ const WeeklyPushPaperList = ({
                                                 text: "前往此论文 arXiv 页面",
                                             })}
                                             onMouseMove={(event) => setHoverTooltip((current) => (
-                                                current === null
-                                                    ? null
+                                                current === undefined
+                                                    ? undefined
                                                     : {
                                                         ...current,
                                                         x: event.clientX + 14,
                                                         y: event.clientY + 18,
                                                     }
                                             ))}
-                                            onMouseLeave={() => setHoverTooltip(null)}
+                                            onMouseLeave={() => setHoverTooltip(undefined)}
                                         >
                                             <LatexText text={paper.title} forceInlineMath />
                                         </a>
@@ -290,7 +292,7 @@ const WeeklyPushPaperList = ({
                     ))}
                 </div>
             </div>
-            {hoverTooltip !== null && (
+            {hoverTooltip !== undefined && (
                 <div
                     className="homeWeeklyPaperHoverTooltip"
                     style={{
