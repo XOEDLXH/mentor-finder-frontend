@@ -23,11 +23,10 @@ interface FollowersResponse {
     users?: FollowUserResult[];
 }
 
-interface FollowedSubjectResult {
+interface FollowedSubjectSummary {
     subject: string;
     subjectName?: string;
     paperCount: number;
-    recentPapers: TimelinePaper[];
 }
 
 interface AvailableSubjectResult {
@@ -37,9 +36,17 @@ interface AvailableSubjectResult {
     followed: boolean;
 }
 
-interface FollowedSubjectsResponse {
-    subjects?: FollowedSubjectResult[];
+interface FollowedSubjectSummariesResponse {
+    subjects?: FollowedSubjectSummary[];
+}
+
+interface AvailableSubjectsResponse {
     availableSubjects?: AvailableSubjectResult[];
+}
+
+interface FollowedSubjectPapersResponse {
+    subject?: string;
+    recentPapers?: TimelinePaper[];
 }
 
 interface SearchUsersResponse {
@@ -65,7 +72,7 @@ const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
-type FollowSkeletonSection = "mentor" | "user" | "subject" | "follower";
+type FollowSkeletonSection = "mentor" | "user" | "subjectSearch" | "followedSubject" | "follower";
 
 // Build the follow button style used by mentor cards on the follows page.
 const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
@@ -117,8 +124,10 @@ const FollowsPage = () => {
     const [mentors, setMentors] = useState<FollowedMentorCardState[]>([]);
     const [users, setUsers] = useState<FollowUserResult[]>([]);
     const [followers, setFollowers] = useState<FollowUserResult[]>([]);
-    const [subjects, setSubjects] = useState<FollowedSubjectResult[]>([]);
+    const [subjects, setSubjects] = useState<FollowedSubjectSummary[]>([]);
     const [availableSubjects, setAvailableSubjects] = useState<AvailableSubjectResult[]>([]);
+    const [subjectPapersByCode, setSubjectPapersByCode] = useState<Record<string, TimelinePaper[]>>({});
+    const [subjectPaperErrors, setSubjectPaperErrors] = useState<Record<string, string>>({});
     const [subjectSearchKeyword, setSubjectSearchKeyword] = useState("");
     const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
     const [userSearchKeyword, setUserSearchKeyword] = useState("");
@@ -129,26 +138,31 @@ const FollowsPage = () => {
     const [mentorCurrentPage, setMentorCurrentPage] = useState(1);
     const [mentorLoading, setMentorLoading] = useState(false);
     const [userLoading, setUserLoading] = useState(false);
-    const [subjectLoading, setSubjectLoading] = useState(false);
+    const [availableSubjectLoading, setAvailableSubjectLoading] = useState(false);
+    const [followedSubjectLoading, setFollowedSubjectLoading] = useState(false);
     const [followerLoading, setFollowerLoading] = useState(false);
     const [hasLoadedMentors, setHasLoadedMentors] = useState(false);
     const [hasLoadedUsers, setHasLoadedUsers] = useState(false);
-    const [hasLoadedSubjects, setHasLoadedSubjects] = useState(false);
+    const [hasLoadedAvailableSubjects, setHasLoadedAvailableSubjects] = useState(false);
+    const [hasLoadedFollowedSubjects, setHasLoadedFollowedSubjects] = useState(false);
     const [hasLoadedFollowers, setHasLoadedFollowers] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
     const [actionSubject, setActionSubject] = useState<string | undefined>(undefined);
+    const [subjectPaperLoadingCodes, setSubjectPaperLoadingCodes] = useState<Set<string>>(new Set());
     const [errorMessage, setErrorMessage] = useState("");
     const skeletonStartedAtRef = useRef<Record<FollowSkeletonSection, number>>({
         mentor: 0,
         user: 0,
-        subject: 0,
+        subjectSearch: 0,
+        followedSubject: 0,
         follower: 0,
     });
     const skeletonTimerRef = useRef<Record<FollowSkeletonSection, ReturnType<typeof setTimeout> | undefined>>({
         mentor: undefined,
         user: undefined,
-        subject: undefined,
+        subjectSearch: undefined,
+        followedSubject: undefined,
         follower: undefined,
     });
 
@@ -163,8 +177,12 @@ const FollowsPage = () => {
             setUserLoading(loading);
             return;
         }
-        if (section === "subject") {
-            setSubjectLoading(loading);
+        if (section === "subjectSearch") {
+            setAvailableSubjectLoading(loading);
+            return;
+        }
+        if (section === "followedSubject") {
+            setFollowedSubjectLoading(loading);
             return;
         }
         setFollowerLoading(loading);
@@ -217,9 +235,14 @@ const FollowsPage = () => {
         setFollowers([]);
         setSubjects([]);
         setAvailableSubjects([]);
+        setSubjectPapersByCode({});
+        setSubjectPaperErrors({});
+        setExpandedSubjects(new Set());
+        setSubjectPaperLoadingCodes(new Set());
         setHasLoadedMentors(false);
         setHasLoadedUsers(false);
-        setHasLoadedSubjects(false);
+        setHasLoadedAvailableSubjects(false);
+        setHasLoadedFollowedSubjects(false);
         setHasLoadedFollowers(false);
     }, []);
 
@@ -279,30 +302,88 @@ const FollowsPage = () => {
         }
     }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
 
-    // Load the current user's followed subject list and the discoverable subjects list.
-    const fetchSubjects = useCallback(async () => {
+    // Load the discoverable subject list independently so it cannot block the followed-subject cards.
+    const fetchAvailableSubjects = useCallback(async () => {
         if (!isLoggedIn) {
             resetFollowData();
             return;
         }
 
-        startSkeletonPhase("subject");
+        startSkeletonPhase("subjectSearch");
         setErrorMessage("");
 
         try {
-            const subjectRes = await request<FollowedSubjectsResponse>("/api/follow/subjects", "GET", true);
-            setSubjects(Array.isArray(subjectRes.subjects) ? subjectRes.subjects : []);
+            const subjectRes = await request<AvailableSubjectsResponse>("/api/follow/subjects/available", "GET", true);
             setAvailableSubjects(Array.isArray(subjectRes.availableSubjects) ? subjectRes.availableSubjects : []);
-            setHasLoadedSubjects(true);
+            setHasLoadedAvailableSubjects(true);
         }
         catch (err) {
-            setHasLoadedSubjects(false);
+            setHasLoadedAvailableSubjects(false);
             setErrorMessage(FAILURE_PREFIX + String(err));
         }
         finally {
-            finishSkeletonPhase("subject");
+            finishSkeletonPhase("subjectSearch");
         }
     }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
+
+    // Load lightweight followed-subject summaries without prefetching each subject's paper list.
+    const fetchFollowedSubjects = useCallback(async () => {
+        if (!isLoggedIn) {
+            resetFollowData();
+            return;
+        }
+
+        startSkeletonPhase("followedSubject");
+        setErrorMessage("");
+
+        try {
+            const subjectRes = await request<FollowedSubjectSummariesResponse>("/api/follow/subjects/followed", "GET", true);
+            setSubjects(Array.isArray(subjectRes.subjects) ? subjectRes.subjects : []);
+            setHasLoadedFollowedSubjects(true);
+        }
+        catch (err) {
+            setHasLoadedFollowedSubjects(false);
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            finishSkeletonPhase("followedSubject");
+        }
+    }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
+
+    // Lazily load recent papers only after the user expands a specific followed subject.
+    const fetchSubjectPapers = useCallback(async (subject: string) => {
+        setSubjectPaperLoadingCodes((currentCodes) => new Set(currentCodes).add(subject));
+        setSubjectPaperErrors((currentErrors) => {
+            const nextErrors = { ...currentErrors };
+            delete nextErrors[subject];
+            return nextErrors;
+        });
+
+        try {
+            const res = await request<FollowedSubjectPapersResponse>(
+                `/api/follow/subjects/${encodeURIComponent(subject)}/papers`,
+                "GET",
+                true,
+            );
+            setSubjectPapersByCode((currentPapers) => ({
+                ...currentPapers,
+                [subject]: Array.isArray(res.recentPapers) ? res.recentPapers : [],
+            }));
+        }
+        catch (err) {
+            setSubjectPaperErrors((currentErrors) => ({
+                ...currentErrors,
+                [subject]: FAILURE_PREFIX + String(err),
+            }));
+        }
+        finally {
+            setSubjectPaperLoadingCodes((currentCodes) => {
+                const nextCodes = new Set(currentCodes);
+                nextCodes.delete(subject);
+                return nextCodes;
+            });
+        }
+    }, []);
 
     // Load the users who currently follow the authenticated user.
     const fetchFollowers = useCallback(async () => {
@@ -398,7 +479,7 @@ const FollowsPage = () => {
         setErrorMessage("");
 
         try {
-            const res = await request<{ followed?: boolean; subject?: FollowedSubjectResult | string }>(
+            const res = await request<{ followed?: boolean; subject?: FollowedSubjectSummary | string }>(
                 `/api/follow/subjects/${encodeURIComponent(targetSubject)}`,
                 followed ? "DELETE" : "POST",
                 true,
@@ -415,8 +496,9 @@ const FollowsPage = () => {
                     if (currentSubjects.some((item) => item.subject === targetSubject)) {
                         return currentSubjects;
                     }
-                    return [res.subject as FollowedSubjectResult, ...currentSubjects];
+                    return [res.subject as FollowedSubjectSummary, ...currentSubjects];
                 });
+                setHasLoadedFollowedSubjects(true);
             }
             else {
                 setSubjects((currentSubjects) => currentSubjects.filter((item) => item.subject !== targetSubject));
@@ -424,6 +506,16 @@ const FollowsPage = () => {
                     const nextSubjects = new Set(currentSubjects);
                     nextSubjects.delete(targetSubject);
                     return nextSubjects;
+                });
+                setSubjectPapersByCode((currentPapers) => {
+                    const nextPapers = { ...currentPapers };
+                    delete nextPapers[targetSubject];
+                    return nextPapers;
+                });
+                setSubjectPaperErrors((currentErrors) => {
+                    const nextErrors = { ...currentErrors };
+                    delete nextErrors[targetSubject];
+                    return nextErrors;
                 });
             }
         }
@@ -479,17 +571,22 @@ const FollowsPage = () => {
     };
 
     // Expand or collapse the recent paper list for one followed subject.
-    const toggleSubjectExpand = (subject: string) => {
-        setExpandedSubjects((currentSubjects) => {
-            const nextSubjects = new Set(currentSubjects);
-            if (nextSubjects.has(subject)) {
+    const toggleSubjectExpand = async (subject: string) => {
+        const isExpanded = expandedSubjects.has(subject);
+        if (isExpanded) {
+            setExpandedSubjects((currentSubjects) => {
+                const nextSubjects = new Set(currentSubjects);
                 nextSubjects.delete(subject);
-            }
-            else {
-                nextSubjects.add(subject);
-            }
-            return nextSubjects;
-        });
+                return nextSubjects;
+            });
+            return;
+        }
+
+        setExpandedSubjects((currentSubjects) => new Set(currentSubjects).add(subject));
+        if (subjectPapersByCode[subject] !== undefined || subjectPaperLoadingCodes.has(subject)) {
+            return;
+        }
+        await fetchSubjectPapers(subject);
     };
 
     // Jump into the search page with an exact paper search seeded from a subject code.
@@ -584,45 +681,46 @@ const FollowsPage = () => {
         </div>
     );
 
-    // Render loading placeholders for the subject tab.
-    const renderSubjectSkeletonSection = () => (
-        <div className="subjectFollowSection" aria-label="板块关注加载中" data-testid="follow-subject-skeleton">
-            <section className="subjectSearchSection" aria-label="搜索关注板块加载中">
-                <div className="sectionHeader">
-                    <h3>关注板块</h3>
-                </div>
-                <span className="followSkeletonBlock followSkeletonSearchInput" aria-hidden="true" />
-                <div className="subjectChipGrid" aria-hidden="true">
-                    {createSkeletonKeys(FOLLOW_SUBJECT_CHIP_SKELETON_COUNT, "subject-chip-skeleton").map((key) => (
-                        <span className="followSkeletonBlock followSkeletonSubjectChip" key={key} />
-                    ))}
-                </div>
-            </section>
+    // Render loading placeholders for the discoverable subject list.
+    const renderAvailableSubjectSkeleton = () => (
+        <section className="subjectSearchSection" aria-label="搜索关注板块加载中" data-testid="follow-subject-search-skeleton">
+            <div className="sectionHeader">
+                <h3>关注板块</h3>
+            </div>
+            <span className="followSkeletonBlock followSkeletonSearchInput" aria-hidden="true" />
+            <div className="subjectChipGrid" aria-hidden="true">
+                {createSkeletonKeys(FOLLOW_SUBJECT_CHIP_SKELETON_COUNT, "subject-chip-skeleton").map((key) => (
+                    <span className="followSkeletonBlock followSkeletonSubjectChip" key={key} />
+                ))}
+            </div>
+        </section>
+    );
 
-            <section className="followedSubjectSection" aria-label="已关注板块加载中">
-                <div className="sectionHeader">
-                    <h3>已关注板块</h3>
-                    <span>0</span>
-                </div>
-                <div className="subjectList" aria-hidden="true">
-                    {createSkeletonKeys(FOLLOW_SUBJECT_CARD_SKELETON_COUNT, "subject-card-skeleton").map((key) => (
-                        <article className="subjectCard followSkeletonSubjectCard" key={key}>
-                            <div className="subjectCardHeader">
-                                <div className="followSkeletonSubjectTitleGroup">
-                                    <span className="followSkeletonBlock followSkeletonSubjectTitle" />
-                                    <span className="followSkeletonBlock followSkeletonSubjectMeta" />
-                                </div>
-                                <div className="subjectActionGroup">
-                                    <span className="followSkeletonBlock followSkeletonSubjectAction" />
-                                    <span className="followSkeletonBlock followSkeletonSubjectAction" />
-                                    <span className="followSkeletonBlock followSkeletonSubjectAction" />
-                                </div>
+    // Render loading placeholders for the followed-subject summary list.
+    const renderFollowedSubjectSkeleton = () => (
+        <section className="followedSubjectSection" aria-label="已关注板块加载中" data-testid="follow-followed-subject-skeleton">
+            <div className="sectionHeader">
+                <h3>已关注板块</h3>
+                <span>0</span>
+            </div>
+            <div className="subjectList" aria-hidden="true">
+                {createSkeletonKeys(FOLLOW_SUBJECT_CARD_SKELETON_COUNT, "subject-card-skeleton").map((key) => (
+                    <article className="subjectCard followSkeletonSubjectCard" key={key}>
+                        <div className="subjectCardHeader">
+                            <div className="followSkeletonSubjectTitleGroup">
+                                <span className="followSkeletonBlock followSkeletonSubjectTitle" />
+                                <span className="followSkeletonBlock followSkeletonSubjectMeta" />
                             </div>
-                        </article>
-                    ))}
-                </div>
-            </section>
-        </div>
+                            <div className="subjectActionGroup">
+                                <span className="followSkeletonBlock followSkeletonSubjectAction" />
+                                <span className="followSkeletonBlock followSkeletonSubjectAction" />
+                                <span className="followSkeletonBlock followSkeletonSubjectAction" />
+                            </div>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        </section>
     );
 
     // Switch between the "following" and "followers" top-level views.
@@ -641,8 +739,13 @@ const FollowsPage = () => {
         if (nextCategory === "user" && !hasLoadedUsers && !userLoading) {
             void fetchUsers();
         }
-        if (nextCategory === "subject" && !hasLoadedSubjects && !subjectLoading) {
-            void fetchSubjects();
+        if (nextCategory === "subject") {
+            if (!hasLoadedAvailableSubjects && !availableSubjectLoading) {
+                void fetchAvailableSubjects();
+            }
+            if (!hasLoadedFollowedSubjects && !followedSubjectLoading) {
+                void fetchFollowedSubjects();
+            }
         }
     };
 
@@ -924,127 +1027,148 @@ const FollowsPage = () => {
                     )}
 
                     {activeCategory === "subject" && (
-                    subjectLoading ? (
-                        renderSubjectSkeletonSection()
-                    ) : (
                     <section className="subjectFollowSection" aria-label="关注板块">
-                        <section className="subjectSearchSection" aria-label="搜索关注板块">
-                            <div className="sectionHeader">
-                                <h3>关注板块</h3>
-                            </div>
-
-                            <div className="userSearch">
-                                <input
-                                    type="text"
-                                    value={subjectSearchKeyword}
-                                    placeholder="搜索板块名称或代码，例如 人工智能 / cs.AI"
-                                    onChange={(event) => setSubjectSearchKeyword(event.target.value)}
-                                />
-                            </div>
-
-                            {filteredAvailableSubjects.length > 0 && (
-                                <div className="subjectChipGrid" aria-label="可关注板块">
-                                    {filteredAvailableSubjects.map((subject) => (
-                                        <button
-                                            key={subject.subject}
-                                            className="subjectChip"
-                                            type="button"
-                                            disabled={actionSubject === subject.subject}
-                                            onClick={() => void toggleSubjectFollow(subject.subject, false)}
-                                        >
-                                            <span className="subjectChipLabel">{subject.subjectName || subject.subject}</span>
-                                            <small>{subject.paperCount} 篇</small>
-                                        </button>
-                                    ))}
+                        {availableSubjectLoading ? (
+                            renderAvailableSubjectSkeleton()
+                        ) : (
+                            <section className="subjectSearchSection" aria-label="搜索关注板块">
+                                <div className="sectionHeader">
+                                    <h3>关注板块</h3>
                                 </div>
-                            )}
-                        </section>
 
-                        <section className="followedSubjectSection" aria-label="已关注板块区块">
-                            <div className="sectionHeader">
-                                <h3>已关注板块</h3>
-                                <span>{subjects.length}</span>
-                            </div>
-
-                            {hasLoadedSubjects && subjects.length === 0 ? (
-                                <p>暂无关注板块</p>
-                            ) : (
-                                <div className="subjectList" aria-label="已关注板块">
-                                    {subjects.map((subject) => (
-                                        <article className="subjectCard" key={subject.subject}>
-                                            <div className="subjectCardHeader">
-                                                <div>
-                                                    <h4>{subject.subjectName || subject.subject}</h4>
-                                                    <p>{subject.paperCount} 篇论文</p>
-                                                </div>
-                                                <div className="subjectActionGroup">
-                                                    <button
-                                                        className="subjectExpandButton"
-                                                        type="button"
-                                                        onClick={() => toggleSubjectExpand(subject.subject)}
-                                                    >
-                                                        {expandedSubjects.has(subject.subject) ? "收起论文" : "展开论文"}
-                                                    </button>
-                                                    <button
-                                                        className="subjectSearchButton"
-                                                        type="button"
-                                                        onClick={() => navigateToSubjectSearch(subject.subject)}
-                                                    >
-                                                        前往检索
-                                                    </button>
-                                                    <button
-                                                        className="subjectUnfollowButton"
-                                                        type="button"
-                                                        disabled={actionSubject === subject.subject}
-                                                        onClick={() => void toggleSubjectFollow(subject.subject, true)}
-                                                    >
-                                                        {actionSubject === subject.subject ? "处理中..." : "取消关注"}
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {expandedSubjects.has(subject.subject) && subject.recentPapers.length === 0 && (
-                                                <p className="subjectEmptyText">该板块暂无论文。</p>
-                                            )}
-
-                                            {expandedSubjects.has(subject.subject) && subject.recentPapers.length > 0 && (
-                                                <div className="subjectPaperList">
-                                                    {subject.recentPapers.map((paper) => {
-                                                        const pdfUrl = buildPaperPdfUrl(paper.arxiv_url);
-                                                        return (
-                                                            <div className="subjectPaperItem" key={paper.id}>
-                                                                <div className="subjectPaperTitle">
-                                                                    <LatexText text={paper.title} forceInlineMath />
-                                                                </div>
-                                                                <div className="subjectPaperMeta">
-                                                                    <span>{paper.publish_date || "未知日期"}</span>
-                                                                    <span>{paper.author_names || "未知作者"}</span>
-                                                                    {paper.arxiv_url && (
-                                                                        <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
-                                                                            arXiv
-                                                                        </a>
-                                                                    )}
-                                                                    {pdfUrl !== "" && (
-                                                                        <a href={pdfUrl} target="_blank" rel="noreferrer">
-                                                                            PDF
-                                                                        </a>
-                                                                    )}
-                                                                </div>
-                                                                <p className="subjectPaperAbstract">
-                                                                    {paper.tldr || paper.abstract || "暂无摘要"}
-                                                                </p>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </article>
-                                    ))}
+                                <div className="userSearch">
+                                    <input
+                                        type="text"
+                                        value={subjectSearchKeyword}
+                                        placeholder="搜索板块名称或代码，例如 人工智能 / cs.AI"
+                                        onChange={(event) => setSubjectSearchKeyword(event.target.value)}
+                                    />
                                 </div>
-                            )}
-                        </section>
+
+                                {filteredAvailableSubjects.length > 0 && (
+                                    <div className="subjectChipGrid" aria-label="可关注板块">
+                                        {filteredAvailableSubjects.map((subject) => (
+                                            <button
+                                                key={subject.subject}
+                                                className="subjectChip"
+                                                type="button"
+                                                disabled={actionSubject === subject.subject}
+                                                onClick={() => void toggleSubjectFollow(subject.subject, false)}
+                                            >
+                                                <span className="subjectChipLabel">{subject.subjectName || subject.subject}</span>
+                                                <small>{subject.paperCount} 篇</small>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {hasLoadedAvailableSubjects && filteredAvailableSubjects.length === 0 && (
+                                    <p>暂无可关注板块</p>
+                                )}
+                            </section>
+                        )}
+
+                        {followedSubjectLoading ? (
+                            renderFollowedSubjectSkeleton()
+                        ) : (
+                            <section className="followedSubjectSection" aria-label="已关注板块区块">
+                                <div className="sectionHeader">
+                                    <h3>已关注板块</h3>
+                                    <span>{subjects.length}</span>
+                                </div>
+
+                                {hasLoadedFollowedSubjects && subjects.length === 0 ? (
+                                    <p>暂无关注板块</p>
+                                ) : (
+                                    <div className="subjectList" aria-label="已关注板块">
+                                        {subjects.map((subject) => {
+                                            const subjectPapers = subjectPapersByCode[subject.subject] || [];
+                                            const subjectPaperError = subjectPaperErrors[subject.subject];
+                                            const subjectPaperLoading = subjectPaperLoadingCodes.has(subject.subject);
+                                            return (
+                                                <article className="subjectCard" key={subject.subject}>
+                                                    <div className="subjectCardHeader">
+                                                        <div>
+                                                            <h4>{subject.subjectName || subject.subject}</h4>
+                                                            <p>{subject.paperCount} 篇论文</p>
+                                                        </div>
+                                                        <div className="subjectActionGroup">
+                                                            <button
+                                                                className="subjectExpandButton"
+                                                                type="button"
+                                                                onClick={() => void toggleSubjectExpand(subject.subject)}
+                                                            >
+                                                                {expandedSubjects.has(subject.subject) ? "收起论文" : "展开论文"}
+                                                            </button>
+                                                            <button
+                                                                className="subjectSearchButton"
+                                                                type="button"
+                                                                onClick={() => navigateToSubjectSearch(subject.subject)}
+                                                            >
+                                                                前往检索
+                                                            </button>
+                                                            <button
+                                                                className="subjectUnfollowButton"
+                                                                type="button"
+                                                                disabled={actionSubject === subject.subject}
+                                                                onClick={() => void toggleSubjectFollow(subject.subject, true)}
+                                                            >
+                                                                {actionSubject === subject.subject ? "处理中..." : "取消关注"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {expandedSubjects.has(subject.subject) && subjectPaperLoading && (
+                                                        <p className="subjectEmptyText">论文加载中...</p>
+                                                    )}
+
+                                                    {expandedSubjects.has(subject.subject) && !subjectPaperLoading && subjectPaperError && (
+                                                        <p className="subjectEmptyText">{subjectPaperError}</p>
+                                                    )}
+
+                                                    {expandedSubjects.has(subject.subject) && !subjectPaperLoading && !subjectPaperError && subjectPapers.length === 0 && (
+                                                        <p className="subjectEmptyText">该板块暂无论文。</p>
+                                                    )}
+
+                                                    {expandedSubjects.has(subject.subject) && !subjectPaperLoading && subjectPapers.length > 0 && (
+                                                        <div className="subjectPaperList">
+                                                            {subjectPapers.map((paper) => {
+                                                                const pdfUrl = buildPaperPdfUrl(paper.arxiv_url);
+                                                                return (
+                                                                    <div className="subjectPaperItem" key={paper.id}>
+                                                                        <div className="subjectPaperTitle">
+                                                                            <LatexText text={paper.title} forceInlineMath />
+                                                                        </div>
+                                                                        <div className="subjectPaperMeta">
+                                                                            <span>{paper.publish_date || "未知日期"}</span>
+                                                                            <span>{paper.author_names || "未知作者"}</span>
+                                                                            {paper.arxiv_url && (
+                                                                                <a href={paper.arxiv_url} target="_blank" rel="noreferrer">
+                                                                                    arXiv
+                                                                                </a>
+                                                                            )}
+                                                                            {pdfUrl !== "" && (
+                                                                                <a href={pdfUrl} target="_blank" rel="noreferrer">
+                                                                                    PDF
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="subjectPaperAbstract">
+                                                                            {paper.tldr || paper.abstract || "暂无摘要"}
+                                                                        </p>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </article>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </section>
+                        )}
                     </section>
-                    )
                     )}
                 </main>
             </div>
