@@ -492,11 +492,22 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
 }
 
 .homeWeeklyPaperAbstractRow {
+  position: relative;
   margin-top: 6px;
   line-height: 1.5;
   white-space: normal;
   max-height: calc(1.5em * 27);
   overflow: hidden;
+}
+
+.homeWeeklyPaperAbstractRowTruncated::after {
+  content: "...";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding-left: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, #fff 42%);
+  color: #3f4650;
 }
 
 .homeWeeklyPaperAbstractContent {

@@ -70,6 +70,63 @@ interface WeeklyPushPaperListProps {
     showMentorNames?: boolean;
 }
 
+interface WeeklyPaperAbstractPreviewProps {
+    text: string;
+}
+
+const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (container === null) {
+            return undefined;
+        }
+
+        const updateTruncationState = () => {
+            setIsTruncated(container.scrollHeight - container.clientHeight > 1);
+        };
+
+        updateTruncationState();
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("resize", updateTruncationState);
+        }
+
+        if (typeof ResizeObserver === "undefined") {
+            return () => {
+                if (typeof window !== "undefined") {
+                    window.removeEventListener("resize", updateTruncationState);
+                }
+            };
+        }
+
+        const observer = new ResizeObserver(() => {
+            updateTruncationState();
+        });
+        observer.observe(container);
+
+        return () => {
+            observer.disconnect();
+            if (typeof window !== "undefined") {
+                window.removeEventListener("resize", updateTruncationState);
+            }
+        };
+    }, [text]);
+
+    return (
+        <div
+            ref={containerRef}
+            className={`homeWeeklyPaperAbstractRow${isTruncated ? " homeWeeklyPaperAbstractRowTruncated" : ""}`}
+        >
+            <div className="homeWeeklyPaperAbstractContent">
+                <LatexText text={text} />
+            </div>
+        </div>
+    );
+};
+
 const WeeklyPushPaperList = ({
     papers,
     emptyText,
@@ -227,11 +284,7 @@ const WeeklyPushPaperList = ({
                                         关联导师：{paper.mentorNames.join("、")}
                                     </div>
                                 )}
-                                <div className="homeWeeklyPaperAbstractRow">
-                                    <div className="homeWeeklyPaperAbstractContent">
-                                        <LatexText text={paper.tldr || paper.abstract || "暂无摘要"} />
-                                    </div>
-                                </div>
+                                <WeeklyPaperAbstractPreview text={paper.tldr || paper.abstract || "暂无摘要"} />
                             </div>
                         </article>
                     ))}
