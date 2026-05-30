@@ -17,6 +17,7 @@ const GENERATED_BY_LABELS: Record<string, string> = {
 };
 const WEEKLY_PUSH_PAPERS_PER_VIEW = 2;
 const WEEKLY_PUSH_CAROUSEL_GAP = 12;
+const SUBJECT_GROUP_CAROUSEL_GAP = 16;
 
 const formatGeneratedBy = (generatedBy: string) => GENERATED_BY_LABELS[generatedBy] || generatedBy;
 
@@ -46,7 +47,7 @@ const fetchPersonalizedWeeklyPushHistory = async () => (
     )
 );
 
-const syncWeeklyPushCarouselControls = (
+const syncCarouselControls = (
     viewport: HTMLDivElement,
     setCanScrollPrev: (value: boolean) => void,
     setCanScrollNext: (value: boolean) => void,
@@ -56,12 +57,17 @@ const syncWeeklyPushCarouselControls = (
     setCanScrollNext(viewport.scrollLeft < maxScrollLeft - 4);
 };
 
-const getWeeklyPushCarouselScrollStep = (viewport: HTMLDivElement) => {
-    const firstCard = viewport.querySelector<HTMLElement>("[data-weekly-push-paper-card='true']") ?? undefined;
+const getCarouselScrollStep = (
+    viewport: HTMLDivElement,
+    cardSelector: string,
+    fallbackItemCount: number,
+    gap: number,
+) => {
+    const firstCard = viewport.querySelector<HTMLElement>(cardSelector) ?? undefined;
     if (firstCard !== undefined) {
-        return firstCard.offsetWidth + WEEKLY_PUSH_CAROUSEL_GAP;
+        return firstCard.offsetWidth + gap;
     }
-    return viewport.clientWidth / WEEKLY_PUSH_PAPERS_PER_VIEW;
+    return viewport.clientWidth / fallbackItemCount;
 };
 
 interface WeeklyPushPaperListProps {
@@ -154,17 +160,23 @@ const WeeklyPushPaperList = ({
             return;
         }
 
-        const nextLeft = viewport.scrollLeft + direction * getWeeklyPushCarouselScrollStep(viewport);
+        const scrollStep = getCarouselScrollStep(
+            viewport,
+            "[data-weekly-push-paper-card='true']",
+            WEEKLY_PUSH_PAPERS_PER_VIEW,
+            WEEKLY_PUSH_CAROUSEL_GAP,
+        );
+        const nextLeft = viewport.scrollLeft + direction * scrollStep;
         if (typeof viewport.scrollBy === "function") {
             viewport.scrollBy({
-                left: direction * getWeeklyPushCarouselScrollStep(viewport),
+                left: direction * scrollStep,
                 behavior: "smooth",
             });
             return;
         }
 
         viewport.scrollLeft = nextLeft;
-        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+        syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     };
 
     const handleViewportScroll = () => {
@@ -172,7 +184,7 @@ const WeeklyPushPaperList = ({
         if (viewport === undefined) {
             return;
         }
-        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+        syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     };
 
     useEffect(() => {
@@ -187,7 +199,7 @@ const WeeklyPushPaperList = ({
         else {
             viewport.scrollLeft = 0;
         }
-        syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+        syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     }, [papers]);
 
     useEffect(() => {
@@ -200,7 +212,7 @@ const WeeklyPushPaperList = ({
             if (viewport === undefined) {
                 return;
             }
-            syncWeeklyPushCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+            syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
@@ -315,6 +327,129 @@ interface WeeklyPushSubjectGroupsProps {
 }
 
 const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
+    const viewportRef = useRef<HTMLDivElement | undefined>(undefined);
+    const modalCloseButtonRef = useRef<HTMLButtonElement | undefined>(undefined);
+    const previousOverflowRef = useRef("");
+    const [canScrollPrev, setCanScrollPrev] = useState(false);
+    const [canScrollNext, setCanScrollNext] = useState(false);
+    const [selectedGroup, setSelectedGroup] = useState<WeeklyPushSubjectGroup | undefined>(undefined);
+
+    const closeModal = () => {
+        setSelectedGroup(undefined);
+    };
+
+    const scrollCarousel = (direction: -1 | 1) => {
+        const viewport = viewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+
+        const scrollStep = getCarouselScrollStep(
+            viewport,
+            "[data-weekly-push-subject-card='true']",
+            1,
+            SUBJECT_GROUP_CAROUSEL_GAP,
+        );
+        const nextLeft = viewport.scrollLeft + direction * scrollStep;
+
+        if (typeof viewport.scrollBy === "function") {
+            viewport.scrollBy({
+                left: direction * scrollStep,
+                behavior: "smooth",
+            });
+            return;
+        }
+
+        viewport.scrollLeft = nextLeft;
+        syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+    };
+
+    const handleViewportScroll = () => {
+        const viewport = viewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+        syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+    };
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (viewport === undefined) {
+            return;
+        }
+
+        if (typeof viewport.scrollTo === "function") {
+            viewport.scrollTo({ left: 0, behavior: "auto" });
+        }
+        else {
+            viewport.scrollLeft = 0;
+        }
+        syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+    }, [groups]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") {
+            return undefined;
+        }
+
+        const handleResize = () => {
+            const viewport = viewportRef.current;
+            if (viewport === undefined) {
+                return;
+            }
+            syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    useEffect(() => {
+        if (typeof document === "undefined") {
+            return undefined;
+        }
+
+        if (selectedGroup === undefined) {
+            document.body.style.overflow = previousOverflowRef.current;
+            return undefined;
+        }
+
+        previousOverflowRef.current = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        return () => {
+            document.body.style.overflow = previousOverflowRef.current;
+        };
+    }, [selectedGroup]);
+
+    useEffect(() => {
+        if (selectedGroup === undefined) {
+            return undefined;
+        }
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                closeModal();
+            }
+        };
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("keydown", handleKeyDown);
+        }
+
+        if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+            window.setTimeout(() => {
+                modalCloseButtonRef.current?.focus();
+            }, 0);
+        }
+
+        return () => {
+            if (typeof window !== "undefined") {
+                window.removeEventListener("keydown", handleKeyDown);
+            }
+        };
+    }, [selectedGroup]);
+
     if (groups.length === 0) {
         return (
             <div className="homePersonalizedPlaceholder">
@@ -324,31 +459,112 @@ const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
     }
 
     return (
-        <div className="homeSubjectGroupStack">
-            {groups.map((group) => (
-                <section className="homeSubjectGroupCard" key={group.subject}>
-                    <div className="homeSubjectGroupHeader">
-                        <h4>{group.subject}</h4>
-                        <span>{group.paperCount} 篇</span>
+        <>
+            <div className="homeSubjectCarouselShell">
+                {groups.length > 1 && (
+                    <div className="homeSubjectCarouselControls">
+                        <button
+                            type="button"
+                            className="homeWeeklyPaperCarouselButton"
+                            onClick={() => scrollCarousel(-1)}
+                            disabled={!canScrollPrev}
+                        >
+                            上一板块
+                        </button>
+                        <button
+                            type="button"
+                            className="homeWeeklyPaperCarouselButton"
+                            onClick={() => scrollCarousel(1)}
+                            disabled={!canScrollNext}
+                        >
+                            下一板块
+                        </button>
                     </div>
-                    <div className="homeSubjectPaperList">
-                        {group.papers.map((paper) => (
-                            <article className="homeSubjectPaperItem" key={`${group.subject}-${paper.id}`}>
-                                <div className="homeSubjectPaperTitle">
-                                    <LatexText text={paper.title} forceInlineMath />
+                )}
+                <div
+                    ref={(node) => {
+                        viewportRef.current = node ?? undefined;
+                    }}
+                    className="homeSubjectCarouselViewport"
+                    onScroll={handleViewportScroll}
+                >
+                    <div className="homeSubjectCarouselTrack">
+                        {groups.map((group) => (
+                            <button
+                                key={group.subject}
+                                type="button"
+                                data-weekly-push-subject-card="true"
+                                className="homeSubjectCarouselCard"
+                                onClick={() => setSelectedGroup(group)}
+                                aria-label={`查看板块 ${group.subject} 的 ${group.paperCount} 篇论文`}
+                            >
+                                <div className="homeSubjectCarouselCardContent">
+                                    <div className="homeSubjectCarouselTitle">
+                                        <LatexText text={group.subject} forceInlineMath />
+                                    </div>
+                                    <div className="homeSubjectCarouselCount">{group.paperCount}篇</div>
                                 </div>
-                                <div className="homeSubjectPaperMeta">
-                                    作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"} ｜ 分类：{paper.subjects.join(", ") || group.subject}
-                                </div>
-                                <div className="homePersonalizedLatexText">
-                                    <LatexText text={paper.abstractPreview || "暂无摘要"} />
-                                </div>
-                            </article>
+                            </button>
                         ))}
                     </div>
-                </section>
-            ))}
-        </div>
+                </div>
+            </div>
+            {selectedGroup !== undefined && (
+                <div
+                    className="homeSubjectModalOverlay"
+                    role="presentation"
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget) {
+                            closeModal();
+                        }
+                    }}
+                >
+                    <div
+                        className="homeSubjectModalDialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="home-subject-modal-title"
+                    >
+                        <button
+                            ref={(node) => {
+                                modalCloseButtonRef.current = node ?? undefined;
+                            }}
+                            type="button"
+                            className="homeSubjectModalCloseButton"
+                            onClick={closeModal}
+                            aria-label={`关闭 ${selectedGroup.subject} 板块详情`}
+                        >
+                            ×
+                        </button>
+                        <div className="homeSubjectModalHeader">
+                            <div className="homeSubjectModalEyebrow">关注板块动态</div>
+                            <h5 id="home-subject-modal-title" className="homeSubjectModalTitle">
+                                <LatexText text={selectedGroup.subject} forceInlineMath />
+                            </h5>
+                            <div className="homeSubjectModalCount">{selectedGroup.paperCount}篇</div>
+                        </div>
+                        <div className="homeSubjectModalBody">
+                            {selectedGroup.papers.map((paper) => (
+                                <article
+                                    className="homeSubjectModalPaperCard"
+                                    key={`${selectedGroup.subject}-${paper.id}`}
+                                >
+                                    <div className="homeSubjectPaperTitle">
+                                        <LatexText text={paper.title} forceInlineMath />
+                                    </div>
+                                    <div className="homeSubjectPaperMeta">
+                                        作者：{paper.authorNames || "未知"} ｜ {paper.publishDate || "未知日期"} ｜ 分类：{paper.subjects.join(", ") || selectedGroup.subject}
+                                    </div>
+                                    <div className="homePersonalizedLatexText">
+                                        <LatexText text={paper.abstractPreview || "暂无摘要"} />
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 
