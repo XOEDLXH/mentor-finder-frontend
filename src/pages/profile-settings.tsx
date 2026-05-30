@@ -61,6 +61,7 @@ const ProfileSettingsPage = () => {
     const currentUsername = useSelector((state: RootState) => state.auth.name);
     const [usernameInput, setUsernameInput] = useState("");
     const [usernameUpdating, setUsernameUpdating] = useState(false);
+    const [usernameMessage, setUsernameMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
     const [settings, setSettings] = useState<ProfileSettings>(EMPTY_SETTINGS);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -109,17 +110,16 @@ const ProfileSettingsPage = () => {
     const updateUsername = async () => {
         const nextUsername = usernameInput.trim();
         if (nextUsername === "") {
-            setErrorMessage("用户名不能为空");
+            setUsernameMessage({ type: "error", text: "用户名不能为空" });
             return;
         }
         if (nextUsername === currentUsername) {
-            setErrorMessage("新用户名与当前用户名相同");
+            setUsernameMessage({ type: "error", text: "新用户名与当前用户名相同" });
             return;
         }
 
         setUsernameUpdating(true);
-        setSuccessMessage("");
-        setErrorMessage("");
+        setUsernameMessage(null);
 
         try {
             const response = await fetch("/api/profile/username", {
@@ -139,16 +139,16 @@ const ProfileSettingsPage = () => {
                 }
                 dispatch(setName(updatedName));
                 setUsernameInput(updatedName);
-                setSuccessMessage("用户名修改成功");
+                setUsernameMessage({ type: "success", text: "用户名修改成功" });
             } else if (Number(payload.code) === 3) {
-                setErrorMessage("该用户名已被占用，请更换其他用户名");
+                setUsernameMessage({ type: "error", text: "该用户名已被占用，请更换其他用户名" });
             } else if (response.status === 401) {
-                setErrorMessage("登录已失效，请重新登录后再试");
+                setUsernameMessage({ type: "error", text: "登录已失效，请重新登录后再试" });
             } else {
-                setErrorMessage(String(payload.info ?? "用户名修改失败"));
+                setUsernameMessage({ type: "error", text: String(payload.info ?? "用户名修改失败") });
             }
         } catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setUsernameMessage({ type: "error", text: FAILURE_PREFIX + String(err) });
         } finally {
             setUsernameUpdating(false);
         }
@@ -297,7 +297,10 @@ const ProfileSettingsPage = () => {
                             type="text"
                             value={usernameInput}
                             placeholder="输入新的用户名"
-                            onChange={(e) => setUsernameInput(e.target.value)}
+                            onChange={(e) => {
+                                setUsernameInput(e.target.value);
+                                setUsernameMessage(null);
+                            }}
                             disabled={usernameUpdating}
                         />
                         <div className="actions">
@@ -309,6 +312,11 @@ const ProfileSettingsPage = () => {
                                 {usernameUpdating ? "修改中..." : "修改用户名"}
                             </button>
                         </div>
+                        {usernameMessage && (
+                            <p className={usernameMessage.type === "error" ? "usernameHint usernameHintError" : "usernameHint usernameHintSuccess"}>
+                                {usernameMessage.text}
+                            </p>
+                        )}
                     </section>
 
                     <section className="settingsSection" aria-label="头像和签名设置">
@@ -589,6 +597,20 @@ const ProfileSettingsPage = () => {
                 .successPanel {
                     border: 1px solid #badbcc;
                     background: #d1e7dd;
+                }
+
+                .usernameHint {
+                    margin: 0;
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+
+                .usernameHintError {
+                    color: #b02a37;
+                }
+
+                .usernameHintSuccess {
+                    color: #0f5132;
                 }
 
                 @media (max-width: 560px) {
