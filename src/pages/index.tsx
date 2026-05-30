@@ -22,7 +22,7 @@ const WEEKLY_PUSH_CAROUSEL_GAP = 12;
 const SUBJECT_GROUP_CAROUSEL_GAP = 16;
 const HOME_SKELETON_HISTORY_COUNT = 3;
 const HOME_SKELETON_STAT_COUNT = 5;
-const HOME_SKELETON_PAPER_COUNT = 2;
+const HOME_SKELETON_PAPER_COUNT = 10;
 const HOME_SKELETON_SUBJECT_COUNT = 2;
 
 // Create stable keys for repeated homepage skeleton placeholders.
@@ -632,7 +632,8 @@ interface WeeklyPushDetailCardProps {
     emptyPaperText: string;
     showMentorNames?: boolean;
     showPersonalizedSummary?: boolean;
-    metaItems?: string[];
+    showLargeTitle?: boolean;
+    hideTitle?: boolean;
 }
 
 // Render one weekly report card, including summaries, metadata, papers, and subject activity.
@@ -641,21 +642,19 @@ export const WeeklyPushDetailCard = ({
     emptyPaperText,
     showMentorNames = false,
     showPersonalizedSummary = false,
-    metaItems = [],
+    showLargeTitle = false,
+    hideTitle = false,
 }: WeeklyPushDetailCardProps) => {
     // Render separate blocks only when the AI summary actually differs from the fixed summary.
     const distinctAiSummary = push.aiSummary.trim() !== "" && push.aiSummary !== push.fixedSummary;
-    const resolvedMetaItems = [
-        `周期：${push.weekStart} ~ ${push.weekEnd}`,
-        `论文数：${push.paperCount}`,
-        ...metaItems,
-        `生成方式：${formatGeneratedBy(push.generatedBy)}`,
-    ];
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontWeight: 600 }}>{push.title}</div>
-            <div style={{ fontSize: 13, color: "#666" }}>{resolvedMetaItems.join(" ｜ ")}</div>
+            {!hideTitle && (
+                <div className={showLargeTitle ? "homeWeeklyPushCardTitle homeWeeklyPushCardTitleLarge" : "homeWeeklyPushCardTitle"}>
+                    {push.title}
+                </div>
+            )}
             {showPersonalizedSummary ? (
                 <div className="homePersonalizedSummaryStack">
                     {distinctAiSummary ? (
@@ -686,7 +685,7 @@ export const WeeklyPushDetailCard = ({
                 <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{push.content}</div>
             )}
             <div>
-                <h4 style={{ margin: "12px 0 8px" }}>本周论文</h4>
+                <h4 className="homeWeeklyPushSectionTitle">本周论文</h4>
                 <WeeklyPushPaperList
                     papers={push.papers}
                     emptyText={emptyPaperText}
@@ -695,7 +694,7 @@ export const WeeklyPushDetailCard = ({
             </div>
             {showPersonalizedSummary && (
                 <div>
-                    <h4 style={{ margin: "12px 0 8px" }}>关注板块动态</h4>
+                    <h4 className="homeWeeklyPushSectionTitle">关注板块动态</h4>
                     <WeeklyPushSubjectGroups groups={push.subjectGroups || []} />
                 </div>
             )}
@@ -966,32 +965,36 @@ const HomeScreen = () => {
     return (
         <div className="homePageShell">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <h2 style={{ margin: 0 }}>每周论文动态汇总</h2>
+                <h2 className="homePageTitle">欢迎回来！</h2>
             </div>
 
             <div className="homePageLayout">
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
                     <section className="homePersonalizedPanel">
                         <div className="homePersonalizedPanelHeader">
-                            <div>
-                                <h3 style={{ margin: 0 }}>个性周报</h3>
-                                <p className="homePersonalizedPanelHint">
-                                    根据你关注的导师、私有导师和板块，本周即时生成专属周报，并结合 AI 做摘要整理。
-                                </p>
+                            <div className="homePersonalizedPanelHeaderMain">
+                                <h3 className="homePanelTitle">个性周报</h3>
                             </div>
                             {isLoggedIn && (
-                                <button
-                                    type="button"
-                                    onClick={handleGeneratePersonalizedPush}
-                                    disabled={isGeneratingPersonalized}
-                                    className="homePersonalizedButton"
-                                >
-                                    {isGeneratingPersonalized
-                                        ? "正在生成..."
-                                        : personalizedWeeklyPush
-                                            ? "重新生成个性周报"
-                                            : "生成个性周报"}
-                                </button>
+                                <div className="homePersonalizedPanelHeaderActions">
+                                    <button
+                                        type="button"
+                                        onClick={handleGeneratePersonalizedPush}
+                                        disabled={isGeneratingPersonalized}
+                                        className="homePersonalizedButton"
+                                    >
+                                        {isGeneratingPersonalized
+                                            ? "正在生成..."
+                                            : personalizedWeeklyPush
+                                                ? "重新生成个性周报"
+                                                : "生成个性周报"}
+                                    </button>
+                                    {personalizedWeeklyPush && (
+                                        <div className="homePersonalizedDateRange">
+                                            {personalizedWeeklyPush.weekStart} ~ {personalizedWeeklyPush.weekEnd}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
 
@@ -1045,27 +1048,22 @@ const HomeScreen = () => {
                                     emptyPaperText="你关注的导师本周暂无新增论文明细。"
                                     showMentorNames
                                     showPersonalizedSummary
-                                    metaItems={[
-                                        `关注导师：${personalizedWeeklyPush.trackedMentorCount ?? 0} 位`,
-                                        `命中导师：${personalizedWeeklyPush.activeMentorCount ?? 0} 位`,
-                                        `关注板块：${personalizedWeeklyPush.trackedSubjectCount ?? 0} 个`,
-                                        `命中板块：${personalizedWeeklyPush.activeSubjectCount ?? 0} 个`,
-                                    ]}
+                                    hideTitle
                                 />
                             </div>
                         )}
 
                         {isLoggedIn && loadingPersonalizedWeeklyPush && personalizedWeeklyPushHistory.length === 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <h4 style={{ margin: "4px 0 0" }}>往期个性周报</h4>
+                                <h4 className="homePersonalizedHistoryTitle">往期个性周报</h4>
                                 {renderHomeHistorySkeleton("home-personalized-history-skeleton")}
                             </div>
                         )}
 
                         {isLoggedIn && personalizedWeeklyPushHistory.length > 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <h4 style={{ margin: "4px 0 0" }}>往期个性周报</h4>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <h4 className="homePersonalizedHistoryTitle">往期个性周报</h4>
+                                <div className="homeWeeklyHistoryList">
                                     {personalizedWeeklyPushHistory.map((item) => (
                                         <button
                                             key={`personalized-${item.weekStart}`}
@@ -1080,8 +1078,8 @@ const HomeScreen = () => {
                                                 cursor: "pointer",
                                             }}
                                         >
-                                            <div style={{ fontWeight: 600 }}>{item.title}</div>
-                                            <div style={{ fontSize: 13, color: "#666" }}>
+                                            <div className="homeWeeklyHistoryButtonTitle">{item.title}</div>
+                                            <div className="homeWeeklyHistoryButtonMeta">
                                                 {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
                                             </div>
                                         </button>
@@ -1097,53 +1095,54 @@ const HomeScreen = () => {
                         )}
                     </section>
 
-                    <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
-                        <h3 style={{ margin: "0 0 8px" }}>每周论文推送</h3>
+                    <section className="homeWeeklyPanel">
+                        <div className="homeWeeklyPanelHeader">
+                            <h3 className="homePanelTitle">每周论文推送</h3>
+                            {weeklyPush && !loadingWeeklyPush && (
+                                <div className="homeWeeklyPanelDateRange">
+                                    {weeklyPush.weekStart} ~ {weeklyPush.weekEnd}
+                                </div>
+                            )}
+                        </div>
                         {loadingWeeklyPush ? (
                             renderHomeWeeklyPushSkeleton()
                         ) : weeklyPush ? (
                             <WeeklyPushDetailCard
                                 push={weeklyPush}
                                 emptyPaperText="本周暂无论文明细。"
+                                hideTitle
                             />
                         ) : (
-                            <div style={{ color: "#666" }}>暂无周推送，请等待定时任务生成。</div>
+                            <div className="homeWeeklyPanelEmpty">暂无周推送，请等待定时任务生成。</div>
+                        )}
+                        {(loadingWeeklyPush && weeklyPushHistory.length === 0) && (
+                            <div className="homeWeeklyPanelHistorySection">
+                                <h3 className="homePublicHistoryTitle">往期周报</h3>
+                                {renderHomeHistorySkeleton("home-weekly-history-skeleton")}
+                            </div>
+                        )}
+
+                        {weeklyPushHistory.length > 0 && (
+                            <div className="homeWeeklyPanelHistorySection">
+                                <h3 className="homePublicHistoryTitle">往期周报</h3>
+                                <div className="homeWeeklyHistoryList">
+                                    {weeklyPushHistory.map((item) => (
+                                        <button
+                                            key={item.weekStart}
+                                            type="button"
+                                            onClick={() => setSelectedWeekStart(item.weekStart)}
+                                            className={`homePublicHistoryButton${selectedWeekStart === item.weekStart ? " homePublicHistoryButtonActive" : ""}`}
+                                        >
+                                            <div className="homeWeeklyHistoryButtonTitle">{item.title}</div>
+                                            <div className="homeWeeklyHistoryButtonMeta">
+                                                {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </section>
-
-                    {(loadingWeeklyPush && weeklyPushHistory.length === 0) && (
-                        <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
-                            <h3 style={{ margin: "0 0 8px" }}>往期周报</h3>
-                            {renderHomeHistorySkeleton("home-weekly-history-skeleton")}
-                        </section>
-                    )}
-
-                    {weeklyPushHistory.length > 0 && (
-                        <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
-                            <h3 style={{ margin: "0 0 8px" }}>往期周报</h3>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                {weeklyPushHistory.map((item) => (
-                                    <button
-                                        key={item.weekStart}
-                                        onClick={() => setSelectedWeekStart(item.weekStart)}
-                                        style={{
-                                            textAlign: "left",
-                                            padding: 10,
-                                            borderRadius: 6,
-                                            border: selectedWeekStart === item.weekStart ? "1px solid #0d6efd" : "1px solid #ccc",
-                                            backgroundColor: selectedWeekStart === item.weekStart ? "#e7f1ff" : "#fff",
-                                            cursor: "pointer",
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: 600 }}>{item.title}</div>
-                                        <div style={{ fontSize: 13, color: "#666" }}>
-                                            {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
                 </div>
             </div>
         </div>
