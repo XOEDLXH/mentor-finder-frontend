@@ -858,6 +858,7 @@ const SearchScreen = () => {
         router,
     ]);
 
+    // Switch between mentor and paper search modes and reset mode-specific transient UI.
     const switchMode = (nextMode: SearchMode) => {
         if (nextMode === mode) {
             return;
@@ -873,6 +874,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Convert admin-only dataset management errors into short UI messages.
     const formatAdminError = (err: unknown) => {
         if (isNetworkErrorInstance(err)) {
             if (err.type === NetworkErrorType.UNAUTHORIZED) {
@@ -889,6 +891,7 @@ const SearchScreen = () => {
         return FAILURE_PREFIX + String(err);
     };
 
+    // Load the current user's private mentors so search results can show owner-specific state.
     const fetchMyPrivateMentors = useCallback(async () => {
         if (!isLoggedIn) {
             setPrivateMentors([]);
@@ -910,6 +913,7 @@ const SearchScreen = () => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
 
+    // Load the current student's followed mentor ids for follow-button rendering.
     const fetchFollowedMentors = useCallback(async () => {
         if (!canFollowMentor) {
             setFollowedMentorIds(new Set());
@@ -935,6 +939,7 @@ const SearchScreen = () => {
         void fetchFollowedMentors();
     }, [fetchFollowedMentors]);
 
+    // Follow or unfollow one mentor directly from the search results list.
     const toggleMentorFollow = useCallback(async (mentorId: number) => {
         if (!canFollowMentor) {
             return;
@@ -983,6 +988,7 @@ const SearchScreen = () => {
             return;
         }
 
+        // Mark browser back/forward navigation so the next route sync restores the prior entry state.
         const handlePopState = () => {
             if (pendingSearchPopRestore !== undefined) {
                 return;
@@ -1033,6 +1039,7 @@ const SearchScreen = () => {
             return;
         }
 
+        // Persist scroll position continuously so return navigation restores nearby results.
         const handleScroll = () => {
             persistCurrentViewState();
         };
@@ -1048,6 +1055,7 @@ const SearchScreen = () => {
         persistCurrentViewState();
     }, [expandedPaperMentorIds, expandedProfileMentorIds, persistCurrentViewState]);
 
+    // Cache the current user's private mentor ids for fast badge and action checks in result cards.
     const privateMentorIdSet = useMemo(() => {
         return new Set(privateMentors.map((mentor) => mentor.id));
     }, [privateMentors]);
@@ -1060,6 +1068,7 @@ const SearchScreen = () => {
         ? `Search in ${totalResults} entrys:`
         : `Showing ${totalResults} results for all: ${trimmedAppliedKeyword}`;
 
+    // Create a private mentor inline from the "mine" search context and refresh the current results.
     const addPrivateMentorInSearch = useCallback(async () => {
         const chineseName = customMentorChineseName.trim();
         const englishName = customMentorEnglishName.trim();
@@ -1145,6 +1154,7 @@ const SearchScreen = () => {
         void loadSearchState(nextRouteState, nextIntent);
     }, [areSearchStatesEqual, loadSearchState, router.isReady, router.query]);
 
+    // Change paper sort mode and rerun search immediately when paper results are already active.
     const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
         if (paperSortMode === nextSortMode) {
             return;
@@ -1162,6 +1172,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Change exact/fuzzy match mode and rerun search when there is already an active query.
     const changeMatchMode = (nextMatchMode: SearchMatchMode) => {
         if (matchMode === nextMatchMode) {
             return;
@@ -1179,6 +1190,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Submit the current query when Enter is pressed in the search input.
     const handleEnter = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
             void navigateToSearchState(resolveSearchState({
@@ -1188,6 +1200,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Clear the search box and navigate to the empty-state search URL.
     const clearKeyword = () => {
         setKeyword("");
         void navigateToSearchState(resolveSearchState({
@@ -1196,6 +1209,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Launch an exact paper search seeded from a clicked paper title.
     const searchPaperByTitle = (paperTitle: string) => {
         setMode("paper");
         setMatchMode("exact");
@@ -1211,6 +1225,7 @@ const SearchScreen = () => {
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
+    // Launch an exact mentor search seeded from a clicked mentor author name.
     const searchMentorByName = (mentorName: string) => {
         setMode("mentor");
         setMatchMode("exact");
@@ -1224,6 +1239,7 @@ const SearchScreen = () => {
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
+    // Navigate to a mentor detail page while preserving enough state to restore this search entry on return.
     const navigateToMentorHomepage = useCallback(async (mentorId: number) => {
         // Save enough context to restore this exact search entry after visiting a mentor detail page.
         expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
@@ -1257,6 +1273,7 @@ const SearchScreen = () => {
         router,
     ]);
 
+    // Intercept normal left-clicks on mentor links so search-state restoration data can be recorded first.
     const handleMentorHomepageLinkClick = useCallback((
         event: MouseEvent<HTMLAnchorElement>,
         mentorId: number,
@@ -1269,6 +1286,7 @@ const SearchScreen = () => {
         void navigateToMentorHomepage(mentorId);
     }, [navigateToMentorHomepage]);
 
+    // Expand or collapse the mentor profile text for one search result card.
     const toggleMentorProfileExpand = (mentorId: number) => {
         setExpandedProfileMentorIds((prev) => {
             const next = new Set(prev);
@@ -1292,6 +1310,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Expand or collapse the related-paper title list for one mentor card.
     const toggleMentorPaperExpand = (mentorId: number) => {
         setExpandedPaperMentorIds((prev) => {
             const next = new Set(prev);
@@ -1315,6 +1334,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Create or update a mentor record from the admin editor embedded in the search page.
     const saveMentor = async () => {
         const chineseName = mentorDraft.Chinese_name.trim();
         const researchDirection = mentorDraft.research_direction.trim();
@@ -1363,6 +1383,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Populate and open the delete-confirmation dialog for a mentor.
     const openDeleteMentorDialog = (mentor: SearchMentorResult) => {
         setMentorDeleteTarget({
             id: mentor.id,
@@ -1373,6 +1394,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Close the mentor delete dialog unless deletion is still running.
     const closeDeleteMentorDialog = () => {
         if (mentorDeleteSubmitting) {
             return;
@@ -1381,6 +1403,7 @@ const SearchScreen = () => {
         setMentorDeleteTarget(undefined);
     };
 
+    // Permanently delete the mentor currently selected in the confirmation dialog.
     const confirmDeleteMentor = async () => {
         if (mentorDeleteTarget === undefined) {
             return;
@@ -1409,6 +1432,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Populate and open the delete-confirmation dialog for a paper.
     const openDeletePaperDialog = (paper: SearchPaperResult) => {
         setPaperDeleteTarget({
             id: paper.id,
@@ -1419,6 +1443,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Close the paper delete dialog unless deletion is still running.
     const closeDeletePaperDialog = () => {
         if (paperDeleteSubmitting) {
             return;
@@ -1427,6 +1452,7 @@ const SearchScreen = () => {
         setPaperDeleteTarget(undefined);
     };
 
+    // Permanently delete the paper currently selected in the confirmation dialog.
     const confirmDeletePaper = async () => {
         if (paperDeleteTarget === undefined) {
             return;
@@ -1454,6 +1480,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Create or update a paper record from the admin editor embedded in the search page.
     const savePaper = async () => {
         const title = paperDraft.title.trim();
 
@@ -1499,6 +1526,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Load a mentor result into the admin editor for in-place modification.
     const beginEditMentor = (mentor: SearchMentorResult) => {
         setMode("mentor");
         setMentorEditingId(mentor.id);
@@ -1512,6 +1540,7 @@ const SearchScreen = () => {
         setAdminMessage("");
     };
 
+    // Load a paper result into the admin editor for in-place modification.
     const beginEditPaper = (paper: SearchPaperResult) => {
         setMode("paper");
         setPaperEditingId(paper.id);
@@ -1620,6 +1649,7 @@ const SearchScreen = () => {
         );
     };
 
+    // Render loading placeholders for mentor search results.
     const renderMentorSkeletonList = () => (
         <div className="searchSkeletonList" aria-label="导师搜索结果加载中" data-testid="search-mentor-skeleton">
             {createSearchSkeletonKeys(SEARCH_SKELETON_COUNT, "search-mentor-skeleton").map((key, idx) => {
@@ -1676,6 +1706,7 @@ const SearchScreen = () => {
         </div>
     );
 
+    // Render loading placeholders for paper search results.
     const renderPaperSkeletonList = () => (
         <div className="searchSkeletonList" aria-label="论文搜索结果加载中" data-testid="search-paper-skeleton">
             {createSearchSkeletonKeys(SEARCH_SKELETON_COUNT, "search-paper-skeleton").map((key, idx) => {
@@ -1725,6 +1756,7 @@ const SearchScreen = () => {
         </div>
     );
 
+    // Render the full loading state, including pagination chrome and result skeleton cards.
     const renderSearchSkeletonResults = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div
