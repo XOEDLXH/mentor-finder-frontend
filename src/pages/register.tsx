@@ -58,6 +58,7 @@ const parseJsonSafely = async (response: Response) => {
     return {};
 };
 
+// Render the registration page and coordinate local validation, code sending, and account creation.
 const RegisterScreen = () => {
     const [userName, setUserName] = useState("");
     const [userNameBlurred, setUserNameBlurred] = useState(false);
@@ -89,18 +90,23 @@ const RegisterScreen = () => {
 
     const router = useRouter();
     const dispatch = useDispatch();
+    // Store the email input node so validation can focus it when the email is missing or invalid.
     const bindEmailInputRef: RefCallback<HTMLInputElement> = (node) => {
         emailInputRef.current = node ?? undefined;
     };
+    // Store the password input node so validation can focus it when the password is weak.
     const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         passwordInputRef.current = node ?? undefined;
     };
+    // Store the confirm-password input node so validation can focus it on mismatch.
     const bindConfirmPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         confirmPasswordInputRef.current = node ?? undefined;
     };
+    // Store the username input node so validation can focus it when the username is invalid or taken.
     const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
         userNameInputRef.current = node ?? undefined;
     };
+    // Store the verification-code input node so the page can focus it when the code is missing or invalid.
     const bindVerificationCodeInputRef: RefCallback<HTMLInputElement> = (node) => {
         verificationCodeInputRef.current = node ?? undefined;
     };
@@ -117,6 +123,7 @@ const RegisterScreen = () => {
         };
     }, []);
 
+    // Start or restart the resend countdown shown on the verification-code button.
     const startResendCooldown = (seconds: number) => {
         // Reuse a single interval to drive the resend button countdown.
         if (resendCooldownTimerRef.current !== undefined) {
@@ -161,6 +168,7 @@ const RegisterScreen = () => {
         },
     ];
 
+    // Check whether a password satisfies the page's strength requirements.
     const isPasswordStrong = (passwordToCheck: string) => {
         // Match the backend rule: password must contain both letters and numbers and be at least 8 chars.
         if (passwordToCheck.length < 8) {
@@ -195,6 +203,7 @@ const RegisterScreen = () => {
         confirmPasswordBlurred && confirmPassword !== "" && password !== confirmPassword;
     const shouldShowPasswordWeakHint = passwordBlurred && isPasswordWeak && !shouldShowPasswordMismatchHint;
 
+    // Validate email format before enabling verification-code and submit flows.
     const isEmailValid = (emailToCheck: string) => {
         return EMAIL_REGEX.test(emailToCheck.trim());
     };
@@ -215,11 +224,13 @@ const RegisterScreen = () => {
         }
     }, [shouldShowUserNameFormatError, userNameErrorSource]);
 
+    // Intercept native form submission and route it through the registration workflow.
     const submitRegister = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         register();
     };
 
+    // Request a verification code for the current email and start the resend cooldown when successful.
     const handleSendVerificationCode = () => {
         setVerificationCodeError("");
         setCodeStatusMessage("");
@@ -268,6 +279,7 @@ const RegisterScreen = () => {
             .finally(() => setSendingCode(false));
     };
 
+    // Validate the full form, submit the registration request, and log the user in on success.
     const register = () => {
         setRegisterErrorMessage("");
 
@@ -353,6 +365,7 @@ const RegisterScreen = () => {
             .finally(() => setSubmitting(false));
     };
 
+    // Open or close the marketing feature accordion while preserving its close animation.
     const toggleFeatureList = () => {
         if (featureListCloseTimerRef.current !== undefined) {
             window.clearTimeout(featureListCloseTimerRef.current);

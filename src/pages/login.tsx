@@ -35,6 +35,7 @@ const parseJsonSafely = async (response: Response) => {
     return {};
 };
 
+// Render the sign-in page and wire the form to the login flow.
 const LoginScreen = () => {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
@@ -47,18 +48,22 @@ const LoginScreen = () => {
     const dispatch = useDispatch();
     // Keep the post-login destination safe and relative even when the redirect query is malformed.
     const redirectTarget = resolveRedirectTarget(router.query.redirect);
+    // Store the username input node so validation can move focus there when the field is empty.
     const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
         userNameInputRef.current = node ?? undefined;
     };
+    // Store the password input node so validation can move focus there when the field is empty.
     const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         passwordInputRef.current = node ?? undefined;
     };
 
+    // Intercept native form submission and route it through the page's login workflow.
     const submitLogin = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         login();
     };
 
+    // Validate credentials, call the login endpoint, and hydrate global auth state on success.
     const login = () => {
         if (userName.trim() === "") {
             userNameInputRef.current?.focus();

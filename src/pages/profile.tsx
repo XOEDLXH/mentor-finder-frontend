@@ -27,6 +27,7 @@ interface ProfileResponse {
     profile?: Partial<ProfilePayload>;
 }
 
+// Render the editable public-profile form for the current authenticated user.
 const ProfileScreen = () => {
     const router = useRouter();
     // Read the current auth state so the page can guard access and link back to the public profile.
@@ -71,6 +72,7 @@ const ProfileScreen = () => {
             .finally(() => setLoading(false));
     }, [token]);
 
+    // Submit the editable profile text blocks and refresh local state from the server response.
     const saveProfile = async () => {
         setSaving(true);
         setSuccessMessage("");

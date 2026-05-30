@@ -117,6 +117,7 @@ let pendingSearchPopRestore:
     }
     | undefined;
 
+// Read the current browser history entry key used to persist per-entry UI state.
 const getWindowHistoryEntryKey = () => {
     // Next.js stores a per-entry key in history.state; use it to persist per-entry UI state.
     if (typeof window === "undefined") {
@@ -132,6 +133,7 @@ const getWindowHistoryEntryKey = () => {
     return INITIAL_HISTORY_ENTRY_KEY;
 };
 
+// Detect clicks that should keep native browser navigation behavior.
 const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
     // Modified clicks should keep native browser behavior instead of being intercepted for custom restoration.
     return event.defaultPrevented ||
@@ -142,6 +144,7 @@ const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
         event.altKey;
 };
 
+// Derive the PDF URL from a standard arXiv abstract URL.
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
         return "";
@@ -150,6 +153,7 @@ const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     return arxivUrl.replace("/abs/", "/pdf/");
 };
 
+// Split a comma-separated subject string into normalized subject tags.
 const parseTimelineLikeSubjects = (subjects?: string) => {
     if (typeof subjects !== "string" || subjects.trim() === "") {
         return [];
@@ -161,6 +165,7 @@ const parseTimelineLikeSubjects = (subjects?: string) => {
         .filter((subject) => subject !== "");
 };
 
+// Normalize persisted mentor ids before using them to restore expansion state.
 const normalizeHistoryMentorIds = (values?: Iterable<number> | ArrayLike<number>) => {
     // Sanitize persisted ids before using them to restore expanded mentor cards.
     return Array.from(values ?? [])
@@ -168,6 +173,7 @@ const normalizeHistoryMentorIds = (values?: Iterable<number> | ArrayLike<number>
         .filter((value) => Number.isInteger(value) && value > 0);
 };
 
+// Build the session-storage payload used to restore scroll and expansion state for one search entry.
 const buildSearchHistoryViewState = (
     scrollY: number,
     expandedProfileMentorIds: Iterable<number> | ArrayLike<number>,
@@ -234,10 +240,12 @@ const SEARCH_SKELETON_BLUEPRINTS = [
     },
 ] as const;
 
+// Create stable keys for repeated search-result skeleton placeholders.
 const createSearchSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
+// Build the follow button style used by mentor cards in search results.
 const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
     position: "relative",
     display: "inline-flex",
@@ -262,6 +270,7 @@ const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties =>
     opacity: 1,
 });
 
+// Render the main search page for mentors and papers, including URL-synced query state and history restoration.
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -359,6 +368,7 @@ const SearchScreen = () => {
         }
     }
 
+    // Clear the current result set while optionally preserving mentor expansion state.
     const resetResults = (clearExpandedMentors = true) => {
         // Reset only the current result set while leaving the query controls intact.
         setErrorMessage("");
@@ -375,6 +385,7 @@ const SearchScreen = () => {
         setHasNextPage(false);
     };
 
+    // Cancel the delayed skeleton-hide timer for the current search load cycle.
     const clearSearchSkeletonTimer = useCallback(() => {
         if (searchSkeletonTimerRef.current !== undefined) {
             clearTimeout(searchSkeletonTimerRef.current);
@@ -382,6 +393,7 @@ const SearchScreen = () => {
         }
     }, []);
 
+    // Start the visible skeleton phase for a search request and return its generation id.
     const startSearchSkeletonPhase = useCallback(() => {
         clearSearchSkeletonTimer();
         const generation = searchSkeletonGenerationRef.current + 1;
@@ -392,6 +404,7 @@ const SearchScreen = () => {
         return generation;
     }, [clearSearchSkeletonTimer]);
 
+    // Finish a search skeleton phase while honoring the minimum visible skeleton duration.
     const finishSearchSkeletonPhase = useCallback((generation: number) => {
         if (searchSkeletonGenerationRef.current !== generation) {
             return;
@@ -418,6 +431,7 @@ const SearchScreen = () => {
         clearSearchSkeletonTimer();
     }, [clearSearchSkeletonTimer]);
 
+    // Normalize pagination metadata from the backend into the page's local pagination state.
     const applyPagination = (
         paginationData: {
             page?: number;
@@ -453,14 +467,17 @@ const SearchScreen = () => {
         setHasNextPage(Boolean(paginationData.has_next));
     };
 
+    // Narrow unknown errors to the shared NetworkError class when possible.
     const isNetworkErrorInstance = (err: unknown): err is NetworkError => {
         return typeof NetworkError === "function" && err instanceof NetworkError;
     };
 
+    // Return the current browser history entry key used by search-state persistence.
     const getHistoryEntryKey = () => {
         return getWindowHistoryEntryKey();
     };
 
+    // Read the persisted scroll and expansion state for one search history entry.
     const readHistoryViewState = (entryKey: string) => {
         if (typeof window === "undefined") {
             return undefined;
@@ -496,6 +513,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Persist scroll and mentor expansion state for one search history entry.
     const writeHistoryViewState = (entryKey: string, viewState: SearchHistoryViewState) => {
         if (typeof window === "undefined") {
             return;
@@ -512,6 +530,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Save the current scroll position and expanded mentor sections into session storage.
     const persistCurrentViewState = useCallback((entryKey = getHistoryEntryKey(), force = false) => {
         if (typeof window === "undefined") {
             return;
@@ -534,6 +553,7 @@ const SearchScreen = () => {
         ));
     }, []);
 
+    // Restore window scroll position in a browser-safe and test-safe way.
     const scrollWindowTo = useCallback((scrollY: number) => {
         if (typeof window === "undefined") {
             return;
@@ -552,6 +572,7 @@ const SearchScreen = () => {
         }
     }, []);
 
+    // Run a callback after paint so scroll restoration waits for layout-dependent content to settle.
     const scheduleAfterPaint = useCallback((callback: () => void) => {
         // Two animation frames reliably wait for layout/paint before restoring scroll-sensitive UI.
         if (typeof window === "undefined") {
@@ -568,6 +589,7 @@ const SearchScreen = () => {
         });
     }, []);
 
+    // Compare two canonical search states to decide whether a route change is actually new.
     const areSearchStatesEqual = useCallback((left: SearchQueryState, right: SearchQueryState) => {
         return left.keyword === right.keyword &&
             left.mode === right.mode &&
@@ -577,6 +599,7 @@ const SearchScreen = () => {
             left.visibility === right.visibility;
     }, []);
 
+    // Merge UI overrides into a canonical search state used for URL sync and requests.
     const resolveSearchState = useCallback((
         overrides: SearchNavigationOptions = {},
         baseState: SearchQueryState = activeSearchStateRef.current,
@@ -602,6 +625,7 @@ const SearchScreen = () => {
         } satisfies SearchQueryState;
     }, []);
 
+    // Clear all admin edit-mode state for mentor and paper management.
     const resetAdminEditorState = useCallback(() => {
         setAdminMessage("");
         setMentorEditingId(undefined);
@@ -621,6 +645,7 @@ const SearchScreen = () => {
         });
     }, []);
 
+    // Clear transient dialogs and admin editors before switching to another search state.
     const resetTransientUiState = useCallback(() => {
         resetAdminEditorState();
         setMentorDeleteTarget(undefined);
@@ -629,6 +654,7 @@ const SearchScreen = () => {
         setPaperDeleteSubmitting(false);
     }, [resetAdminEditorState]);
 
+    // Build the backend request URL for mentor search from a canonical search state.
     const buildMentorSearchRequestUrl = useCallback((state: SearchQueryState) => {
         // Mentor search supports visibility filtering in addition to keyword and match mode.
         const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
@@ -638,6 +664,7 @@ const SearchScreen = () => {
         return `/api/search/mentors?${query}${pageQuery}${visibilityQuery}`;
     }, []);
 
+    // Build the backend request URL for paper search from a canonical search state.
     const buildPaperSearchRequestUrl = useCallback((state: SearchQueryState) => {
         // Paper search uses the same keyword syntax but adds a dedicated sort mode.
         const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
@@ -646,6 +673,7 @@ const SearchScreen = () => {
         return `/api/search/papers?${query}&sort_mode=${state.sortMode}${pageQuery}`;
     }, []);
 
+    // Restore scroll and expansion state after a search load depending on push/pop/refresh intent.
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
             // New navigations reset scroll and collapse mentor cards because they represent a fresh result view.
@@ -712,6 +740,7 @@ const SearchScreen = () => {
         }
     }, [persistCurrentViewState, scheduleAfterPaint, scrollWindowTo]);
 
+    // Load one canonical search state into the page, including data fetch and post-load restoration.
     const loadSearchState = useCallback(async (
         state: SearchQueryState,
         intent: SearchNavigationIntent,
@@ -780,11 +809,13 @@ const SearchScreen = () => {
         startSearchSkeletonPhase,
     ]);
 
+    // Re-run the current search state without changing the URL or history entry.
     const refreshCurrentSearch = useCallback(async (state = activeSearchStateRef.current) => {
         navigationIntentRef.current = "refresh";
         await loadSearchState(state, "refresh");
     }, [loadSearchState]);
 
+    // Push a new shallow search URL, persist current view state, and load the next search result set.
     const navigateToSearchState = useCallback(async (nextState: SearchQueryState) => {
         const currentState = activeSearchStateRef.current;
 

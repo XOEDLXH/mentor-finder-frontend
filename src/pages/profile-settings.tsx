@@ -42,6 +42,7 @@ const EMPTY_SETTINGS: ProfileSettings = {
 };
 
 // Normalize partial backend responses into a fully controlled settings object.
+// Convert a partial backend payload into a fully controlled settings object for the form.
 const normalizeSettings = (profile?: Partial<ProfileSettings>): ProfileSettings => ({
     avatarUrl: typeof profile?.avatarUrl === "string" ? profile.avatarUrl : "",
     signature: typeof profile?.signature === "string" ? profile.signature : "",
@@ -51,6 +52,7 @@ const normalizeSettings = (profile?: Partial<ProfileSettings>): ProfileSettings 
     showProjectExperience: typeof profile?.showProjectExperience === "boolean" ? profile.showProjectExperience : true,
 });
 
+// Render the personal settings page for avatar, signature, visibility, and mentor verification controls.
 const ProfileSettingsPage = () => {
     const router = useRouter();
     const dispatch = useDispatch();
@@ -97,6 +99,7 @@ const ProfileSettingsPage = () => {
             .finally(() => setLoading(false));
     }, [token]);
 
+    // Submit the current settings payload and keep the navbar avatar synchronized after save.
     const saveSettings = async () => {
         setSaving(true);
         setSuccessMessage("");
@@ -120,6 +123,7 @@ const ProfileSettingsPage = () => {
         }
     };
 
+    // Upload a local avatar image after validating file type and size constraints.
     const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file === undefined) {
@@ -170,6 +174,7 @@ const ProfileSettingsPage = () => {
         }
     };
 
+    // Submit a mentor-verification request that an admin can later review and bind to a mentor record.
     const submitMentorVerificationRequest = async () => {
         const submittedName = mentorVerificationName.trim();
         if (submittedName === "") {

@@ -21,6 +21,7 @@ interface UpdateAdminUserResponse {
     user: AdminUserResult;
 }
 
+// Render the admin dashboard for user-role management and mentor verification review.
 const AdminUsersPage = () => {
     const router = useRouter();
     const token = useSelector((state: RootState) => state.auth.token);
@@ -49,6 +50,7 @@ const AdminUsersPage = () => {
     const [draftRoleByUserId, setDraftRoleByUserId] = useState<Record<number, UserRole>>({});
     const [draftMentorIdByUserId, setDraftMentorIdByUserId] = useState<Record<number, string>>({});
 
+    // Convert network and authorization failures into concise admin-facing messages.
     const formatError = (err: unknown) => {
         // Normalize network-layer errors into short admin-friendly feedback strings.
         if (err instanceof NetworkError) {
@@ -63,6 +65,7 @@ const AdminUsersPage = () => {
         return FAILURE_PREFIX + String(err);
     };
 
+    // Rebuild the editable role and mentor-binding drafts from the latest fetched user list.
     const syncDrafts = (nextUsers: AdminUserResult[]) => {
         // Keep the editable role / mentor binding controls in sync with the latest server snapshot.
         const nextRoleDrafts: Record<number, UserRole> = {};
@@ -75,6 +78,7 @@ const AdminUsersPage = () => {
         setDraftMentorIdByUserId(nextMentorDrafts);
     };
 
+    // Fetch the admin user list together with pending verification requests under the current filters.
     const fetchUsers = async (keyword?: string, nextRoleFilter?: UserRoleFilter) => {
         if (!isAdmin) {
             return;
@@ -124,15 +128,20 @@ const AdminUsersPage = () => {
         void fetchUsers("", "");
     }, [isAdmin]);
 
+    // Expose only public mentor records for admin role binding and approval flows.
+    // Filter the generic mentor search results down to public mentors only.
     const publicMentorSearchResults = useMemo(() => {
         // Admin role binding must point at public mentor records, never a student's private mentor.
         return mentorSearchResults.filter((mentor) => !mentor.is_private);
     }, [mentorSearchResults]);
 
+    // Read the mentor search results associated with a specific verification request.
+    // Return the public mentor candidates associated with one verification request.
     const getVerificationMentorSearchResults = (requestId: number) => {
         return (verificationMentorSearchResultsByRequestId[requestId] || []).filter((mentor) => !mentor.is_private);
     };
 
+    // Search public mentors that admins can bind to users promoted to mentor accounts.
     const searchPublicMentors = async () => {
         const trimmedKeyword = mentorSearchKeyword.trim();
         if (trimmedKeyword === "") {
@@ -162,6 +171,7 @@ const AdminUsersPage = () => {
         }
     };
 
+    // Search public mentors for a single verification request before approval.
     const searchVerificationMentors = async (requestId: number) => {
         const trimmedKeyword = (verificationMentorSearchKeywordByRequestId[requestId] || "").trim();
         if (trimmedKeyword === "") {
@@ -206,6 +216,7 @@ const AdminUsersPage = () => {
         }
     };
 
+    // Persist the current draft role and optional mentor binding for one user.
     const saveUser = async (user: AdminUserResult) => {
         const nextRole = draftRoleByUserId[user.id] || (user.role as UserRole);
         const nextMentorId = (draftMentorIdByUserId[user.id] || "").trim();
@@ -239,6 +250,7 @@ const AdminUsersPage = () => {
         }
     };
 
+    // Approve or reject a mentor verification request, optionally binding it to a public mentor record.
     const reviewVerificationRequest = async (
         requestId: number,
         status: "approved" | "rejected",

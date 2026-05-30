@@ -50,6 +50,7 @@ const parseJsonSafely = async (response: Response) => {
     return {};
 };
 
+// Render the password-reset page and coordinate code sending plus password update flow.
 const ResetPasswordScreen = () => {
     const [email, setEmail] = useState("");
     const [emailBlurred, setEmailBlurred] = useState(false);
@@ -74,15 +75,19 @@ const ResetPasswordScreen = () => {
     const resendCooldownTimerRef = useRef<number | undefined>(undefined);
     const router = useRouter();
 
+    // Store the email input node so validation can focus it when the email is missing or invalid.
     const bindEmailInputRef: RefCallback<HTMLInputElement> = (node) => {
         emailInputRef.current = node ?? undefined;
     };
+    // Store the verification-code input node so validation can focus it when the code is missing or invalid.
     const bindVerificationCodeInputRef: RefCallback<HTMLInputElement> = (node) => {
         verificationCodeInputRef.current = node ?? undefined;
     };
+    // Store the password input node so validation can focus it when the new password is weak.
     const bindPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         passwordInputRef.current = node ?? undefined;
     };
+    // Store the confirm-password input node so validation can focus it when the two passwords do not match.
     const bindConfirmPasswordInputRef: RefCallback<HTMLInputElement> = (node) => {
         confirmPasswordInputRef.current = node ?? undefined;
     };
@@ -96,6 +101,7 @@ const ResetPasswordScreen = () => {
         };
     }, []);
 
+    // Start or restart the resend countdown shown on the verification-code button.
     const startResendCooldown = (seconds: number) => {
         // Reinitialize the cooldown interval each time a new verification code is sent.
         if (resendCooldownTimerRef.current !== undefined) {
@@ -116,8 +122,10 @@ const ResetPasswordScreen = () => {
         }, 1000);
     };
 
+    // Validate email format before requesting a reset code or submitting the form.
     const isEmailValid = (emailToCheck: string) => EMAIL_REGEX.test(emailToCheck.trim());
 
+    // Check whether the new password satisfies the page's strength requirements.
     const isPasswordStrong = (passwordToCheck: string) => {
         if (passwordToCheck.length < 8) {
             return false;
@@ -145,6 +153,7 @@ const ResetPasswordScreen = () => {
     const shouldShowPasswordWeakHint =
         passwordBlurred && password !== "" && !isPasswordStrong(password) && !shouldShowPasswordMismatchHint;
 
+    // Request a password-reset verification code for the current email.
     const handleSendVerificationCode = () => {
         setResetErrorMessage("");
         setVerificationCodeError("");
@@ -195,11 +204,13 @@ const ResetPasswordScreen = () => {
             .finally(() => setSendingCode(false));
     };
 
+    // Intercept native form submission and route it through the reset workflow.
     const submitResetPassword = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         resetPassword();
     };
 
+    // Validate the form, submit the password-reset request, and redirect back to login on success.
     const resetPassword = () => {
         setResetErrorMessage("");
         setResetStatusMessage("");

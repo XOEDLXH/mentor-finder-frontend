@@ -60,12 +60,14 @@ const FOLLOW_SUBJECT_CHIP_SKELETON_COUNT = 8;
 const FOLLOW_SUBJECT_CARD_SKELETON_COUNT = 3;
 const MIN_FOLLOW_SKELETON_MS = 100;
 
+// Create stable keys for repeated follow-page skeleton placeholders.
 const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
 type FollowSkeletonSection = "mentor" | "user" | "subject" | "follower";
 
+// Build the follow button style used by mentor cards on the follows page.
 const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
     position: "relative",
     display: "inline-flex",
@@ -90,6 +92,7 @@ const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSPropertie
     opacity: 1,
 });
 
+// Format tab counts into a compact display string for the page-level segmented control.
 const formatViewSwitchCount = (value: number) => {
     // Compact larger counts so the segmented controls stay readable on narrower screens.
     const safeValue = Math.max(0, Math.floor(value));
@@ -105,6 +108,7 @@ const formatViewSwitchCount = (value: number) => {
     return `${(safeValue / 1000).toFixed(1)}k`;
 };
 
+// Render the follows dashboard for mentors, users, subjects, and follower relationships.
 const FollowsPage = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -148,6 +152,7 @@ const FollowsPage = () => {
         follower: undefined,
     });
 
+    // Route a generic section key to the matching loading state setter.
     const setSectionLoading = useCallback((section: FollowSkeletonSection, loading: boolean) => {
         // Route a generic section key to the matching loading flag.
         if (section === "mentor") {
@@ -165,6 +170,7 @@ const FollowsPage = () => {
         setFollowerLoading(loading);
     }, []);
 
+    // Cancel the delayed skeleton-hide timer for one section.
     const clearSkeletonTimer = useCallback((section: FollowSkeletonSection) => {
         const timer = skeletonTimerRef.current[section];
         if (timer !== undefined) {
@@ -173,6 +179,7 @@ const FollowsPage = () => {
         }
     }, []);
 
+    // Start the loading skeleton timing window for one follow section.
     const startSkeletonPhase = useCallback((section: FollowSkeletonSection) => {
         clearSkeletonTimer(section);
         skeletonStartedAtRef.current[section] = Date.now();
@@ -180,6 +187,7 @@ const FollowsPage = () => {
         setSectionLoading(section, true);
     }, [clearSkeletonTimer, setSectionLoading]);
 
+    // Finish a section's skeleton phase while honoring the minimum visible skeleton duration.
     const finishSkeletonPhase = useCallback((section: FollowSkeletonSection) => {
         clearSkeletonTimer(section);
         const elapsed = Date.now() - skeletonStartedAtRef.current[section];
@@ -201,6 +209,7 @@ const FollowsPage = () => {
         });
     }, [clearSkeletonTimer]);
 
+    // Clear every cached tab/list when the page needs a full auth-aware reset.
     const resetFollowData = useCallback(() => {
         // Clear every tab's cached data when auth disappears or the page needs a full reset.
         setMentors([]);
@@ -214,6 +223,7 @@ const FollowsPage = () => {
         setHasLoadedFollowers(false);
     }, []);
 
+    // Load the current user's followed mentor list.
     const fetchMentors = useCallback(async () => {
         if (!isLoggedIn) {
             resetFollowData();
@@ -245,6 +255,7 @@ const FollowsPage = () => {
         }
     }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
 
+    // Load the current user's followed user list.
     const fetchUsers = useCallback(async () => {
         if (!isLoggedIn) {
             resetFollowData();
@@ -268,6 +279,7 @@ const FollowsPage = () => {
         }
     }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
 
+    // Load the current user's followed subject list and the discoverable subjects list.
     const fetchSubjects = useCallback(async () => {
         if (!isLoggedIn) {
             resetFollowData();
@@ -292,6 +304,7 @@ const FollowsPage = () => {
         }
     }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
 
+    // Load the users who currently follow the authenticated user.
     const fetchFollowers = useCallback(async () => {
         if (!isLoggedIn) {
             resetFollowData();
@@ -315,6 +328,7 @@ const FollowsPage = () => {
         }
     }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
 
+    // Follow or unfollow one mentor directly from the mentor tab.
     const toggleFollow = async (mentor: FollowedMentorCardState) => {
         const mentorId = mentor.id;
         setActionMentorId(mentorId);
@@ -343,6 +357,7 @@ const FollowsPage = () => {
         }
     };
 
+    // Follow or unfollow one user and reflect the result across every user list on the page.
     const toggleUserFollow = async (targetUser: FollowUserResult) => {
         const targetUserId = targetUser.id;
         setActionUserId(targetUserId);
@@ -377,6 +392,7 @@ const FollowsPage = () => {
         }
     };
 
+    // Follow or unfollow one subject and update both the available and followed subject lists.
     const toggleSubjectFollow = async (targetSubject: string, followed: boolean) => {
         setActionSubject(targetSubject);
         setErrorMessage("");
@@ -419,6 +435,7 @@ const FollowsPage = () => {
         }
     };
 
+    // Search users that can be followed from the user tab.
     const searchUsers = async () => {
         const keyword = userSearchKeyword.trim();
         if (keyword === "") {
@@ -446,10 +463,12 @@ const FollowsPage = () => {
         }
     };
 
+    // Navigate to a public user profile from any user card on the page.
     const openUserProfile = (userId: number) => {
         void router.push(`/users/${userId}`);
     };
 
+    // Derive the PDF URL from an arXiv abstract link for subject-paper previews.
     const buildPaperPdfUrl = (arxivUrl?: string) => {
         // Mirror the search/timeline behavior by deriving the PDF link from the arXiv abstract URL.
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
@@ -459,6 +478,7 @@ const FollowsPage = () => {
         return arxivUrl.replace("/abs/", "/pdf/");
     };
 
+    // Expand or collapse the recent paper list for one followed subject.
     const toggleSubjectExpand = (subject: string) => {
         setExpandedSubjects((currentSubjects) => {
             const nextSubjects = new Set(currentSubjects);
@@ -472,6 +492,7 @@ const FollowsPage = () => {
         });
     };
 
+    // Jump into the search page with an exact paper search seeded from a subject code.
     const navigateToSubjectSearch = (subjectCode: string) => {
         // Reuse the search page for exact subject-code paper search from the follows dashboard.
         const url = buildSearchUrl({
@@ -485,6 +506,7 @@ const FollowsPage = () => {
         void router.push(url);
     };
 
+    // Render one user card shared by the search, following, and follower lists.
     const renderUserCard = (user: FollowUserResult, keyPrefix: string) => (
         <div
             className="userCard"
@@ -526,6 +548,7 @@ const FollowsPage = () => {
         </div>
     );
 
+    // Render loading placeholders for the mentor tab.
     const renderMentorSkeletonGrid = () => (
         <div className="followSkeletonMentorGrid" aria-label="导师关注加载中" data-testid="follow-mentor-skeleton">
             {createSkeletonKeys(FOLLOW_MENTOR_SKELETON_COUNT, "mentor-skeleton").map((key) => (
@@ -542,6 +565,7 @@ const FollowsPage = () => {
         </div>
     );
 
+    // Render loading placeholders for user-card lists.
     const renderUserSkeletonList = (testId = "follow-user-skeleton") => (
         <div className="userList" aria-label="用户关注加载中" data-testid={testId}>
             {createSkeletonKeys(FOLLOW_USER_SKELETON_COUNT, `${testId}-item`).map((key) => (
@@ -560,6 +584,7 @@ const FollowsPage = () => {
         </div>
     );
 
+    // Render loading placeholders for the subject tab.
     const renderSubjectSkeletonSection = () => (
         <div className="subjectFollowSection" aria-label="板块关注加载中" data-testid="follow-subject-skeleton">
             <section className="subjectSearchSection" aria-label="搜索关注板块加载中">
@@ -600,6 +625,7 @@ const FollowsPage = () => {
         </div>
     );
 
+    // Switch between the "following" and "followers" top-level views.
     const handleViewChange = (nextView: FollowView) => {
         setActiveView(nextView);
         // Followers are loaded lazily because many sessions never leave the default "following" tab.
@@ -608,6 +634,7 @@ const FollowsPage = () => {
         }
     };
 
+    // Switch between mentor, user, and subject tabs inside the "following" view.
     const handleCategoryChange = (nextCategory: FollowCategory) => {
         setActiveCategory(nextCategory);
         // User and subject tabs are also lazy-loaded to keep the initial mentor view responsive.

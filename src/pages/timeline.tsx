@@ -44,11 +44,13 @@ type ScrollAdjustment =
     | { type: "append-anchor"; firstNewPaperId?: number; anchorTop: number; direction: "up" | "down"; }
     | undefined;
 
+// Create stable keys for repeated timeline skeleton placeholders.
 const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
 // Generate the shared shimmer style used by direction cards, feed previews, and calendar placeholders.
+// Build the shared shimmer bar style used by timeline skeleton blocks.
 const createPreviewBarStyle = (
     width: number | string,
     height: number,
@@ -75,14 +77,18 @@ const CALENDAR_HEATMAP_MID_RGB = {
     b: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.b*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.b/9),
 } as const;
 
+// Clamp a numeric value into the given inclusive range.
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+// Interpolate one RGB channel between two values.
 const interpolateChannel = (start: number, end: number, ratio: number) => (
     Math.round(start + ((end - start) * ratio))
 );
 
+// Convert an RGB object into a CSS rgb(...) string.
 const toRgbString = (rgb: { r: number; g: number; b: number; }) => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
 
+// Map a paper count to the background/text colors used by one calendar day cell.
 const createCalendarHeatColor = (paperCount: number) => {
     // Convert paper counts into a simple light-to-dark heat scale for the calendar grid.
     if (paperCount <= 0) {
@@ -136,8 +142,10 @@ const TIMELINE_SKELETON_BLUEPRINTS = [
     },
 ] as const;
 
+// Zero-pad a year/month/day fragment for ISO-style date formatting.
 const padDatePart = (value: number) => String(value).padStart(2, "0");
 
+// Parse a YYYY-MM-DD string into a noon-based Date object to reduce timezone drift.
 const parseIsoDate = (value?: string) => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return undefined;
@@ -151,44 +159,56 @@ const parseIsoDate = (value?: string) => {
     return new Date(year, month - 1, day, 12, 0, 0, 0);
 };
 
+// Format a Date object back into the YYYY-MM-DD string used by the timeline APIs.
 const formatIsoDate = (value: Date) => (
     `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`
 );
 
+// Clone a date while normalizing the time to noon to avoid timezone edge cases.
 const cloneDate = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
 
+// Shift a calendar date forward or backward by a number of days.
 const addCalendarDays = (value: Date, days: number) => {
     const next = cloneDate(value);
     next.setDate(next.getDate() + days);
     return next;
 };
 
+// Shift a calendar month forward or backward by a number of months.
 const addCalendarMonths = (value: Date, months: number) => {
     const next = new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
     next.setMonth(next.getMonth() + months);
     return next;
 };
 
+// Return the first day of the given month at noon.
 const startOfCalendarMonth = (value: Date) => new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
 
+// Compute the first visible day in the month grid, including the leading days from the previous month.
 const buildCalendarGridStart = (month: Date) => {
     const firstDay = startOfCalendarMonth(month);
     const weekday = (firstDay.getDay() + 6) % 7;
     return addCalendarDays(firstDay, -weekday);
 };
 
+// Format the visible calendar month for the panel header.
 const formatCalendarMonthLabel = (value: Date) => `${value.getFullYear()} 年 ${value.getMonth() + 1} 月`;
+// Format one year option for the calendar picker.
 const formatCalendarYearTriggerLabel = (year: number) => `${year}年`;
+// Format one month option for the calendar picker.
 const formatCalendarMonthTriggerLabel = (month: number) => `${month}月`;
+// Choose a fallback year label when the calendar picker has no selectable year state yet.
 const formatFallbackCalendarYearTriggerLabel = (calendarMeta?: TimelineCalendarResponse) => {
     const fallbackDate = parseIsoDate(calendarMeta?.latest_date || calendarMeta?.default_date || "");
     return fallbackDate !== undefined ? formatCalendarYearTriggerLabel(fallbackDate.getFullYear()) : "年份";
 };
+// Choose a fallback month label when the calendar picker has no selectable month state yet.
 const formatFallbackCalendarMonthTriggerLabel = (calendarMeta?: TimelineCalendarResponse) => {
     const fallbackDate = parseIsoDate(calendarMeta?.latest_date || calendarMeta?.default_date || "");
     return fallbackDate !== undefined ? formatCalendarMonthTriggerLabel(fallbackDate.getMonth() + 1) : "月份";
 };
 
+// Pick the nearest numeric option to the requested target value.
 const findNearestNumericOption = (target: number, options: number[]) => {
     if (options.length === 0) {
         return undefined;
@@ -207,6 +227,7 @@ const findNearestNumericOption = (target: number, options: number[]) => {
     });
 };
 
+// Render the timeline page with direction switching, day-based calendar navigation, and infinite feed loading.
 const TimelinePage = () => {
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");

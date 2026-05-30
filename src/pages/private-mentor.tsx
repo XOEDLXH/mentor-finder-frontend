@@ -16,6 +16,7 @@ interface PrivateMentorsResponse {
 
 const PRIVATE_MENTOR_LIMIT = 10;
 
+// Render the private mentor management page for creating, editing, filtering, and deleting user-owned mentors.
 const PrivateMentorScreen = () => {
     const router = useRouter();
     const token = useSelector((state: RootState) => state.auth.token);
@@ -52,10 +53,12 @@ const PrivateMentorScreen = () => {
         profile: "",
     });
 
+    // Narrow unknown errors to the shared NetworkError class when possible.
     const isNetworkErrorInstance = (err: unknown): err is NetworkError => {
         return typeof NetworkError === "function" && err instanceof NetworkError;
     };
 
+    // Convert backend and transport errors into private-mentor-specific user messages.
     const formatPrivateMentorError = useCallback((err: unknown) => {
         // Map backend validation details into messages suitable for end users.
         if (isNetworkErrorInstance(err)) {
@@ -79,6 +82,7 @@ const PrivateMentorScreen = () => {
         return FAILURE_PREFIX + String(err);
     }, []);
 
+    // Load the current user's private mentor list from the backend.
     const fetchMyPrivateMentors = useCallback(async () => {
         if (!isLoggedIn) {
             setPrivateMentors([]);
@@ -107,6 +111,8 @@ const PrivateMentorScreen = () => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
 
+    // Derive the filtered and sorted mentor list shown in the current view.
+    // Compute the currently visible private mentor list after applying filter text, category, and sort mode.
     const displayedPrivateMentors = useMemo(() => {
         const keyword = privateMentorFilter.trim().toLowerCase();
 
@@ -159,6 +165,7 @@ const PrivateMentorScreen = () => {
 
     const isPrivateMentorLimitReached = privateMentors.length >= PRIVATE_MENTOR_LIMIT;
 
+    // Create a new private mentor from the current draft fields.
     const addPrivateMentor = async () => {
         const chineseName = customMentorDraft.Chinese_name.trim();
         const englishName = customMentorDraft.English_name.trim();
@@ -207,6 +214,7 @@ const PrivateMentorScreen = () => {
         }
     };
 
+    // Open the edit dialog and seed it with the selected mentor's current values.
     const openEditDialog = (mentor: PrivateMentorResult) => {
         // Seed the dialog with the current mentor snapshot so edits feel like inline modification.
         setEditDialogTarget(mentor);
@@ -219,6 +227,8 @@ const PrivateMentorScreen = () => {
         });
     };
 
+    // Close the edit dialog unless an edit request is still in flight.
+    // Dismiss the edit dialog unless a save request is still running.
     const closeEditDialog = () => {
         if (editDialogSubmitting) {
             return;
@@ -226,6 +236,7 @@ const PrivateMentorScreen = () => {
         setEditDialogTarget(undefined);
     };
 
+    // Persist edits for the currently selected private mentor.
     const submitEditDialog = async () => {
         if (editDialogTarget === undefined) {
             return;
@@ -267,10 +278,13 @@ const PrivateMentorScreen = () => {
         }
     };
 
+    // Open the delete confirmation dialog for the chosen private mentor.
     const openDeleteDialog = (mentor: PrivateMentorResult) => {
         setDeleteDialogTarget(mentor);
     };
 
+    // Close the delete confirmation dialog unless deletion is still pending.
+    // Dismiss the delete confirmation dialog unless deletion is still running.
     const closeDeleteDialog = () => {
         if (deleteDialogSubmitting) {
             return;
@@ -278,6 +292,7 @@ const PrivateMentorScreen = () => {
         setDeleteDialogTarget(undefined);
     };
 
+    // Permanently delete the mentor currently selected in the confirmation dialog.
     const confirmDeleteDialog = async () => {
         if (deleteDialogTarget === undefined) {
             return;
