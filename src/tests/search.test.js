@@ -2659,7 +2659,8 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        const expectedSummary = `Showing 1 results for all: ${longKeyword}`;
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
+        const expectedSummary = `Showing 1 results for all: ${truncatedKeyword}`;
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: expectedSummary })).toHaveAttribute("title", expectedSummary);
         });
