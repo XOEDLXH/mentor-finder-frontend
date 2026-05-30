@@ -45,6 +45,7 @@ const SEARCH_ACTION_BUTTON_STYLE: CSSProperties = {
     padding: "0 12px",
     whiteSpace: "nowrap",
 };
+const MAX_SEARCH_KEYWORD_LENGTH = 255;
 
 interface PrivateMentorsResponse {
     mentors?: PrivateMentorResult[];
@@ -78,6 +79,8 @@ interface SearchNavigationOptions {
     page?: number;
     visibility?: MentorResultFilter;
 }
+
+const normalizeSearchKeyword = (value: string) => value.trim().slice(0, MAX_SEARCH_KEYWORD_LENGTH);
 
 interface MentorDeleteTarget {
     id: number;
@@ -606,7 +609,7 @@ const SearchScreen = () => {
     ) => {
         // Recompute a canonical query state for URL sync and request-building.
         const nextMode = overrides.mode ?? baseState.mode;
-        const nextKeyword = (overrides.keyword ?? baseState.keyword).trim();
+        const nextKeyword = normalizeSearchKeyword(overrides.keyword ?? baseState.keyword);
         const nextPageRaw = overrides.page ?? baseState.page;
         const nextPage = Number.isFinite(nextPageRaw) && nextPageRaw > 0 ? Math.floor(nextPageRaw) : 1;
         const nextSortMode = overrides.sortMode ?? baseState.sortMode;
@@ -755,7 +758,7 @@ const SearchScreen = () => {
         setMatchMode(state.searchMode);
         setPaperSortMode(state.sortMode);
         setMentorResultFilter(state.visibility);
-        setKeyword(state.keyword);
+        setKeyword(normalizeSearchKeyword(state.keyword));
         const skeletonGeneration = startSearchSkeletonPhase();
         setLoading(true);
         setHasSearched(true);
@@ -1208,7 +1211,7 @@ const SearchScreen = () => {
     const searchPaperByTitle = (paperTitle: string) => {
         setMode("paper");
         setMatchMode("exact");
-        setKeyword(paperTitle);
+        setKeyword(normalizeSearchKeyword(paperTitle));
         setPaperSortMode("default");
         void navigateToSearchState(resolveSearchState({
             keyword: paperTitle,
@@ -1224,7 +1227,7 @@ const SearchScreen = () => {
     const searchMentorByName = (mentorName: string) => {
         setMode("mentor");
         setMatchMode("exact");
-        setKeyword(mentorName);
+        setKeyword(normalizeSearchKeyword(mentorName));
         void navigateToSearchState(resolveSearchState({
             keyword: mentorName,
             page: 1,
@@ -2164,9 +2167,10 @@ const SearchScreen = () => {
                 </div>
                 <input
                     type="text"
+                    maxLength={MAX_SEARCH_KEYWORD_LENGTH}
                     value={keyword}
                     placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
-                    onChange={(e) => setKeyword(e.target.value)}
+                    onChange={(e) => setKeyword(normalizeSearchKeyword(e.target.value))}
                     onKeyDown={handleEnter}
                     style={{ flex: "1 1 260px", minWidth: 0 }}
                 />

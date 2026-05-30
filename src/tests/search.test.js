@@ -2582,6 +2582,36 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
     });
 
+    it("truncates overly long search keywords before submitting", async () => {
+        // Tests the search-input length guard.
+        // The page should keep the visible input and outgoing request within
+        // the backend keyword length limit so long pasted text does not error.
+        renderWithStore();
+        await waitForMineRequest();
+
+        const longKeyword = "超长搜索关键词".repeat(40);
+        const truncatedKeyword = longKeyword.slice(0, 255);
+        const input = screen.getByPlaceholderText("输入导师姓名或研究方向");
+
+        fireEvent.change(input, { target: { value: longKeyword } });
+        expect(input).toHaveValue(truncatedKeyword);
+
+        request.mockClear();
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                `/api/search/mentors?keyword=${encodeURIComponent(truncatedKeyword)}&search_mode=fuzzy`,
+                "GET",
+                true,
+            );
+        });
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: `Showing 0 results for all: ${truncatedKeyword}` })).toBeInTheDocument();
+        });
+    });
+
     it("stores the full summary string in the title attribute for long keywords", async () => {
         // Tests summary-heading accessibility/overflow behavior.
         // When the visible summary text may be truncated for long keywords, the
