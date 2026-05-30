@@ -448,7 +448,10 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
 
         if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
             window.setTimeout(() => {
-                modalCloseButtonRef.current?.focus();
+                const modalCloseButton = modalCloseButtonRef.current;
+                if (modalCloseButton !== undefined) {
+                    modalCloseButton.focus();
+                }
             }, 0);
         }
 
