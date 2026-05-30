@@ -480,6 +480,7 @@ const FollowsPage = () => {
                                 className={activeCategory === "mentor" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
                                 type="button"
                                 aria-pressed={activeCategory === "mentor"}
+                                aria-label={`导师（${formatViewSwitchCount(mentors.filter((mentor) => mentor.followed).length)}）`}
                                 onClick={() => setActiveCategory("mentor")}
                             >
                                 <span className="categorySwitchButtonLabel">导师</span>
@@ -491,6 +492,7 @@ const FollowsPage = () => {
                                 className={activeCategory === "user" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
                                 type="button"
                                 aria-pressed={activeCategory === "user"}
+                                aria-label={`用户（${formatViewSwitchCount(users.filter((user) => user.followed).length)}）`}
                                 onClick={() => setActiveCategory("user")}
                             >
                                 <span className="categorySwitchButtonLabel">用户</span>
@@ -502,6 +504,7 @@ const FollowsPage = () => {
                                 className={activeCategory === "subject" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
                                 type="button"
                                 aria-pressed={activeCategory === "subject"}
+                                aria-label={`板块（${formatViewSwitchCount(subjects.length)}）`}
                                 onClick={() => setActiveCategory("subject")}
                             >
                                 <span className="categorySwitchButtonLabel">板块</span>
