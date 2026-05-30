@@ -421,6 +421,8 @@ const FollowsPage = () => {
                 <div className="pageHeader">
                     <div className="pageTitleGroup">
                         <h2 className="pageTitle">{activeView === "following" ? "我的关注" : "我的粉丝"}</h2>
+                    </div>
+                    <div className="pageHeaderActions">
                         <button
                             type="button"
                             className="addPrivateMentorButton"
@@ -428,35 +430,35 @@ const FollowsPage = () => {
                         >
                             添加个人导师
                         </button>
-                    </div>
-                    <div className="viewSwitchGroup" role="group" aria-label="关注页面切换">
-                        <div className="viewSwitch">
-                            <span
-                                className={activeView === "following" ? "viewSwitchThumb" : "viewSwitchThumb viewSwitchThumbFollowers"}
-                                aria-hidden="true"
-                            />
-                            <button
-                                className={activeView === "following" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
-                                type="button"
-                                aria-pressed={activeView === "following"}
-                                onClick={() => setActiveView("following")}
-                            >
-                                <span className="viewSwitchButtonLabel">我的关注</span>
-                                <span className="viewSwitchButtonCount" aria-hidden="true">
-                                    {formatViewSwitchCount(followingCount)}
-                                </span>
-                            </button>
-                            <button
-                                className={activeView === "followers" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
-                                type="button"
-                                aria-pressed={activeView === "followers"}
-                                onClick={() => setActiveView("followers")}
-                            >
-                                <span className="viewSwitchButtonLabel">我的粉丝</span>
-                                <span className="viewSwitchButtonCount" aria-hidden="true">
-                                    {formatViewSwitchCount(followers.length)}
-                                </span>
-                            </button>
+                        <div className="viewSwitchGroup" role="group" aria-label="关注页面切换">
+                            <div className="viewSwitch">
+                                <span
+                                    className={activeView === "following" ? "viewSwitchThumb" : "viewSwitchThumb viewSwitchThumbFollowers"}
+                                    aria-hidden="true"
+                                />
+                                <button
+                                    className={activeView === "following" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
+                                    type="button"
+                                    aria-pressed={activeView === "following"}
+                                    onClick={() => setActiveView("following")}
+                                >
+                                    <span className="viewSwitchButtonLabel">我的关注</span>
+                                    <span className="viewSwitchButtonCount" aria-hidden="true">
+                                        {formatViewSwitchCount(followingCount)}
+                                    </span>
+                                </button>
+                                <button
+                                    className={activeView === "followers" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
+                                    type="button"
+                                    aria-pressed={activeView === "followers"}
+                                    onClick={() => setActiveView("followers")}
+                                >
+                                    <span className="viewSwitchButtonLabel">我的粉丝</span>
+                                    <span className="viewSwitchButtonCount" aria-hidden="true">
+                                        {formatViewSwitchCount(followers.length)}
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -769,6 +771,14 @@ const FollowsPage = () => {
                     display: flex;
                     align-items: center;
                     gap: 12px;
+                }
+
+                .pageHeaderActions {
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 12px;
+                    flex-wrap: wrap;
                 }
 
                 .addPrivateMentorButton {
