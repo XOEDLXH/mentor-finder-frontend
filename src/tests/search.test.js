@@ -112,6 +112,11 @@ describe("SearchScreen", () => {
         });
     };
 
+    const waitForMentorResultHeading = async (name) => {
+        await waitForSearchSkeletonsToFinish();
+        return screen.findByRole("heading", { name, level: 3 });
+    };
+
     beforeEach(() => {
         mockPush.mockReset();
         mockReplace.mockReset();
@@ -200,7 +205,7 @@ describe("SearchScreen", () => {
                 return { mentors: [] };
             }
 
-            if (String(url).startsWith("/api/search/mentors")) {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
                 return {
                     mentors: [{
                         id: 1,
@@ -224,7 +229,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        await screen.findByRole("heading", { name: "张三" });
+        await waitForMentorResultHeading("张三");
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
 
         const dialog = screen.getByRole("dialog", { name: "确认删除导师" });
@@ -242,7 +247,7 @@ describe("SearchScreen", () => {
                 return { mentors: [] };
             }
 
-            if (String(url).startsWith("/api/search/mentors")) {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
                 return {
                     mentors: [{
                         id: 1,
@@ -267,7 +272,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        await screen.findByRole("heading", { name: "张三" });
+        await waitForMentorResultHeading("张三");
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
         fireEvent.click(screen.getByLabelText("删除导师确认弹窗遮罩"));
 
@@ -282,7 +287,7 @@ describe("SearchScreen", () => {
                 return { mentors: [] };
             }
 
-            if (String(url).startsWith("/api/search/mentors")) {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
                 return {
                     mentors: [{
                         id: 1,
@@ -307,7 +312,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        await screen.findByRole("heading", { name: "张三" });
+        await waitForMentorResultHeading("张三");
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
         fireEvent.click(screen.getByRole("button", { name: "取消" }));
 
@@ -334,7 +339,7 @@ describe("SearchScreen", () => {
                 });
             }
 
-            if (String(url).startsWith("/api/search/mentors")) {
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
                 return Promise.resolve({
                     mentors: deleted ? [] : [{
                         id: 1,
@@ -359,7 +364,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        await screen.findByRole("heading", { name: "张三" });
+        await waitForMentorResultHeading("张三");
         fireEvent.click(screen.getByRole("button", { name: "删除导师" }));
 
         const confirmDeleteButton = screen.getByRole("button", { name: "确认删除" });
@@ -626,6 +631,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByText("搜索"));
 
+        await waitForSearchSkeletonsToFinish();
         await waitFor(() => {
             expect(screen.getByText(/Multi-Dimensional Grouping for Ultra-High Energy Efficiency in Spiking Transformer/)).toBeInTheDocument();
         });
@@ -667,9 +673,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        await waitFor(() => {
-            expect(screen.getByRole("heading", { name: "测试导师" })).toBeInTheDocument();
-        });
+        await waitForMentorResultHeading("测试导师");
 
         expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
