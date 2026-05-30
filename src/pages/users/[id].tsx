@@ -247,6 +247,7 @@ const UserPublicProfilePage = () => {
 
                 .selfActionGroup {
                     display: flex;
+                    flex: 0 0 auto;
                     align-items: center;
                     gap: 8px;
                     flex-wrap: wrap;
@@ -255,8 +256,10 @@ const UserPublicProfilePage = () => {
 
                 .profileActionButton {
                     display: inline-flex;
+                    flex: 0 0 auto;
                     align-items: center;
                     gap: 8px;
+                    white-space: nowrap;
                 }
 
                 .editIcon {
@@ -336,6 +339,7 @@ const UserPublicProfilePage = () => {
 
                 .profileInfo {
                     display: flex;
+                    flex: 1 1 auto;
                     min-width: 0;
                     align-items: center;
                     gap: 14px;
@@ -383,6 +387,7 @@ const UserPublicProfilePage = () => {
                     margin: 0;
                     color: rgba(255, 255, 255, 0.88);
                     line-height: 1.45;
+                    overflow-wrap: anywhere;
                 }
 
                 .profileText p {
@@ -513,6 +518,7 @@ const UserPublicProfilePage = () => {
                     }
 
                     .selfActionGroup {
+                        width: 100%;
                         justify-content: flex-start;
                     }
 
