@@ -23,6 +23,13 @@ interface FollowersResponse {
     users?: FollowUserResult[];
 }
 
+interface FollowCountsResponse {
+    mentorCount?: number;
+    userCount?: number;
+    subjectCount?: number;
+    followerCount?: number;
+}
+
 interface FollowedSubjectSummary {
     subject: string;
     subjectName?: string;
@@ -146,6 +153,12 @@ const FollowsPage = () => {
     const [hasLoadedAvailableSubjects, setHasLoadedAvailableSubjects] = useState(false);
     const [hasLoadedFollowedSubjects, setHasLoadedFollowedSubjects] = useState(false);
     const [hasLoadedFollowers, setHasLoadedFollowers] = useState(false);
+    const [sidebarCounts, setSidebarCounts] = useState({
+        mentorCount: 0,
+        userCount: 0,
+        subjectCount: 0,
+        followerCount: 0,
+    });
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
     const [actionSubject, setActionSubject] = useState<string | undefined>(undefined);
@@ -244,7 +257,34 @@ const FollowsPage = () => {
         setHasLoadedAvailableSubjects(false);
         setHasLoadedFollowedSubjects(false);
         setHasLoadedFollowers(false);
+        setSidebarCounts({
+            mentorCount: 0,
+            userCount: 0,
+            subjectCount: 0,
+            followerCount: 0,
+        });
     }, []);
+
+    // Load lightweight sidebar counts immediately so unopened tabs can still show real counts.
+    const fetchFollowCounts = useCallback(async () => {
+        if (!isLoggedIn) {
+            resetFollowData();
+            return;
+        }
+
+        try {
+            const countRes = await request<FollowCountsResponse>("/api/follow/counts", "GET", true);
+            setSidebarCounts({
+                mentorCount: Number(countRes.mentorCount) || 0,
+                userCount: Number(countRes.userCount) || 0,
+                subjectCount: Number(countRes.subjectCount) || 0,
+                followerCount: Number(countRes.followerCount) || 0,
+            });
+        }
+        catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+    }, [isLoggedIn, resetFollowData]);
 
     // Load the current user's followed mentor list.
     const fetchMentors = useCallback(async () => {
@@ -267,6 +307,10 @@ const FollowsPage = () => {
                     }))
                     : [],
             );
+            setSidebarCounts((currentCounts) => ({
+                ...currentCounts,
+                mentorCount: Array.isArray(mentorRes.mentors) ? mentorRes.mentors.length : 0,
+            }));
             setHasLoadedMentors(true);
         }
         catch (err) {
@@ -291,6 +335,12 @@ const FollowsPage = () => {
         try {
             const userRes = await request<FollowedUsersResponse>("/api/follow/users", "GET", true);
             setUsers(Array.isArray(userRes.users) ? userRes.users : []);
+            setSidebarCounts((currentCounts) => ({
+                ...currentCounts,
+                userCount: Array.isArray(userRes.users)
+                    ? userRes.users.filter((user) => user.followed).length
+                    : 0,
+            }));
             setHasLoadedUsers(true);
         }
         catch (err) {
@@ -339,6 +389,10 @@ const FollowsPage = () => {
         try {
             const subjectRes = await request<FollowedSubjectSummariesResponse>("/api/follow/subjects/followed", "GET", true);
             setSubjects(Array.isArray(subjectRes.subjects) ? subjectRes.subjects : []);
+            setSidebarCounts((currentCounts) => ({
+                ...currentCounts,
+                subjectCount: Array.isArray(subjectRes.subjects) ? subjectRes.subjects.length : 0,
+            }));
             setHasLoadedFollowedSubjects(true);
         }
         catch (err) {
@@ -398,6 +452,10 @@ const FollowsPage = () => {
         try {
             const followerRes = await request<FollowersResponse>("/api/follow/followers", "GET", true);
             setFollowers(Array.isArray(followerRes.users) ? followerRes.users : []);
+            setSidebarCounts((currentCounts) => ({
+                ...currentCounts,
+                followerCount: Array.isArray(followerRes.users) ? followerRes.users.length : 0,
+            }));
             setHasLoadedFollowers(true);
         }
         catch (err) {
@@ -462,6 +520,10 @@ const FollowsPage = () => {
                 }
                 return followed ? [{ ...targetUser, followed }, ...updatedUsers] : updatedUsers;
             });
+            setSidebarCounts((currentCounts) => ({
+                ...currentCounts,
+                userCount: Math.max(currentCounts.userCount + (followed ? 1 : -1), 0),
+            }));
             setUserSearchResults((currentUsers) => currentUsers.map(updateUser));
             setFollowers((currentUsers) => currentUsers.map(updateUser));
         }
@@ -498,6 +560,10 @@ const FollowsPage = () => {
                     }
                     return [res.subject as FollowedSubjectSummary, ...currentSubjects];
                 });
+                setSidebarCounts((currentCounts) => ({
+                    ...currentCounts,
+                    subjectCount: currentCounts.subjectCount + 1,
+                }));
                 setHasLoadedFollowedSubjects(true);
             }
             else {
@@ -517,6 +583,10 @@ const FollowsPage = () => {
                     delete nextErrors[targetSubject];
                     return nextErrors;
                 });
+                setSidebarCounts((currentCounts) => ({
+                    ...currentCounts,
+                    subjectCount: Math.max(currentCounts.subjectCount - 1, 0),
+                }));
             }
         }
         catch (err) {
@@ -770,9 +840,19 @@ const FollowsPage = () => {
                 || (subject.subjectName || subject.subject).toLowerCase().includes(keyword);
         });
     }, [availableSubjects, followedSubjectSet, subjectSearchKeyword]);
-    const followingCount = mentors.filter((mentor) => mentor.followed).length
-        + users.filter((user) => user.followed).length
-        + subjects.length;
+    const mentorCount = hasLoadedMentors
+        ? mentors.filter((mentor) => mentor.followed).length
+        : sidebarCounts.mentorCount;
+    const userCount = hasLoadedUsers
+        ? users.filter((user) => user.followed).length
+        : sidebarCounts.userCount;
+    const subjectCount = hasLoadedFollowedSubjects
+        ? subjects.length
+        : sidebarCounts.subjectCount;
+    const followerCount = hasLoadedFollowers
+        ? followers.length
+        : sidebarCounts.followerCount;
+    const followingCount = mentorCount + userCount + subjectCount;
     const visibleUserSearchResults = userSearchResults.filter((user) => (
         !user.followed && !followedUserIds.has(user.id)
     ));
@@ -786,8 +866,9 @@ const FollowsPage = () => {
 
     useEffect(() => {
         // The page opens by loading followed mentors first.
+        void fetchFollowCounts();
         void fetchMentors();
-    }, [fetchMentors]);
+    }, [fetchFollowCounts, fetchMentors]);
 
     useEffect(() => {
         if (mentorCurrentPage > mentorTotalPages) {
@@ -842,7 +923,7 @@ const FollowsPage = () => {
                                 >
                                     <span className="viewSwitchButtonLabel">我的粉丝</span>
                                     <span className="viewSwitchButtonCount" aria-hidden="true">
-                                        {formatViewSwitchCount(followers.length)}
+                                        {formatViewSwitchCount(followerCount)}
                                     </span>
                                 </button>
                             </div>
@@ -867,36 +948,36 @@ const FollowsPage = () => {
                                 className={activeCategory === "mentor" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
                                 type="button"
                                 aria-pressed={activeCategory === "mentor"}
-                                aria-label={`导师（${formatViewSwitchCount(mentors.filter((mentor) => mentor.followed).length)}）`}
+                                aria-label={`导师（${formatViewSwitchCount(mentorCount)}）`}
                                 onClick={() => handleCategoryChange("mentor")}
                             >
                                 <span className="categorySwitchButtonLabel">导师</span>
                                 <span className="categorySwitchButtonCount" aria-hidden="true">
-                                    {formatViewSwitchCount(mentors.filter((mentor) => mentor.followed).length)}
+                                    {formatViewSwitchCount(mentorCount)}
                                 </span>
                             </button>
                             <button
                                 className={activeCategory === "user" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
                                 type="button"
                                 aria-pressed={activeCategory === "user"}
-                                aria-label={`用户（${formatViewSwitchCount(users.filter((user) => user.followed).length)}）`}
+                                aria-label={`用户（${formatViewSwitchCount(userCount)}）`}
                                 onClick={() => handleCategoryChange("user")}
                             >
                                 <span className="categorySwitchButtonLabel">用户</span>
                                 <span className="categorySwitchButtonCount" aria-hidden="true">
-                                    {formatViewSwitchCount(users.filter((user) => user.followed).length)}
+                                    {formatViewSwitchCount(userCount)}
                                 </span>
                             </button>
                             <button
                                 className={activeCategory === "subject" ? "searchSegmentButton categorySwitchButton categorySwitchButtonActive" : "searchSegmentButton categorySwitchButton"}
                                 type="button"
                                 aria-pressed={activeCategory === "subject"}
-                                aria-label={`板块（${formatViewSwitchCount(subjects.length)}）`}
+                                aria-label={`板块（${formatViewSwitchCount(subjectCount)}）`}
                                 onClick={() => handleCategoryChange("subject")}
                             >
                                 <span className="categorySwitchButtonLabel">板块</span>
                                 <span className="categorySwitchButtonCount" aria-hidden="true">
-                                    {formatViewSwitchCount(subjects.length)}
+                                    {formatViewSwitchCount(subjectCount)}
                                 </span>
                             </button>
                         </div>
