@@ -77,7 +77,7 @@ select:disabled {
 
 /* Default button styling for ordinary buttons.
    Components with bespoke button systems are explicitly excluded from this broad selector. */
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton):not(.homePublicHistoryButton) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--surface-panel);
@@ -87,7 +87,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
 }
 
 /* Shared hover treatment for the default button family above. */
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton):hover:not(:disabled) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton):not(.homePublicHistoryButton):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
@@ -974,16 +974,32 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   gap: 8px;
 }
 
-.homeWeeklyHistoryButton {
+.homePublicHistoryButton {
   text-align: left;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid #ccc;
   background-color: #fff;
+  color: var(--ink-strong);
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.homeWeeklyHistoryButtonActive {
+.homePublicHistoryButton:hover:not(:disabled),
+.homePublicHistoryButton:focus-visible {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.homePublicHistoryButtonActive {
+  border-color: #0d6efd;
+  background-color: #e7f1ff;
+}
+
+.homePublicHistoryButtonActive:hover:not(:disabled),
+.homePublicHistoryButtonActive:focus-visible {
   border-color: #0d6efd;
   background-color: #e7f1ff;
 }
@@ -1128,11 +1144,13 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
 
 .homeSubjectCarouselControls {
   display: flex;
+  order: 2;
   justify-content: flex-end;
   gap: 8px;
 }
 
 .homeSubjectCarouselViewport {
+  order: 1;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;

@@ -22,7 +22,7 @@ const WEEKLY_PUSH_CAROUSEL_GAP = 12;
 const SUBJECT_GROUP_CAROUSEL_GAP = 16;
 const HOME_SKELETON_HISTORY_COUNT = 3;
 const HOME_SKELETON_STAT_COUNT = 5;
-const HOME_SKELETON_PAPER_COUNT = 2;
+const HOME_SKELETON_PAPER_COUNT = 10;
 const HOME_SKELETON_SUBJECT_COUNT = 2;
 
 // Create stable keys for repeated homepage skeleton placeholders.
@@ -1063,7 +1063,7 @@ const HomeScreen = () => {
                         {isLoggedIn && personalizedWeeklyPushHistory.length > 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <h4 className="homePersonalizedHistoryTitle">往期个性周报</h4>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <div className="homeWeeklyHistoryList">
                                     {personalizedWeeklyPushHistory.map((item) => (
                                         <button
                                             key={`personalized-${item.weekStart}`}
@@ -1078,8 +1078,8 @@ const HomeScreen = () => {
                                                 cursor: "pointer",
                                             }}
                                         >
-                                            <div style={{ fontWeight: 600 }}>{item.title}</div>
-                                            <div style={{ fontSize: 13, color: "#666" }}>
+                                            <div className="homeWeeklyHistoryButtonTitle">{item.title}</div>
+                                            <div className="homeWeeklyHistoryButtonMeta">
                                                 {item.weekStart} ~ {item.weekEnd} ｜ {item.paperCount} 篇 ｜ {formatGeneratedBy(item.generatedBy)}
                                             </div>
                                         </button>
@@ -1129,8 +1129,9 @@ const HomeScreen = () => {
                                     {weeklyPushHistory.map((item) => (
                                         <button
                                             key={item.weekStart}
+                                            type="button"
                                             onClick={() => setSelectedWeekStart(item.weekStart)}
-                                            className={`homeWeeklyHistoryButton${selectedWeekStart === item.weekStart ? " homeWeeklyHistoryButtonActive" : ""}`}
+                                            className={`homePublicHistoryButton${selectedWeekStart === item.weekStart ? " homePublicHistoryButtonActive" : ""}`}
                                         >
                                             <div className="homeWeeklyHistoryButtonTitle">{item.title}</div>
                                             <div className="homeWeeklyHistoryButtonMeta">
