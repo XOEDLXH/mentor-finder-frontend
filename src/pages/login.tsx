@@ -1,9 +1,10 @@
 import { FormEvent, RefCallback, useRef, useState } from "react";
-import { FAILURE_PREFIX, LOGIN_FAILED } from "../constants/string";
+import { LOGIN_FAILED } from "../constants/string";
 import { useRouter } from "next/router";
 import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
+import { describeRequestError } from "../utils/errorMessage";
 
 // Some backend endpoints return empty bodies or non-JSON text, so the login page parses them defensively.
 const parseJsonSafely = async (response: Response) => {
@@ -104,7 +105,7 @@ const LoginScreen = () => {
                     setLoginErrorMessage(LOGIN_FAILED);
                 }
             })
-            .catch((err) => setLoginErrorMessage(FAILURE_PREFIX + String(err)))
+            .catch((err) => setLoginErrorMessage(describeRequestError(err)))
             .finally(() => setSubmitting(false));
     };
 

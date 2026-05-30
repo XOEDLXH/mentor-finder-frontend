@@ -2,9 +2,9 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 
-import { FAILURE_PREFIX } from "../constants/string";
 import { setAvatarUrl, setName, setToken } from "../redux/auth";
 import { RootState } from "../redux/store";
+import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { MentorVerificationRequestResult } from "../utils/types";
 
@@ -68,8 +68,12 @@ const ProfileSettingsPage = () => {
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    // Avatar upload feedback is shown beside the avatar controls instead of the page-bottom panel.
+    const [avatarMessage, setAvatarMessage] = useState<{ type: "error" | "success"; text: string } | undefined>(undefined);
     const [mentorVerificationName, setMentorVerificationName] = useState("");
     const [mentorVerificationSubmitting, setMentorVerificationSubmitting] = useState(false);
+    // Mentor-verification feedback is shown next to its own section, matching the other inline hints.
+    const [mentorVerificationMessage, setMentorVerificationMessage] = useState<{ type: "error" | "success"; text: string } | undefined>(undefined);
     const [mentorVerificationRequest, setMentorVerificationRequest] = useState<MentorVerificationRequestResult | undefined>(undefined);
 
     useEffect(() => {
@@ -98,7 +102,7 @@ const ProfileSettingsPage = () => {
                     setErrorMessage("登录已失效，请重新登录后再试");
                     return;
                 }
-                setErrorMessage(FAILURE_PREFIX + String(err));
+                setErrorMessage(describeRequestError(err));
             })
             .finally(() => setLoading(false));
     }, [token]);
@@ -145,10 +149,10 @@ const ProfileSettingsPage = () => {
             } else if (response.status === 401) {
                 setUsernameMessage({ type: "error", text: "登录已失效，请重新登录后再试" });
             } else {
-                setUsernameMessage({ type: "error", text: String(payload.info ?? "用户名修改失败") });
+                setUsernameMessage({ type: "error", text: describeRequestError(payload.info, "用户名修改失败") });
             }
         } catch (err) {
-            setUsernameMessage({ type: "error", text: FAILURE_PREFIX + String(err) });
+            setUsernameMessage({ type: "error", text: describeRequestError(err) });
         } finally {
             setUsernameUpdating(false);
         }
@@ -171,7 +175,7 @@ const ProfileSettingsPage = () => {
                 setErrorMessage("登录已失效，请重新登录后再试");
                 return;
             }
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         } finally {
             setSaving(false);
         }
@@ -187,18 +191,17 @@ const ProfileSettingsPage = () => {
 
         // Validate locally so obviously invalid files never hit the upload endpoint.
         if (!file.type.startsWith("image/")) {
-            setErrorMessage("请选择图片文件作为头像");
+            setAvatarMessage({ type: "error", text: "请选择图片文件作为头像" });
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
-            setErrorMessage("头像图片不能超过 2MB");
+            setAvatarMessage({ type: "error", text: "头像图片不能超过 2MB" });
             return;
         }
 
         setUploadingAvatar(true);
-        setSuccessMessage("");
-        setErrorMessage("");
+        setAvatarMessage(undefined);
 
         const formData = new FormData();
         formData.append("avatar", file);
@@ -214,15 +217,15 @@ const ProfileSettingsPage = () => {
             });
             const payload = await response.json() as AvatarUploadResponse & { code?: number; info?: string };
             if (Number(payload.code) !== 0) {
-                setErrorMessage(String(payload.info ?? "头像上传失败"));
+                setAvatarMessage({ type: "error", text: describeRequestError(payload.info, "头像上传失败") });
                 return;
             }
 
             setSettings(normalizeSettings(payload.profile));
             dispatch(setAvatarUrl(typeof payload.profile?.avatarUrl === "string" ? payload.profile.avatarUrl : ""));
-            setSuccessMessage("头像上传成功");
+            setAvatarMessage({ type: "success", text: "头像上传成功" });
         } catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setAvatarMessage({ type: "error", text: describeRequestError(err) });
         } finally {
             setUploadingAvatar(false);
         }
@@ -232,14 +235,13 @@ const ProfileSettingsPage = () => {
     const submitMentorVerificationRequest = async () => {
         const submittedName = mentorVerificationName.trim();
         if (submittedName === "") {
-            setErrorMessage("导师身份申请姓名不能为空");
+            setMentorVerificationMessage({ type: "error", text: "导师身份申请姓名不能为空" });
             return;
         }
 
         // Users submit a name first; an admin later maps the request to a concrete public mentor record.
         setMentorVerificationSubmitting(true);
-        setSuccessMessage("");
-        setErrorMessage("");
+        setMentorVerificationMessage(undefined);
 
         try {
             const res = await request<MentorVerificationSubmitResponse>("/api/profile/mentor-verification-request", "POST", true, {
@@ -247,13 +249,13 @@ const ProfileSettingsPage = () => {
             });
             setMentorVerificationRequest(res.mentorVerificationRequest);
             setMentorVerificationName("");
-            setSuccessMessage("导师身份认证申请已提交");
+            setMentorVerificationMessage({ type: "success", text: "导师身份认证申请已提交" });
         } catch (err) {
             if (err instanceof NetworkError && err.type === NetworkErrorType.UNAUTHORIZED) {
-                setErrorMessage("登录已失效，请重新登录后再试");
+                setMentorVerificationMessage({ type: "error", text: "登录已失效，请重新登录后再试" });
                 return;
             }
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setMentorVerificationMessage({ type: "error", text: describeRequestError(err) });
         } finally {
             setMentorVerificationSubmitting(false);
         }
@@ -349,6 +351,11 @@ const ProfileSettingsPage = () => {
                             支持 PNG、JPG、GIF、WebP，大小不超过 2MB。
                         </p>
                         {uploadingAvatar && <p className="avatarUploadHint">头像上传中...</p>}
+                        {avatarMessage && (
+                            <p className={avatarMessage.type === "error" ? "usernameHint usernameHintError" : "usernameHint usernameHintSuccess"}>
+                                {avatarMessage.text}
+                            </p>
+                        )}
 
                         <label htmlFor="signature">个性签名</label>
                         <textarea
@@ -418,6 +425,12 @@ const ProfileSettingsPage = () => {
                                 {mentorVerificationSubmitting ? "提交中..." : "提交导师身份申请"}
                             </button>
                         </div>
+
+                        {mentorVerificationMessage && (
+                            <p className={mentorVerificationMessage.type === "error" ? "usernameHint usernameHintError" : "usernameHint usernameHintSuccess"}>
+                                {mentorVerificationMessage.text}
+                            </p>
+                        )}
 
                         {mentorVerificationRequest && (
                             // Show the most recent request so the user can see whether it is still pending or already reviewed.

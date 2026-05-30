@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
-import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
+import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { AdminUserResult, MentorVerificationRequestResult, SearchMentorResult } from "../utils/types";
 
@@ -60,9 +60,8 @@ const AdminUsersPage = () => {
             if (err.type === NetworkErrorType.REJECTED) {
                 return "当前账号无权限执行该操作";
             }
-            return String(err);
         }
-        return FAILURE_PREFIX + String(err);
+        return describeRequestError(err);
     };
 
     // Rebuild the editable role and mentor-binding drafts from the latest fetched user list.

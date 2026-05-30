@@ -3,8 +3,8 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import FollowToggleButton from "../../components/FollowToggleButton";
-import { FAILURE_PREFIX } from "../../constants/string";
 import { RootState } from "../../redux/store";
+import { describeRequestError } from "../../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../../utils/network";
 import { PublicUserProfileResult } from "../../utils/types";
 
@@ -50,7 +50,7 @@ const UserPublicProfilePage = () => {
                     return;
                 }
 
-                setErrorMessage(FAILURE_PREFIX + String(err));
+                setErrorMessage(describeRequestError(err));
             })
             .finally(() => setLoading(false));
     }, [isLoggedIn, router.isReady, userId]);
@@ -105,7 +105,7 @@ const UserPublicProfilePage = () => {
             ));
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setActionLoading(false);

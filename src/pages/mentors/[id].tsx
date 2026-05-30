@@ -4,8 +4,8 @@ import { useSelector } from "react-redux";
 
 import FollowToggleButton from "../../components/FollowToggleButton";
 import LatexText from "../../components/LatexText";
-import { FAILURE_PREFIX } from "../../constants/string";
 import { RootState } from "../../redux/store";
+import { describeRequestError } from "../../utils/errorMessage";
 import { request } from "../../utils/network";
 import { readPendingMentorSearchReturn } from "../../utils/searchNavigation";
 import {
@@ -115,7 +115,7 @@ const MentorDetailPage = () => {
                 setMentor(res.mentor);
             }
             catch (err) {
-                setErrorMessage(FAILURE_PREFIX + String(err));
+                setErrorMessage(describeRequestError(err));
             }
             finally {
                 setLoading(false);
@@ -169,7 +169,7 @@ const MentorDetailPage = () => {
             setFollowed(Boolean(res.followed));
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setFollowLoading(false);
@@ -194,7 +194,7 @@ const MentorDetailPage = () => {
             setAnalysisResult(res);
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setAnalysisLoading(false);

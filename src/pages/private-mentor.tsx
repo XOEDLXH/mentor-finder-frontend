@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
-import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
+import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { PrivateMentorResult } from "../utils/types";
 
@@ -60,14 +60,9 @@ const PrivateMentorScreen = () => {
 
     // Convert backend and transport errors into private-mentor-specific user messages.
     const formatPrivateMentorError = useCallback((err: unknown) => {
-        // Map backend validation details into messages suitable for end users.
+        // Keep a few context-specific messages, then defer to the shared translator
+        // so backend validation details surface as natural Chinese instead of raw text.
         if (isNetworkErrorInstance(err)) {
-            const rawMsg = String(err);
-
-            if (rawMsg.includes("[email] format is invalid")) {
-                return "邮箱格式不正确";
-            }
-
             if (err.type === NetworkErrorType.UNAUTHORIZED) {
                 return "请先登录后再管理私有导师";
             }
@@ -75,11 +70,9 @@ const PrivateMentorScreen = () => {
             if (err.type === NetworkErrorType.REJECTED) {
                 return "当前账号无权限创建私有导师";
             }
-
-            return rawMsg;
         }
 
-        return FAILURE_PREFIX + String(err);
+        return describeRequestError(err);
     }, []);
 
     // Load the current user's private mentor list from the backend.

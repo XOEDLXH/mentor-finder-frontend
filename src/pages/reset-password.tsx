@@ -1,7 +1,6 @@
 import { FormEvent, RefCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import {
-    FAILURE_PREFIX,
     REGISTER_CODE_COOLDOWN,
     REGISTER_CODE_INVALID,
     REGISTER_CODE_REQUIRED,
@@ -16,6 +15,7 @@ import {
     RESET_PASSWORD_FAILED,
     RESET_PASSWORD_SUCCESS,
 } from "../constants/string";
+import { describeRequestError } from "../utils/errorMessage";
 
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
@@ -200,7 +200,7 @@ const ResetPasswordScreen = () => {
                     setVerificationCodeError(REGISTER_CODE_SEND_FAILED);
                 }
             })
-            .catch((err) => setVerificationCodeError(FAILURE_PREFIX + err))
+            .catch((err) => setVerificationCodeError(describeRequestError(err)))
             .finally(() => setSendingCode(false));
     };
 
@@ -275,7 +275,7 @@ const ResetPasswordScreen = () => {
                     setResetErrorMessage(RESET_PASSWORD_FAILED);
                 }
             })
-            .catch((err) => setResetErrorMessage(FAILURE_PREFIX + err))
+            .catch((err) => setResetErrorMessage(describeRequestError(err)))
             .finally(() => setSubmitting(false));
     };
 
