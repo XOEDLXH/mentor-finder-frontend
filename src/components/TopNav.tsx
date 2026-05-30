@@ -8,6 +8,10 @@ import { request } from "../utils/network";
 import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
 import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
 
+const MAX_SEARCH_KEYWORD_LENGTH = 255;
+
+const normalizeSearchKeyword = (value: string) => value.trim().slice(0, MAX_SEARCH_KEYWORD_LENGTH);
+
 interface NavItem {
     label: string;
     href: string;
@@ -148,7 +152,7 @@ const TopNav = () => {
     const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
             event.preventDefault();
-            const trimmedKeyword = searchKeyword.trim();
+            const trimmedKeyword = normalizeSearchKeyword(searchKeyword);
             if (trimmedKeyword === "") {
                 return;
             }
@@ -239,7 +243,8 @@ const TopNav = () => {
                             placeholder="Search or jump to..."
                             aria-label="Search or jump to"
                             value={searchKeyword}
-                            onChange={(event) => setSearchKeyword(event.target.value)}
+                            maxLength={MAX_SEARCH_KEYWORD_LENGTH}
+                            onChange={(event) => setSearchKeyword(normalizeSearchKeyword(event.target.value))}
                             onKeyDown={handleSearchKeyDown}
                         />
                     </div>

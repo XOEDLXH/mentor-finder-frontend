@@ -136,6 +136,28 @@ describe("TopNav", () => {
         expect(mockPush).not.toHaveBeenCalled();
     });
 
+    it("truncates overly long top search keywords before opening search", () => {
+        // Tests the top-nav keyword-length guard.
+        // Pasted text longer than the backend limit should be truncated in the
+        // controlled input and in the generated quick-search URL.
+        renderTopNav();
+
+        const searchInput = screen.getByRole("textbox", { name: "Search or jump to" });
+        const longKeyword = "graph neural network".repeat(20);
+        const truncatedKeyword = longKeyword.slice(0, 255);
+
+        fireEvent.change(searchInput, { target: { value: longKeyword } });
+        expect(searchInput).toHaveValue(truncatedKeyword);
+
+        fireEvent.keyDown(searchInput, { key: "Enter" });
+
+        expect(globalThis.open).toHaveBeenCalledWith(
+            buildGlobalPaperSearchUrl(truncatedKeyword),
+            "_blank",
+            "noopener,noreferrer",
+        );
+    });
+
     it("opens a new tab with paper fuzzy search when pressing Enter with keyword", () => {
         // Tests the global quick-search submission module.
         // Pressing Enter with a keyword should open a new tab pointing to the
