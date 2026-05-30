@@ -7,10 +7,14 @@ import authReducer from "../redux/auth";
 import { request } from "../utils/network";
 import MentorDetailPage from "../pages/mentors/[id]";
 
+// Mock Next.js routing so tests can control the mentor id in the URL and
+// inspect navigation behavior without depending on the real router runtime.
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock the shared request helper so mentor-detail data, follow state, and AI
+// analysis responses can be fully controlled by the tests.
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
@@ -18,6 +22,8 @@ jest.mock("../utils/network", () => ({
 describe("MentorDetailPage search return", () => {
     const mockPush = jest.fn();
     const mockBack = jest.fn();
+    // Representative mentor fixture covering profile text, metadata, and both
+    // linked and unlinked related-paper cases.
     const mentor = {
         id: 88,
         Chinese_name: "测试导师",
@@ -39,6 +45,8 @@ describe("MentorDetailPage search return", () => {
         }],
     };
 
+    // Shared render helper that mounts the mentor detail page with a logged-in
+    // student auth state, which is required by the page's follow-related logic.
     const renderWithStore = () => {
         const store = configureStore({
             reducer: {
@@ -61,6 +69,8 @@ describe("MentorDetailPage search return", () => {
     };
 
     beforeEach(() => {
+        // Reset navigation mocks, clear browser state used by "return to
+        // search", and install the default mentor-detail API responses.
         mockPush.mockReset();
         mockBack.mockReset();
         request.mockReset();
@@ -90,6 +100,10 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("uses router.back when returning to search with a valid search-origin marker", async () => {
+        // Tests the search-return restoration module.
+        // If sessionStorage contains a valid marker proving this detail page was
+        // opened from the search page, the "return to search" button should use
+        // router.back() to preserve the user's actual search history state.
         window.sessionStorage.setItem("search-mentor-return-marker", JSON.stringify({
             mentorId: 88,
             sourceEntryKey: "search-entry-1",
@@ -114,6 +128,9 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("falls back to /search when no valid search-origin marker exists", async () => {
+        // Tests the fallback navigation module for returning from mentor detail.
+        // Without a valid search-origin marker, the page should push the user
+        // to `/search` directly instead of trying to navigate back blindly.
         renderWithStore();
 
         await screen.findByRole("heading", { name: "测试导师" });
@@ -131,6 +148,13 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("renders related papers with arxiv links and plain-text fallback", async () => {
+        // Tests the main mentor-detail content rendering module.
+        // This covers:
+        // 1. the right-side mentor information sidebar;
+        // 2. the left AI analysis sidebar shell;
+        // 3. profile-section formatting and highlighted headings;
+        // 4. related-paper rendering with arXiv links when available and
+        //    plain-text fallback when links are missing.
         renderWithStore();
 
         await screen.findByRole("heading", { name: "测试导师" });
@@ -180,6 +204,9 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("renders empty related-paper state when the mentor has no papers", async () => {
+        // Tests the empty-state module for related papers.
+        // If the mentor has no associated papers, the page should render the
+        // explicit "no related papers" message instead of an empty list.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/dataset/mentors/88" && method === "GET") {
                 return {
@@ -204,6 +231,9 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("shows fallback text when the english name is missing in the sidebar", async () => {
+        // Tests sidebar fallback rendering for missing mentor metadata.
+        // When the English name is absent, the page should show the dedicated
+        // placeholder text rather than leaving the field blank.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/dataset/mentors/88" && method === "GET") {
                 return {
@@ -229,6 +259,10 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("renders recent direction analysis in the left ai sidebar after clicking the button", async () => {
+        // Tests the AI recent-direction analysis module.
+        // After the user triggers AI analysis, the left sidebar should display
+        // the returned summary, metadata, and the paper list used to generate
+        // that analysis.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/dataset/mentors/88" && method === "GET") {
                 return { mentor };
@@ -278,6 +312,10 @@ describe("MentorDetailPage search return", () => {
     });
 
     it("shows the ai analysis loading state inside the left sidebar", async () => {
+        // Tests the in-progress loading state for AI analysis.
+        // While the recent-direction request is pending, the AI button should
+        // become disabled and the sidebar should show status text explaining
+        // that paper titles/abstracts are being processed.
         let resolveAnalysis;
         request.mockImplementation((url, method) => {
             if (url === "/api/dataset/mentors/88" && method === "GET") {

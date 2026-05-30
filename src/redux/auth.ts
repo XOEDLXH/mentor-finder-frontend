@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+// Store the minimal authenticated user information needed across the frontend.
 export interface AuthState {
     token: string;
     name: string;
@@ -8,6 +9,7 @@ export interface AuthState {
     avatarUrl: string;
 }
 
+// Default to a fully signed-out auth state before hydration from local storage.
 const initialState: AuthState = {
     token: "",
     name: "",
@@ -18,11 +20,13 @@ const initialState: AuthState = {
 
 const AUTH_STORAGE_KEY = "mentorfinder_auth";
 
+// Persist auth state to local storage so refreshes can restore login state and navbar identity.
 const saveAuthToStorage = (state: AuthState) => {
     if (typeof window === "undefined") {
         return;
     }
 
+    // Remove the storage entry entirely when the auth state is effectively empty.
     if (state.token === "" && state.name === "" && state.role === "" && state.userId === undefined && state.avatarUrl === "") {
         window.localStorage.removeItem(AUTH_STORAGE_KEY);
         return;
@@ -31,6 +35,7 @@ const saveAuthToStorage = (state: AuthState) => {
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
 };
 
+// Load the persisted auth snapshot from local storage and normalize missing fields safely.
 export const loadAuthFromStorage = (): AuthState => {
     if (typeof window === "undefined") {
         return initialState;
@@ -52,6 +57,7 @@ export const loadAuthFromStorage = (): AuthState => {
         };
     }
     catch {
+        // Corrupted auth data should be discarded so the app falls back to a clean signed-out state.
         window.localStorage.removeItem(AUTH_STORAGE_KEY);
         return initialState;
     }
@@ -64,6 +70,7 @@ export const authSlice = createSlice({
     name: "auth",
     initialState,
     reducers: {
+        // Replace the entire auth state from a hydrated storage snapshot.
         hydrateAuth: (state, action: PayloadAction<AuthState>) => {
             state.token = action.payload.token;
             state.name = action.payload.name;
@@ -71,26 +78,32 @@ export const authSlice = createSlice({
             state.userId = action.payload.userId;
             state.avatarUrl = action.payload.avatarUrl;
         },
+        // Update the JWT token and persist the new auth snapshot.
         setToken: (state, action: PayloadAction<string>) => {
             state.token = action.payload;
             saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
+        // Update the display name and persist the new auth snapshot.
         setName: (state, action: PayloadAction<string>) => {
             state.name = action.payload;
             saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
+        // Update the user role and persist the new auth snapshot.
         setRole: (state, action: PayloadAction<string>) => {
             state.role = action.payload;
             saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
+        // Update the user id and persist the new auth snapshot.
         setUserId: (state, action: PayloadAction<number | undefined>) => {
             state.userId = action.payload;
             saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
+        // Update the avatar URL and persist the new auth snapshot.
         setAvatarUrl: (state, action: PayloadAction<string>) => {
             state.avatarUrl = action.payload;
             saveAuthToStorage({ token: state.token, name: state.name, role: state.role, userId: state.userId, avatarUrl: state.avatarUrl });
         },
+        // Clear every auth field and remove the persisted auth snapshot.
         resetAuth: (state) => {
             state.token = "";
             state.name = "";
@@ -102,5 +115,6 @@ export const authSlice = createSlice({
     },
 });
 
+// Export action creators used throughout the app for login, logout, hydration, and profile updates.
 export const { hydrateAuth, setToken, setName, setRole, setUserId, setAvatarUrl, resetAuth } = authSlice.actions;
 export default authSlice.reducer;

@@ -8,16 +8,22 @@ import { request } from "../utils/network";
 import FollowsPage from "../pages/follows";
 import MentorDetailPage from "../pages/mentors/[id]";
 
+// Mock routing so tests can control the mentor id in the URL and inspect any
+// navigation side effects without using the real Next.js router.
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock the shared network helper so follow-related requests can be fully
+// controlled and asserted without relying on a live backend.
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
 
 describe("follow confirmation", () => {
     const mockPush = jest.fn();
+    // Representative mentor fixture used across the follows page and mentor
+    // detail page tests.
     const mentor = {
         id: 7,
         Chinese_name: "张三",
@@ -28,6 +34,7 @@ describe("follow confirmation", () => {
         is_private: false,
         paper_ids: [],
     };
+    // Fixture representing a user who follows the current user.
     const follower = {
         id: 12,
         username: "fan_user",
@@ -36,6 +43,7 @@ describe("follow confirmation", () => {
         signature: "关注了我",
         followed: false,
     };
+    // Fixture representing a user that the current user already follows.
     const followedUser = {
         id: 21,
         username: "followed_user",
@@ -44,12 +52,14 @@ describe("follow confirmation", () => {
         signature: "我关注的人",
         followed: true,
     };
+    // Fixture representing a subject already followed by the current user.
     const followedSubject = {
         subject: "cs.AI",
         subjectName: "人工智能",
         paperCount: 2,
         recentPapers: [],
     };
+    // Fixture representing an available subject that is not yet followed.
     const availableSubject = {
         subject: "cs.LG",
         subjectName: "机器学习",
@@ -57,6 +67,8 @@ describe("follow confirmation", () => {
         followed: false,
     };
 
+    // Helper for tests that need manual control over when an async request
+    // resolves, especially for skeleton-loading and pending-button scenarios.
     const createDeferred = () => {
         let resolve;
         let reject;
@@ -67,6 +79,8 @@ describe("follow confirmation", () => {
         return { promise, resolve, reject };
     };
 
+    // Shared render helper that provides the authenticated Redux state required
+    // by the follow-related pages. These tests assume a logged-in student.
     const renderWithStore = (ui) => {
         const store = configureStore({
             reducer: {
@@ -85,6 +99,8 @@ describe("follow confirmation", () => {
     };
 
     beforeEach(() => {
+        // Reset timer mode, router state, and network spies before each test so
+        // every scenario starts from a clean follow-page environment.
         jest.useRealTimers();
         mockPush.mockReset();
         request.mockReset();
@@ -99,6 +115,8 @@ describe("follow confirmation", () => {
         jest.restoreAllMocks();
     });
 
+    // The follows page keeps skeleton placeholders visible for a short minimum
+    // duration. This helper advances fake timers past that threshold.
     const finishFollowSkeleton = async () => {
         await act(async () => {
             jest.advanceTimersByTime(800);
@@ -106,6 +124,9 @@ describe("follow confirmation", () => {
     };
 
     it("loads only followed mentors on initial follows page entry", async () => {
+        // Tests the initial follows-page data-loading module.
+        // On first entry, the page should load the default "followed mentors"
+        // tab only, without eagerly fetching followed users, subjects, or fans.
         request.mockImplementation(async (url) => {
             if (url === "/api/follow/mentors") {
                 return { mentors: [mentor] };
@@ -124,6 +145,10 @@ describe("follow confirmation", () => {
     });
 
     it("lazy loads followed users with a skeleton when the user tab is first opened", async () => {
+        // Tests the lazy-loading module for the followed-users tab.
+        // The tab should request its data only when opened for the first time,
+        // show a skeleton while waiting, and replace that skeleton with real
+        // content after the minimum loading duration has passed.
         jest.useFakeTimers();
         const userDeferred = createDeferred();
         request.mockImplementation((url) => {
@@ -160,6 +185,9 @@ describe("follow confirmation", () => {
     });
 
     it("lazy loads followed subjects with a skeleton when the subject tab is first opened", async () => {
+        // Tests the lazy-loading module for the followed-subjects tab.
+        // This verifies the same behavior as the user tab, but for subject
+        // subscriptions and their corresponding skeleton placeholder.
         jest.useFakeTimers();
         const subjectDeferred = createDeferred();
         request.mockImplementation((url) => {
@@ -199,6 +227,9 @@ describe("follow confirmation", () => {
     });
 
     it("lazy loads followers with a skeleton when the fans view is first opened", async () => {
+        // Tests the lazy-loading module for the "my followers" view.
+        // The fans list should be fetched only after the view switch changes,
+        // and a dedicated follower skeleton should be shown during loading.
         jest.useFakeTimers();
         const followerDeferred = createDeferred();
         request.mockImplementation((url) => {
@@ -236,6 +267,9 @@ describe("follow confirmation", () => {
     });
 
     it("does not refetch a lazily loaded tab when revisiting it", async () => {
+        // Tests tab-level caching for lazily loaded follow data.
+        // Once the followed-users tab has been loaded, returning to that tab
+        // later should reuse the existing data instead of sending another GET.
         request.mockImplementation(async (url) => {
             if (url === "/api/follow/mentors") {
                 return { mentors: [mentor] };
@@ -265,6 +299,10 @@ describe("follow confirmation", () => {
     });
 
     it("shows direct unfollow buttons on follows page and updates card state without refetching the list", async () => {
+        // Tests the direct unfollow interaction on the follows page.
+        // Clicking the "already followed" button should immediately send a
+        // DELETE request and update the card/count state locally, without
+        // reloading the whole mentor list from the backend.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
                 return { followed: false };
@@ -293,6 +331,9 @@ describe("follow confirmation", () => {
     });
 
     it("refollows a kept mentor card on follows page without reloading layout", async () => {
+        // Tests the local re-follow module on an existing mentor card.
+        // After unfollowing, the same card should remain in place and support
+        // re-following via POST without rebuilding the page layout.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
                 return { followed: false };
@@ -324,6 +365,9 @@ describe("follow confirmation", () => {
     });
 
     it("disables the follows page button and keeps its label while request is pending", async () => {
+        // Tests the pending-request UI state for follow toggles on the follows
+        // page. During an in-flight unfollow request, the button should become
+        // disabled, keep its original label, and show the loading overlay.
         let resolveFollow;
         request.mockImplementation((url, method) => {
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
@@ -353,6 +397,9 @@ describe("follow confirmation", () => {
     });
 
     it("shows followers in the fans tab", async () => {
+        // Tests the rendered content module for the fans view after loading.
+        // Once the user switches to "my followers", the page should show the
+        // followers heading, follower card content, and request the right API.
         request.mockImplementation(async (url) => {
             if (url === "/api/follow/mentors") {
                 return { mentors: [] };
@@ -381,6 +428,9 @@ describe("follow confirmation", () => {
     });
 
     it("directly unfollows from mentor detail page without confirmation", async () => {
+        // Tests the mentor-detail follow toggle module.
+        // On the mentor detail page, unfollowing should happen immediately
+        // through the button itself, without an extra confirmation dialog.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/dataset/mentors/7") {
                 return { mentor };
@@ -413,6 +463,9 @@ describe("follow confirmation", () => {
     });
 
     it("shows loading overlay state while follow request is pending on mentor detail page", async () => {
+        // Tests the pending-request UI state for the mentor detail follow
+        // button. While a follow request is unresolved, the button should be
+        // disabled and show the loading overlay until the request completes.
         let resolveFollow;
         request.mockImplementation((url, method) => {
             if (url === "/api/dataset/mentors/7") {
@@ -451,6 +504,10 @@ describe("follow confirmation", () => {
     });
 
     it("paginates followed mentor cards at the bottom with 18 cards per page", async () => {
+        // Tests the pagination module for followed mentors.
+        // The follows page should render at most 18 mentor cards per page,
+        // expose pagination controls, and switch to the remaining items when
+        // the user navigates to the next page.
         const mentorList = Array.from({ length: 19 }, (_, index) => ({
             ...mentor,
             id: index + 1,

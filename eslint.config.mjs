@@ -24,6 +24,7 @@ const __dirname = path.dirname(__filename);
 // const ext = ".cjs";
 // const ruleFiles = fs.readdirSync(rulesDir).filter(p => p.endsWith(ext));
 
+// Compose the flat ESLint config from broad defaults down to file-specific overrides.
 export default tseslint.config(
     {
         files: ["src/**/*.{ts,tsx,cts,mts,js,cjs,mjs}"],
@@ -187,6 +188,7 @@ export default tseslint.config(
     {
         files: ["src/**"],
         languageOptions: {
+            // Type-aware linting in src/** uses the frontend-specific TS project.
             parserOptions: {
                 tsconfigRootDir: __dirname,
                 project: "./src/tsconfig-eslint.json",
@@ -197,6 +199,7 @@ export default tseslint.config(
         files: ["scripts/**"],
         languageOptions: {
             parserOptions: {
+                // Keep script linting separate in case toolchain scripts need a different TS config.
                 tsconfigRootDir: __dirname,
                 project: "./scripts/tsconfig.json",
             },

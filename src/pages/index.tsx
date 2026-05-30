@@ -16,6 +16,7 @@ const GENERATED_BY_LABELS: Record<string, string> = {
     rule: "规则摘要",
     "thucs-openai": "AI摘要",
 };
+// These constants keep the homepage skeletons and carousels visually consistent across sections.
 const WEEKLY_PUSH_PAPERS_PER_VIEW = 2;
 const WEEKLY_PUSH_CAROUSEL_GAP = 12;
 const SUBJECT_GROUP_CAROUSEL_GAP = 16;
@@ -24,12 +25,16 @@ const HOME_SKELETON_STAT_COUNT = 5;
 const HOME_SKELETON_PAPER_COUNT = 2;
 const HOME_SKELETON_SUBJECT_COUNT = 2;
 
+// Create stable keys for repeated homepage skeleton placeholders.
 const createHomeSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
+// Fall back to the raw backend value if a new generation mode appears before the UI labels are updated.
+// Convert a backend generation identifier into the label shown in the UI.
 const formatGeneratedBy = (generatedBy: string) => GENERATED_BY_LABELS[generatedBy] || generatedBy;
 
+// Normalize unknown generation failures into a readable homepage error message.
 const getErrorMessage = (error: unknown) => {
     if (error instanceof Error && error.message.trim() !== "") {
         return error.message;
@@ -37,10 +42,12 @@ const getErrorMessage = (error: unknown) => {
     return "个性周报生成失败，请稍后重试。";
 };
 
+// Fetch one personalized weekly report, optionally for a specific historical week.
 const fetchPersonalizedWeeklyPush = async (weekStart?: string) => {
     const query = weekStart
         ? `?week_start=${encodeURIComponent(weekStart)}`
         : "";
+    // Personalized reports depend on the current user's follows, so they use a dedicated authenticated endpoint.
     return request<WeeklyPushResponse>(
         `/api/dataset/weekly-push/personalized${query}`,
         "GET",
@@ -48,6 +55,7 @@ const fetchPersonalizedWeeklyPush = async (weekStart?: string) => {
     );
 };
 
+// Fetch the available history entries for personalized weekly reports.
 const fetchPersonalizedWeeklyPushHistory = async () => (
     request<WeeklyPushHistoryResponse>(
         "/api/dataset/weekly-push/personalized/history",
@@ -56,22 +64,26 @@ const fetchPersonalizedWeeklyPushHistory = async () => (
     )
 );
 
+// Update previous/next button state based on the current carousel scroll position.
 const syncCarouselControls = (
     viewport: HTMLDivElement,
     setCanScrollPrev: (value: boolean) => void,
     setCanScrollNext: (value: boolean) => void,
 ) => {
+    // Derive button availability from actual scroll position so resizing does not desync the controls.
     const maxScrollLeft = Math.max(viewport.scrollWidth - viewport.clientWidth, 0);
     setCanScrollPrev(viewport.scrollLeft > 4);
     setCanScrollNext(viewport.scrollLeft < maxScrollLeft - 4);
 };
 
+// Compute how far a carousel should scroll for one previous/next action.
 const getCarouselScrollStep = (
     viewport: HTMLDivElement,
     cardSelector: string,
     fallbackItemCount: number,
     gap: number,
 ) => {
+    // Scroll by one card width when measurable; otherwise estimate from the viewport width.
     const firstCard = viewport.querySelector<HTMLElement>(cardSelector) ?? undefined;
     if (firstCard !== undefined) {
         return firstCard.offsetWidth + gap;
@@ -89,6 +101,7 @@ interface WeeklyPaperAbstractPreviewProps {
     text: string;
 }
 
+// Render a clamped abstract preview and show an ellipsis indicator when the text is truncated.
 const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) => {
     const containerRef = useRef<HTMLDivElement | undefined>(undefined);
     const [isTruncated, setIsTruncated] = useState(false);
@@ -100,6 +113,7 @@ const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) =
         }
 
         const updateTruncationState = () => {
+            // Compare scrollHeight and clientHeight to detect whether the abstract clamp is actually truncating text.
             setIsTruncated(container.scrollHeight - container.clientHeight > 1);
         };
 
@@ -147,6 +161,7 @@ const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) =
     );
 };
 
+// Render the paper carousel used inside weekly report cards.
 const WeeklyPushPaperList = ({
     papers,
     emptyText,
@@ -163,6 +178,7 @@ const WeeklyPushPaperList = ({
         text: string;
     } | undefined>(undefined);
 
+    // Move the paper carousel one step left or right.
     const scrollCarousel = (direction: -1 | 1) => {
         const viewport = viewportRef.current;
         if (viewport === undefined) {
@@ -177,6 +193,7 @@ const WeeklyPushPaperList = ({
         );
         const nextLeft = viewport.scrollLeft + direction * scrollStep;
         if (typeof viewport.scrollBy === "function") {
+            // Prefer smooth native scrolling while keeping a deterministic fallback for unsupported environments.
             viewport.scrollBy({
                 left: direction * scrollStep,
                 behavior: "smooth",
@@ -188,6 +205,7 @@ const WeeklyPushPaperList = ({
         syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     };
 
+    // Recompute carousel control state after manual scrolling.
     const handleViewportScroll = () => {
         const viewport = viewportRef.current;
         if (viewport === undefined) {
@@ -202,6 +220,7 @@ const WeeklyPushPaperList = ({
             return;
         }
 
+        // Reset the carousel when a different weekly report replaces the paper list.
         if (typeof viewport.scrollTo === "function") {
             viewport.scrollTo({ left: 0, behavior: "auto" });
         }
@@ -335,6 +354,7 @@ interface WeeklyPushSubjectGroupsProps {
     groups: WeeklyPushSubjectGroup[];
 }
 
+// Render followed subject groups as a carousel and show the full paper list in a modal when clicked.
 export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps) => {
     const viewportRef = useRef<HTMLDivElement | undefined>(undefined);
     const modalCloseButtonRef = useRef<HTMLButtonElement | undefined>(undefined);
@@ -343,10 +363,12 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
     const [canScrollNext, setCanScrollNext] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<WeeklyPushSubjectGroup | undefined>(undefined);
 
+    // Close the currently open subject detail modal.
     const closeModal = () => {
         setSelectedGroup(undefined);
     };
 
+    // Move the subject-group carousel one step left or right.
     const scrollCarousel = (direction: -1 | 1) => {
         const viewport = viewportRef.current;
         if (viewport === undefined) {
@@ -373,6 +395,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
         syncCarouselControls(viewport, setCanScrollPrev, setCanScrollNext);
     };
 
+    // Recompute subject carousel control state after manual scrolling.
     const handleViewportScroll = () => {
         const viewport = viewportRef.current;
         if (viewport === undefined) {
@@ -423,6 +446,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
         }
 
         previousOverflowRef.current = document.body.style.overflow;
+        // Prevent the page behind the modal from scrolling while a subject detail dialog is open.
         document.body.style.overflow = "hidden";
 
         return () => {
@@ -435,6 +459,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
             return undefined;
         }
 
+        // Support keyboard dismissal and initial focus placement for the subject modal.
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 event.preventDefault();
@@ -610,6 +635,7 @@ interface WeeklyPushDetailCardProps {
     metaItems?: string[];
 }
 
+// Render one weekly report card, including summaries, metadata, papers, and subject activity.
 export const WeeklyPushDetailCard = ({
     push,
     emptyPaperText,
@@ -617,6 +643,7 @@ export const WeeklyPushDetailCard = ({
     showPersonalizedSummary = false,
     metaItems = [],
 }: WeeklyPushDetailCardProps) => {
+    // Render separate blocks only when the AI summary actually differs from the fixed summary.
     const distinctAiSummary = push.aiSummary.trim() !== "" && push.aiSummary !== push.fixedSummary;
     const resolvedMetaItems = [
         `周期：${push.weekStart} ~ ${push.weekEnd}`,
@@ -676,6 +703,7 @@ export const WeeklyPushDetailCard = ({
     );
 };
 
+// Render placeholder paper cards while a weekly report is loading.
 const renderHomePaperSkeletonGrid = () => (
     <div className="homeSkeletonPaperGrid" aria-hidden="true">
         {createHomeSkeletonKeys(HOME_SKELETON_PAPER_COUNT, "home-paper").map((key) => (
@@ -693,6 +721,7 @@ const renderHomePaperSkeletonGrid = () => (
     </div>
 );
 
+// Render the public weekly report skeleton layout.
 const renderHomeWeeklyPushSkeleton = () => (
     <div className="homeSkeletonStack" data-testid="home-weekly-push-skeleton" aria-hidden="true">
         <div className="homeSkeletonHeader">
@@ -709,6 +738,7 @@ const renderHomeWeeklyPushSkeleton = () => (
     </div>
 );
 
+// Render the personalized weekly report skeleton layout with stats and subject sections.
 const renderHomePersonalizedPushSkeleton = () => (
     <div className="homeSkeletonStack" data-testid="home-personalized-push-skeleton" aria-hidden="true">
         <div className="homeSkeletonStats">
@@ -748,6 +778,7 @@ const renderHomePersonalizedPushSkeleton = () => (
     </div>
 );
 
+// Render placeholder history items for the weekly-report history lists.
 const renderHomeHistorySkeleton = (testId: string) => (
     <div className="homeSkeletonHistoryList" data-testid={testId} aria-hidden="true">
         {createHomeSkeletonKeys(HOME_SKELETON_HISTORY_COUNT, testId).map((key) => (
@@ -759,6 +790,7 @@ const renderHomeHistorySkeleton = (testId: string) => (
     </div>
 );
 
+// Render the homepage dashboard for public and personalized weekly paper reports.
 const HomeScreen = () => {
     const auth = useSelector((state: RootState) => state.auth);
     const isLoggedIn = auth.token !== "";
@@ -777,6 +809,7 @@ const HomeScreen = () => {
         const loadWeeklyPush = async () => {
             setLoadingWeeklyPush(true);
             try {
+                // Load the latest public report and its history in parallel for the homepage dashboard.
                 const [latestRes, historyRes] = await Promise.all([
                     request<WeeklyPushResponse>("/api/dataset/weekly-push/latest", "GET", false),
                     request<WeeklyPushHistoryResponse>("/api/dataset/weekly-push/history", "GET", false),
@@ -811,6 +844,7 @@ const HomeScreen = () => {
         const loadSelectedPush = async () => {
             setLoadingWeeklyPush(true);
             try {
+                // Changing the selected history week reuses the same endpoint with an explicit week_start query.
                 const res = await request<WeeklyPushResponse>(
                     `/api/dataset/weekly-push/latest?week_start=${encodeURIComponent(selectedWeekStart)}`,
                     "GET",
@@ -842,6 +876,7 @@ const HomeScreen = () => {
         const loadStoredPersonalizedPush = async () => {
             setLoadingPersonalizedWeeklyPush(true);
             try {
+                // Logged-in users see their latest personalized report and its history immediately on page load.
                 const [latestRes, historyRes] = await Promise.all([
                     fetchPersonalizedWeeklyPush(),
                     fetchPersonalizedWeeklyPushHistory(),
@@ -896,11 +931,13 @@ const HomeScreen = () => {
         void loadSelectedPersonalizedPush();
     }, [isLoggedIn, personalizedWeeklyPush?.weekStart, selectedPersonalizedWeekStart]);
 
+    // Trigger generation of a fresh personalized weekly report for the current user.
     const handleGeneratePersonalizedPush = async () => {
         setIsGeneratingPersonalized(true);
         setPersonalizedError("");
 
         try {
+            // Personalized generation is explicit because it may trigger fresh backend summarization work.
             const res = await request<WeeklyPushResponse>(
                 "/api/dataset/weekly-push/personalized",
                 "POST",

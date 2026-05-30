@@ -7,10 +7,15 @@ import HomeScreen, { WeeklyPushDetailCard } from "../pages/index";
 import authReducer from "../redux/auth";
 import { request } from "../utils/network";
 
+// Mock the shared request helper so homepage data-loading flows can be fully
+// controlled and asserted without contacting the real backend.
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
 
+// Helper for manually resolving asynchronous requests in loading-state tests.
+// This is used when the test needs to observe the UI before and after a
+// network response arrives.
 const createDeferred = () => {
     let resolve;
     let reject;
@@ -23,6 +28,8 @@ const createDeferred = () => {
 };
 
 describe("HomeScreen weekly paper abstracts", () => {
+    // Builds a minimal public weekly-push payload. Individual tests override
+    // fields such as title, abstract, or tldr to target specific render cases.
     const buildWeeklyPush = (paperOverrides = {}) => ({
         weekStart: "2026-05-01",
         weekEnd: "2026-05-07",
@@ -46,6 +53,9 @@ describe("HomeScreen weekly paper abstracts", () => {
         }],
     });
 
+    // Shared render helper for the homepage with Redux auth state.
+    // Most tests in this block do not require a logged-in user, but the helper
+    // keeps the setup consistent and allows auth fields to be overridden.
     const renderWithStore = (name = "", authOverrides = {}) => {
         const store = configureStore({
             reducer: {
@@ -69,6 +79,8 @@ describe("HomeScreen weekly paper abstracts", () => {
     };
 
     beforeEach(() => {
+        // Reset the network mock and install the default homepage data
+        // responses before each test in this block.
         request.mockReset();
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/weekly-push/latest") {
@@ -101,6 +113,9 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("renders plain weekly paper abstracts unchanged when no LaTeX is present", async () => {
+        // Tests the plain-text abstract rendering module.
+        // If a weekly paper abstract contains no LaTeX syntax, the homepage
+        // should render the text directly without creating KaTeX nodes.
         const { container } = renderWithStore();
 
         await screen.findByText("本周论文");
@@ -111,6 +126,9 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("renders inline LaTeX in weekly paper abstracts", async () => {
+        // Tests inline LaTeX parsing inside paper abstracts.
+        // Inline formulas should be transformed into rendered KaTeX output, and
+        // the original raw `$...$` source should no longer appear in the DOM.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/weekly-push/latest") {
                 return {
@@ -141,6 +159,9 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("renders LaTeX in weekly paper titles while keeping the arXiv link", async () => {
+        // Tests title rendering when a paper title contains LaTeX and also has
+        // an arXiv link. The title should still be clickable, and the formula
+        // should render instead of remaining raw source text.
         const weeklyPushWithLatexTitle = buildWeeklyPush({
             title: "Weekly $x^2$ Paper",
         });
@@ -172,6 +193,9 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("renders LaTeX in weekly paper titles without arXiv links", async () => {
+        // Tests title rendering when LaTeX is present but no arXiv URL exists.
+        // The page should still render the formatted math in plain text mode
+        // without generating an anchor tag.
         const weeklyPushWithLatexTitle = buildWeeklyPush({
             title: "Weekly $$x^2$$ Paper",
             arxivUrl: undefined,
@@ -205,6 +229,9 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("renders block LaTeX in weekly paper abstracts", async () => {
+        // Tests block-level LaTeX rendering in abstracts.
+        // Expressions wrapped in `$$...$$` should become display-mode KaTeX
+        // blocks rather than ordinary inline text.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/weekly-push/latest") {
                 return {
@@ -232,6 +259,9 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("uses tldr before abstract in weekly paper abstracts", async () => {
+        // Tests abstract source priority for weekly papers.
+        // If a paper has both `tldr` and `abstract`, the shorter TLDR summary
+        // should be rendered in preference to the full abstract text.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/weekly-push/latest") {
                 return {
@@ -263,6 +293,10 @@ describe("HomeScreen weekly paper abstracts", () => {
     });
 
     it("renders the public weekly push skeleton while the initial request is pending", async () => {
+        // Tests the public weekly-push loading skeleton module.
+        // While the latest push and history requests are unresolved, the page
+        // should show placeholder skeletons and remove them only after data
+        // arrives and content is ready to render.
         const latestDeferred = createDeferred();
         const historyDeferred = createDeferred();
 
@@ -312,6 +346,8 @@ describe("HomeScreen weekly paper abstracts", () => {
 });
 
 describe("HomeScreen loading skeletons", () => {
+    // Public weekly-push fixture used when the logged-in homepage also needs to
+    // render the shared public weekly report sections.
     const buildWeeklyPush = () => ({
         weekStart: "2026-05-01",
         weekEnd: "2026-05-07",
@@ -334,6 +370,9 @@ describe("HomeScreen loading skeletons", () => {
         }],
     });
 
+    // Personalized weekly-push fixture used to test logged-in homepage states.
+    // This payload includes mentor/subject tracking metadata in addition to the
+    // papers and summaries shown in the personalized report.
     const buildPersonalizedWeeklyPush = () => ({
         weekStart: "2026-05-01",
         weekEnd: "2026-05-07",
@@ -361,6 +400,8 @@ describe("HomeScreen loading skeletons", () => {
         activeSubjectCount: 1,
     });
 
+    // Render helper for the logged-in homepage state, where personalized
+    // weekly-push modules become available.
     const renderLoggedInHome = () => {
         const store = configureStore({
             reducer: {
@@ -382,6 +423,8 @@ describe("HomeScreen loading skeletons", () => {
         );
     };
 
+    // Shared mock branch for the public weekly-push endpoints. Tests in this
+    // block add personalized endpoints on top of these baseline responses.
     const mockResolvedPublicWeeklyPush = (url) => {
         if (url === "/api/dataset/weekly-push/latest" || url === "/api/dataset/weekly-push/latest?week_start=2026-05-01") {
             return Promise.resolve({
@@ -410,6 +453,10 @@ describe("HomeScreen loading skeletons", () => {
     });
 
     it("renders the personalized weekly push skeleton while stored data is pending", async () => {
+        // Tests the loading skeleton module for personalized weekly reports.
+        // When a logged-in user's personalized push and history are still
+        // loading, the page should show dedicated personalized skeletons and
+        // replace them with the finished report content afterward.
         const personalizedDeferred = createDeferred();
         const personalizedHistoryDeferred = createDeferred();
 
@@ -464,6 +511,10 @@ describe("HomeScreen loading skeletons", () => {
     });
 
     it("keeps the generation status text instead of showing the personalized read skeleton", async () => {
+        // Tests the in-progress generation status module.
+        // If the user actively triggers personalized report generation, the UI
+        // should keep the explicit generation-status text visible rather than
+        // switching back to the generic "read" skeleton placeholder.
         const generateDeferred = createDeferred();
 
         request.mockImplementation((url, method) => {
@@ -509,6 +560,9 @@ describe("HomeScreen loading skeletons", () => {
 });
 
 describe("HomeScreen subject group interactions", () => {
+    // Personalized weekly-push fixture focused on followed subject groups.
+    // These tests target the subject card list and the modal used to inspect
+    // papers inside a selected subject group.
     const buildPersonalizedWeeklyPush = () => ({
         weekStart: "2026-05-01",
         weekEnd: "2026-05-07",
@@ -577,6 +631,9 @@ describe("HomeScreen subject group interactions", () => {
         activeSubjectCount: 2,
     });
 
+    // Render helper for the reusable weekly-push detail card, allowing the
+    // tests to focus on subject-group interactions without mounting the whole
+    // homepage shell.
     const renderSubjectGroups = (pushOverrides = {}) => render(
         <WeeklyPushDetailCard
             push={{
@@ -591,6 +648,10 @@ describe("HomeScreen subject group interactions", () => {
     );
 
     it("renders horizontal subject cards and opens the selected subject modal", async () => {
+        // Tests the subject-group card module and its modal-opening behavior.
+        // The personalized report should show horizontal cards for followed
+        // subject groups, and clicking one should open a detail dialog with the
+        // subject metadata, paper list, previews, and scroll locking.
         const user = userEvent.setup();
         renderSubjectGroups();
 
@@ -622,6 +683,9 @@ describe("HomeScreen subject group interactions", () => {
     });
 
     it("closes the subject modal via overlay click and Escape key", async () => {
+        // Tests modal dismissal behavior for subject-group details.
+        // The subject dialog should support both overlay-click closing and
+        // keyboard closing via Escape, while also restoring page scrolling.
         const user = userEvent.setup();
         renderSubjectGroups();
 
@@ -647,6 +711,9 @@ describe("HomeScreen subject group interactions", () => {
     });
 
     it("keeps the empty placeholder when there are no followed subject updates", async () => {
+        // Tests the empty-state module for personalized followed subjects.
+        // If no followed subject groups have updates this week, the component
+        // should keep the explicit placeholder text and render no subject cards.
         renderSubjectGroups({
             subjectGroups: [],
             trackedSubjectCount: 0,

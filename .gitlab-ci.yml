@@ -1,5 +1,6 @@
 image: registry.spring26a.secoder.net/tool/deployer
 
+# Build, validate, then publish the frontend image.
 stages:
   - build
   - test
@@ -14,6 +15,7 @@ build:
     - export BUILD_IMAGE_PASSWORD=$CI_REGISTRY_PASSWORD
     - deployer build
 
+# Reuse the same Node.js-based setup for linting and unit tests.
 .test:
   image: node:22
   stage: test
@@ -28,6 +30,7 @@ unit-test:
   script:
     - pnpm test
   after_script:
+    # Sonar needs both the coverage file and a test execution report after the test run.
     - SUFFIX=$RANDOM
     - curl "http://api.spring26a.secoder.net/static/sonar-scanner.tar.gz" -s -o "/tmp/sonar-$SUFFIX.tar.gz"
     - tar -xf "/tmp/sonar-$SUFFIX.tar.gz" -C /opt

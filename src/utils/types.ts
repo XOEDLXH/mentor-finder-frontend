@@ -1,3 +1,9 @@
+// Shared frontend data contracts used across search, mentor detail, timeline,
+// follow, weekly report, and admin-management modules.
+// These interfaces describe the shapes returned by backend endpoints so pages
+// and components can share a consistent typed model.
+
+// Search and mentor-related result types.
 export interface SearchMentorResult {
     id: number;
     Chinese_name: string;
@@ -21,6 +27,7 @@ export interface PrivateMentorPaper {
     arxiv_url?: string;
 }
 
+// Detailed mentor records used in private-mentor flows and mentor detail pages.
 export interface PrivateMentorResult {
     id: number;
     Chinese_name: string;
@@ -43,6 +50,7 @@ export interface MentorDetail {
     paper_ids: PrivateMentorPaper[];
 }
 
+// AI-generated summary of a mentor's recent research direction.
 export interface MentorRecentDirectionAnalysisPaper {
     id: number;
     title: string;
@@ -72,6 +80,7 @@ export interface SearchPaperResult {
     publishDate?: string;
 }
 
+// Timeline feed data models.
 export interface TimelinePaper {
     id: number;
     title: string;
@@ -111,6 +120,7 @@ export interface TimelineCalendarResponse {
     available_dates: TimelineCalendarDateSummary[];
 }
 
+// Weekly push and personalized weekly report data models.
 export interface WeeklyPushPaper {
     id: number;
     title: string;
@@ -203,6 +213,7 @@ export interface WeeklyPushHistoryResponse {
     history: WeeklyPushHistoryItem[];
 }
 
+// Timeline batched response wrapper used for initial load and incremental loading.
 export interface TimelinePapersResponse {
     direction: string;
     limit: number;
@@ -223,6 +234,7 @@ export interface BoundMentorProfile {
     email?: string;
 }
 
+// Follow-system and public-profile data models.
 export interface FollowUserResult {
     id: number;
     username: string;
@@ -250,6 +262,7 @@ export interface PublicUserProfileResult extends FollowUserResult {
     profile: PublicUserProfile;
 }
 
+// Admin management data models.
 export interface AdminUserResult {
     id: number;
     username: string;

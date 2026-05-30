@@ -31,6 +31,7 @@ interface AvatarUploadResponse {
     profile?: Partial<ProfileSettings>;
 }
 
+// Default to showing all public profile sections until the user explicitly hides some of them.
 const EMPTY_SETTINGS: ProfileSettings = {
     avatarUrl: "",
     signature: "",
@@ -40,6 +41,8 @@ const EMPTY_SETTINGS: ProfileSettings = {
     showProjectExperience: true,
 };
 
+// Normalize partial backend responses into a fully controlled settings object.
+// Convert a partial backend payload into a fully controlled settings object for the form.
 const normalizeSettings = (profile?: Partial<ProfileSettings>): ProfileSettings => ({
     avatarUrl: typeof profile?.avatarUrl === "string" ? profile.avatarUrl : "",
     signature: typeof profile?.signature === "string" ? profile.signature : "",
@@ -49,6 +52,7 @@ const normalizeSettings = (profile?: Partial<ProfileSettings>): ProfileSettings 
     showProjectExperience: typeof profile?.showProjectExperience === "boolean" ? profile.showProjectExperience : true,
 });
 
+// Render the personal settings page for avatar, signature, visibility, and mentor verification controls.
 const ProfileSettingsPage = () => {
     const router = useRouter();
     const dispatch = useDispatch();
@@ -78,6 +82,7 @@ const ProfileSettingsPage = () => {
         setErrorMessage("");
         setMentorVerificationRequest(undefined);
 
+        // Load both visibility settings and the most recent mentor verification request in one request.
         request<ProfileResponse>("/api/profile/me", "GET", true)
             .then((res) => {
                 setSettings(normalizeSettings(res.profile));
@@ -155,8 +160,10 @@ const ProfileSettingsPage = () => {
         setErrorMessage("");
 
         try {
+            // Save the full settings payload because every field is user-controlled on this page.
             const res = await request<ProfileResponse>("/api/profile/me", "PUT", true, settings);
             setSettings(normalizeSettings(res.profile));
+            // Keep the navbar avatar in sync immediately after a successful save.
             dispatch(setAvatarUrl(typeof res.profile?.avatarUrl === "string" ? res.profile.avatarUrl : ""));
             setSuccessMessage("个人设置保存成功");
         } catch (err) {
@@ -170,6 +177,7 @@ const ProfileSettingsPage = () => {
         }
     };
 
+    // Upload a local avatar image after validating file type and size constraints.
     const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file === undefined) {
@@ -177,6 +185,7 @@ const ProfileSettingsPage = () => {
         }
         event.target.value = "";
 
+        // Validate locally so obviously invalid files never hit the upload endpoint.
         if (!file.type.startsWith("image/")) {
             setErrorMessage("请选择图片文件作为头像");
             return;
@@ -195,6 +204,7 @@ const ProfileSettingsPage = () => {
         formData.append("avatar", file);
 
         try {
+            // Avatar upload uses raw fetch because it needs multipart/form-data rather than the JSON helper.
             const response = await fetch("/api/profile/avatar", {
                 method: "POST",
                 headers: {
@@ -218,6 +228,7 @@ const ProfileSettingsPage = () => {
         }
     };
 
+    // Submit a mentor-verification request that an admin can later review and bind to a mentor record.
     const submitMentorVerificationRequest = async () => {
         const submittedName = mentorVerificationName.trim();
         if (submittedName === "") {
@@ -225,6 +236,7 @@ const ProfileSettingsPage = () => {
             return;
         }
 
+        // Users submit a name first; an admin later maps the request to a concrete public mentor record.
         setMentorVerificationSubmitting(true);
         setSuccessMessage("");
         setErrorMessage("");
@@ -342,6 +354,7 @@ const ProfileSettingsPage = () => {
 
                     <section className="settingsSection" aria-label="展示内容设置">
                         <h3>个人主页展示</h3>
+                        {/* These toggles control which text blocks are visible on the public /users/[id] page. */}
                         <div className="visibilityOptions">
                             <label className="checkboxRow">
                                 <input
@@ -399,6 +412,7 @@ const ProfileSettingsPage = () => {
                         </div>
 
                         {mentorVerificationRequest && (
+                            // Show the most recent request so the user can see whether it is still pending or already reviewed.
                             <div className="mentorRequestPanel">
                                 <p>最近申请姓名：{mentorVerificationRequest.submittedName}</p>
                                 <p>当前状态：{mentorVerificationRequest.status}</p>

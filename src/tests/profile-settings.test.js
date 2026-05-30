@@ -6,15 +6,22 @@ import ProfileSettingsPage from "../pages/profile-settings";
 import { setAvatarUrl, setName, setToken } from "../redux/auth";
 import { request } from "../utils/network";
 
+// Mock Next.js routing so the settings page can be mounted without the real
+// router runtime and any navigation side effects can be inspected if needed.
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock Redux hooks because this page reads auth state and dispatches profile
+// updates. The tests need direct control over both operations.
 jest.mock("react-redux", () => ({
     useDispatch: jest.fn(),
     useSelector: jest.fn(),
 }));
 
+// Mock the shared request helper for profile bootstrap data.
+// The avatar upload itself uses fetch directly, while the rest of the settings
+// page still depends on the standard network helper.
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
     NetworkError: class NetworkError extends Error {},
@@ -29,6 +36,7 @@ describe("ProfileSettingsPage", () => {
         push: mockPush,
     };
     const mockDispatch = jest.fn();
+    // Minimal authenticated user state required by the avatar upload flow.
     const mockAuthState = {
         token: "jwt-token",
         name: "alice",
@@ -36,6 +44,9 @@ describe("ProfileSettingsPage", () => {
     };
 
     beforeEach(() => {
+        // Reset router/dispatch mocks, provide a stable authenticated Redux
+        // state, and install the default profile bootstrap response before each
+        // settings-page test.
         mockPush.mockReset();
         mockDispatch.mockReset();
         useRouter.mockReturnValue(mockRouter);
@@ -59,6 +70,12 @@ describe("ProfileSettingsPage", () => {
     });
 
     it("uploads a local avatar image and updates the preview", async () => {
+        // Tests the avatar-upload success module.
+        // After the user selects a valid local image file, the page should:
+        // 1. POST the file to the avatar endpoint with the auth header;
+        // 2. update the preview image to the returned avatar URL;
+        // 3. dispatch the new avatar URL into Redux;
+        // 4. show the success feedback message.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({
                 code: 0,
@@ -99,6 +116,9 @@ describe("ProfileSettingsPage", () => {
     });
 
     it("rejects a non-image avatar file before upload", async () => {
+        // Tests the client-side file-type validation module for avatar upload.
+        // Non-image files should be rejected immediately, show the validation
+        // message, and never trigger the upload request.
         render(<ProfileSettingsPage />);
 
         const input = await screen.findByLabelText("上传本地头像");

@@ -17,6 +17,7 @@ interface Delimiter {
     displayMode: boolean;
 }
 
+// Support both TeX-style $...$ syntax and escaped bracket delimiters from backend content.
 const DELIMITERS: Delimiter[] = [
     { open: "$$", close: "$$", displayMode: true },
     { open: "\\[", close: "\\]", displayMode: true },
@@ -24,6 +25,7 @@ const DELIMITERS: Delimiter[] = [
     { open: "$", close: "$", displayMode: false },
 ];
 
+// Merge adjacent plain-text fragments so React renders fewer wrapper nodes.
 const pushTextSegment = (segments: LatexSegment[], value: string) => {
     if (value === "") {
         return;
@@ -38,6 +40,7 @@ const pushTextSegment = (segments: LatexSegment[], value: string) => {
     segments.push({ kind: "text", value });
 };
 
+// Split mixed content into text and math segments while preserving unmatched delimiters as text.
 const parseLatexSegments = (text: string): LatexSegment[] => {
     const segments: LatexSegment[] = [];
     let cursor = 0;
@@ -85,6 +88,7 @@ const parseLatexSegments = (text: string): LatexSegment[] => {
     return segments;
 };
 
+// KaTeX returns HTML, so rendering goes through dangerouslySetInnerHTML for both display modes.
 const renderMathSegment = (value: string, displayMode: boolean, key: string) => {
     const html = katex.renderToString(value, {
         displayMode,
@@ -110,6 +114,7 @@ const renderMathSegment = (value: string, displayMode: boolean, key: string) => 
     );
 };
 
+// Preserve original newlines from abstracts and titles without wrapping the whole block in <pre>.
 const renderTextWithLineBreaks = (value: string) => {
     const lines = value.split("\n");
 
@@ -122,6 +127,7 @@ const renderTextWithLineBreaks = (value: string) => {
 };
 
 const LatexText = ({ text, forceInlineMath = false }: LatexTextProps) => {
+    // Parsing once here keeps the JSX below focused on rendering concerns.
     const segments = parseLatexSegments(text);
 
     return (

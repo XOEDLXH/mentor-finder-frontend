@@ -1,3 +1,4 @@
+/* Global design tokens shared across pages, components, and page-level CSS-in-JS blocks. */
 :root {
   --surface-page: #f6f8fa;
   --surface-panel: #ffffff;
@@ -16,6 +17,7 @@
   --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
 
+/* Base document reset and typography defaults for the whole app. */
 html,
 body {
   padding: 0;
@@ -30,11 +32,13 @@ body {
   min-height: 100vh;
 }
 
+/* Keep links visually neutral by default; feature pages opt into their own link styling. */
 a {
   color: inherit;
   text-decoration: none;
 }
 
+/* Make form controls inherit the surrounding typography so page styles stay consistent. */
 button,
 input,
 textarea,
@@ -46,6 +50,7 @@ button {
   cursor: pointer;
 }
 
+/* Shared base input styling used across forms and page-level inline controls. */
 input,
 textarea,
 select {
@@ -61,6 +66,7 @@ textarea {
   resize: vertical;
 }
 
+/* Disabled controls share a common dimmed treatment throughout the app. */
 button:disabled,
 input:disabled,
 textarea:disabled,
@@ -69,6 +75,8 @@ select:disabled {
   opacity: 0.65;
 }
 
+/* Default button styling for ordinary buttons.
+   Components with bespoke button systems are explicitly excluded from this broad selector. */
 button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
@@ -78,12 +86,14 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
+/* Shared hover treatment for the default button family above. */
 button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
 }
 
+/* Search mentor follow buttons opt out of the generic raised-hover motion. */
 button.searchMentorFollowButton:hover:not(:disabled),
 button.searchMentorFollowButton:focus-visible {
   transform: none;
@@ -100,6 +110,7 @@ button.searchMentorFollowButton:disabled {
   cursor: not-allowed;
 }
 
+/* Shared paper-link layout used by mentor and search result cards. */
 .mentorPaperLink,
 .searchMentorPaperLinkButton {
   display: inline-flex;
@@ -116,6 +127,7 @@ button.searchMentorFollowButton:disabled {
   white-space: normal;
 }
 
+/* Hover state for clickable paper links without changing their layout. */
 button.mentorPaperLink:hover,
 button.mentorPaperLink:focus-visible,
 button.searchMentorPaperLinkButton:hover,
@@ -126,6 +138,7 @@ a.mentorPaperLink:focus-visible {
   outline: none;
 }
 
+/* Underline only the text portion of paper links on hover/focus. */
 .mentorPaperLinkText,
 .searchMentorPaperLinkText {
   color: inherit;
@@ -136,6 +149,7 @@ a.mentorPaperLink:focus-visible {
   transition: text-decoration-color 0.16s ease;
 }
 
+/* Reveal the dashed underline on hover/focus for paper links. */
 button.mentorPaperLink:hover .mentorPaperLinkText,
 button.mentorPaperLink:focus-visible .mentorPaperLinkText,
 button.searchMentorPaperLinkButton:hover .searchMentorPaperLinkText,
@@ -147,6 +161,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   text-decoration-color: currentColor;
 }
 
+/* Shared paper-link icon sizing for mentor and search result cards. */
 .mentorPaperLinkIcon,
 .searchMentorPaperLinkIcon {
   width: 16px;
@@ -157,35 +172,42 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   margin-top: 1px;
 }
 
+/* Generic loading overlay used by follow/unfollow buttons. */
 .followToggleButtonOverlay {
   position: absolute;
   inset: 0;
   background: rgba(255, 255, 255, 0.55);
 }
 
+/* Shared focus ring for keyboard navigation across the app. */
 *:focus-visible {
   outline: 3px solid rgba(47, 129, 247, 0.3);
   outline-offset: 2px;
 }
 
+/* Use border-box sizing globally to keep layout math predictable. */
 * {
   box-sizing: border-box;
 }
 
+/* Outer app shell sizing shared by normal pages and auth pages. */
 .appChrome {
   min-height: 100vh;
 }
 
+/* Auth pages intentionally keep a plain white background and no top navigation. */
 .appChromeAuth {
   background: #ffffff;
 }
 
+/* Default content container for most pages beneath the fixed top navigation. */
 .appMain {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
   padding: 110px 0 48px;
 }
 
+/* Auth pages take full viewport height and opt out of the normal content container width/padding. */
 .appMainAuth {
   width: 100%;
   max-width: none;
@@ -193,6 +215,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   padding: 0;
 }
 
+/* Fixed global top navigation shell shared by all non-auth pages. */
 .topNav {
   position: fixed;
   inset: 0 0 auto;
@@ -202,6 +225,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   backdrop-filter: blur(14px);
 }
 
+/* Inner top-nav layout container. */
 .topNavInner {
   width: min(1280px, calc(100% - 32px));
   min-height: 64px;
@@ -212,6 +236,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   gap: 20px;
 }
 
+/* Shared flex groups used on the left and right sides of the top nav. */
 .topNavLeft,
 .topNavRight {
   display: flex;
@@ -223,6 +248,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   min-width: 0;
 }
 
+/* Brand button that wraps the MentorFinder logo. */
 .topNavBrand {
   display: inline-flex;
   align-items: center;
@@ -234,6 +260,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   min-height: 32px;
 }
 
+/* Keep the SVG logo aligned and sized consistently in the nav bar. */
 .topNavBrandLogoFrame {
   width: 216px;
   height: 32px;
@@ -248,6 +275,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   display: block;
 }
 
+/* Horizontal navigation and desktop auth action groups. */
 .topNavLinks,
 .topNavDesktopAuth {
   display: flex;
@@ -255,6 +283,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   gap: 8px;
 }
 
+/* These nav-specific buttons deliberately bypass the generic button chrome defined above. */
 .topNavLink,
 .topNavAuthLink,
 .topNavAuthPrimary,
@@ -271,6 +300,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   color: var(--nav-muted);
 }
 
+/* Shared sizing and hover transitions for top-nav text buttons. */
 .topNavLink,
 .topNavAuthLink,
 .topNavAuthPrimary {
@@ -280,6 +310,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+/* Active/hover state for top-nav links and lightweight auth actions. */
 .topNavLink:hover,
 .topNavLinkActive,
 .topNavAuthLink:hover {
@@ -287,6 +318,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   color: var(--nav-ink);
 }
 
+/* Primary auth action in the nav keeps a bordered pill style distinct from plain links. */
 .topNavAuthPrimary {
   border: 1px solid #d0d7de;
   color: var(--nav-ink);
@@ -297,6 +329,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   background: #f3f4f6;
 }
 
+/* Compact search field embedded in the top nav. */
 .topNavSearchShell {
   width: 260px;
   min-height: 32px;
@@ -309,6 +342,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   background: #ffffff;
 }
 
+/* Fixed-size search icon slot inside the nav search field. */
 .topNavSearchIcon {
   width: 16px;
   height: 16px;

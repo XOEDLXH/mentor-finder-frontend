@@ -6,10 +6,14 @@ import { request } from "../utils/network";
 import authReducer from "../redux/auth";
 import SearchScreen from "../pages/search";
 
+// Mock Next.js routing so the search page tests can fully control query-state,
+// shallow pushes/replaces, and back-navigation restoration logic.
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock the shared network helper so the test suite can simulate mentor/paper
+// search responses, follow requests, and admin delete operations deterministically.
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
@@ -31,11 +35,15 @@ describe("SearchScreen", () => {
         isReady: true,
     };
 
+    // Simulate a browser history entry key so the search page can store and
+    // restore per-entry UI state such as scroll position and expanded cards.
     const syncHistoryState = (key = `test-history-${historyKeyCounter++}`) => {
         window.history.replaceState({ key }, "", "/search");
         return key;
     };
 
+    // Mirror a pushed/replaced URL back into the mocked Next.js router query so
+    // the component sees the same state it would receive in the real app.
     const applyUrlToRouter = (url) => {
         const parsedUrl = new URL(url, "http://localhost");
         const nextQuery = {};
@@ -47,6 +55,8 @@ describe("SearchScreen", () => {
         mockRouter.query = nextQuery;
     };
 
+    // Helper for tests that need to inspect intermediate loading states before
+    // search or delete requests resolve.
     const createDeferred = () => {
         let resolve;
         let reject;
@@ -57,6 +67,7 @@ describe("SearchScreen", () => {
         return { promise, resolve, reject };
     };
 
+    // Representative private mentor fixture used in visibility-filter tests.
     const mockPrivateMentor = {
         id: 101,
         Chinese_name: "王五",
@@ -74,6 +85,9 @@ describe("SearchScreen", () => {
         }],
     };
 
+    // Shared render helper that mounts the search page with a configurable auth
+    // role. Most tests run as a logged-in student, while admin cases override
+    // the role to expose management actions.
     const renderWithStore = (name = "student", role = "student") => {
         const store = configureStore({
             reducer: {
@@ -95,6 +109,8 @@ describe("SearchScreen", () => {
         );
     };
 
+    // Helper that waits for the "my private mentors" bootstrap request, which
+    // the search page performs on startup for logged-in users.
     const waitForMineRequest = async () => {
         await waitFor(() => {
             expect(request).toHaveBeenCalledWith(
@@ -105,6 +121,8 @@ describe("SearchScreen", () => {
         });
     };
 
+    // Helper that waits until both mentor and paper skeleton placeholders have
+    // been removed, meaning the visible result area has finished loading.
     const waitForSearchSkeletonsToFinish = async () => {
         await waitFor(() => {
             expect(screen.queryByTestId("search-mentor-skeleton")).not.toBeInTheDocument();
@@ -112,12 +130,16 @@ describe("SearchScreen", () => {
         });
     };
 
+    // Helper for locating a mentor result card after loading completes.
     const waitForMentorResultHeading = async (name) => {
         await waitForSearchSkeletonsToFinish();
         return screen.findByRole("heading", { name, level: 3 });
     };
 
     beforeEach(() => {
+        // Reset router mocks, network mocks, history state, and browser shims
+        // before each search-page scenario. The page stores a lot of UI state
+        // in history/sessionStorage, so clean isolation matters here.
         mockPush.mockReset();
         mockReplace.mockReset();
         mockBack.mockReset();
@@ -179,6 +201,8 @@ describe("SearchScreen", () => {
     });
 
     it("shows admin operation panel only for admin role", async () => {
+        // Tests the role-gated admin operations module.
+        // Only admins should see extra management controls on the search page.
         renderWithStore("alice", "admin");
         await waitForMineRequest();
 
@@ -186,6 +210,9 @@ describe("SearchScreen", () => {
     });
 
     it("does not render private mentor management module in search page", async () => {
+        // Tests the removal/hiding of the private-mentor management module from
+        // the search page. The page should keep only the unified search UI and
+        // must not expose private-mentor editing controls here.
         const view = renderWithStore();
         await waitForMineRequest();
 
@@ -200,6 +227,10 @@ describe("SearchScreen", () => {
     });
 
     it("opens a centered delete mentor dialog with mentor details for admins", async () => {
+        // Tests the admin mentor-deletion confirmation module.
+        // Clicking "delete mentor" should open a confirmation dialog populated
+        // with mentor details, but should not send the DELETE request until the
+        // admin explicitly confirms.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -242,6 +273,7 @@ describe("SearchScreen", () => {
     });
 
     it("closes the delete mentor dialog when clicking the overlay", async () => {
+        // Tests overlay-based dismissal for the mentor delete dialog.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -282,6 +314,8 @@ describe("SearchScreen", () => {
     });
 
     it("closes the delete mentor dialog when clicking cancel without deleting", async () => {
+        // Tests explicit cancel behavior for the mentor delete dialog.
+        // Cancel should close the modal and must not trigger any delete request.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -323,6 +357,9 @@ describe("SearchScreen", () => {
     });
 
     it("deletes mentor after confirmation, shows loading state, and refreshes search results", async () => {
+        // Tests the full admin mentor-deletion workflow:
+        // open dialog -> confirm delete -> show pending state -> remove the
+        // deleted mentor from refreshed search results -> show success feedback.
         let deleted = false;
         let resolveDelete;
         request.mockImplementation((url, method) => {
@@ -386,6 +423,9 @@ describe("SearchScreen", () => {
     });
 
     it("auto loads all mentors when entering search page with empty keyword", async () => {
+        // Tests the default mentor auto-search module.
+        // Entering the search page with an empty keyword should still trigger a
+        // fuzzy mentor search so the page can show the full result set.
         const view = renderWithStore();
         await waitForMineRequest();
 
@@ -399,6 +439,9 @@ describe("SearchScreen", () => {
     });
 
     it("initializes from URL query and auto loads paper fuzzy search results", async () => {
+        // Tests search-state restoration from the router query.
+        // If the URL encodes a paper search, the page should initialize the
+        // correct mode/toggles/input state and auto-load matching paper results.
         mockRouter.query = {
             keyword: "大模型",
             mode: "paper",
@@ -453,6 +496,9 @@ describe("SearchScreen", () => {
     });
 
     it("falls back to default values when URL query is invalid", async () => {
+        // Tests invalid-query sanitization.
+        // Unsupported mode/search/sort/page values in the URL should be ignored
+        // and replaced with the page's safe default search configuration.
         mockRouter.query = {
             keyword: "图神经网络",
             mode: "invalid-mode",
@@ -479,6 +525,9 @@ describe("SearchScreen", () => {
     });
 
     it("renders mentor results using backend response fields", async () => {
+        // Tests the mentor result-card rendering module.
+        // The page should map backend mentor fields into the visible card UI,
+        // including metadata icons, profile text, and related-paper buttons.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -533,6 +582,9 @@ describe("SearchScreen", () => {
     });
 
     it("searches papers exactly when clicking mentor related paper title", async () => {
+        // Tests cross-search navigation from a mentor result to a paper search.
+        // Clicking a related paper title inside a mentor card should trigger an
+        // exact paper search using that title as the keyword.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -601,6 +653,9 @@ describe("SearchScreen", () => {
     });
 
     it("renders inline LaTeX in mentor related paper titles", async () => {
+        // Tests LaTeX rendering inside mentor-card related paper titles.
+        // Formula syntax in paper titles should render through KaTeX instead of
+        // appearing as raw source text.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -640,6 +695,10 @@ describe("SearchScreen", () => {
     });
 
     it("shows collapsed mentor info by default and expands on demand", async () => {
+        // Tests the expandable mentor-card details module.
+        // Long mentor profiles and long related-paper lists should start in a
+        // collapsed state, expand only when requested, and preserve the direct
+        // navigation button to the mentor homepage.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -705,6 +764,9 @@ describe("SearchScreen", () => {
     });
 
     it("shows mentor homepage button for short profiles without expand toggle", async () => {
+        // Tests the short-profile branch of the mentor-card module.
+        // If the profile is short enough to display fully, no expand toggle is
+        // needed, but the homepage navigation button should still be present.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -750,6 +812,9 @@ describe("SearchScreen", () => {
     });
 
     it("renders paper results using backend response fields", async () => {
+        // Tests the paper result-card rendering module.
+        // The page should map backend paper fields into visible title/date/link/
+        // abstract/subject/mentor UI, including clickable mentor badges.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -815,6 +880,10 @@ describe("SearchScreen", () => {
     });
 
     it("renders the search mentor follow button in bilibili style and toggles between follow states", async () => {
+        // Tests the follow-toggle module for mentor search results.
+        // The button should render with the expected visual styles for both
+        // unfollowed and followed states, and should issue POST/DELETE requests
+        // as the user toggles follow status.
         request.mockImplementation(async (url, method) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -893,6 +962,7 @@ describe("SearchScreen", () => {
     });
 
     it("renders inline LaTeX in paper search result abstracts", async () => {
+        // Tests inline LaTeX parsing inside paper-result abstracts.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -939,6 +1009,8 @@ describe("SearchScreen", () => {
     });
 
     it("renders inline LaTeX in paper search result titles while keeping the arXiv link", async () => {
+        // Tests LaTeX rendering inside paper-result titles when an arXiv link is
+        // also present. The formula should render, and the link should remain intact.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -985,6 +1057,7 @@ describe("SearchScreen", () => {
     });
 
     it("renders block LaTeX in paper search result abstracts", async () => {
+        // Tests block-level LaTeX rendering inside paper-result abstracts.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -1028,6 +1101,9 @@ describe("SearchScreen", () => {
     });
 
     it("renders block-delimited LaTeX inline in paper search result titles", async () => {
+        // Tests the title-rendering rule for block-delimited formulas.
+        // Even if the source title uses `$$...$$`, the search card should still
+        // render it inline inside the heading rather than as a display block.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -1075,6 +1151,9 @@ describe("SearchScreen", () => {
     });
 
     it("opens a centered delete paper dialog with paper details for admins", async () => {
+        // Tests the admin paper-deletion confirmation module.
+        // The dialog should open with normalized paper metadata and should not
+        // delete anything until the admin confirms.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -1122,6 +1201,7 @@ describe("SearchScreen", () => {
     });
 
     it("closes the delete paper dialog when clicking cancel without deleting", async () => {
+        // Tests explicit cancel behavior for the paper delete dialog.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -1159,6 +1239,9 @@ describe("SearchScreen", () => {
     });
 
     it("deletes paper after confirmation, shows loading state, and refreshes search results", async () => {
+        // Tests the full admin paper-deletion workflow:
+        // confirm delete -> show loading state -> refresh visible results ->
+        // show success feedback once the deleted paper disappears.
         let deleted = false;
         let resolveDelete;
         request.mockImplementation((url, method) => {
@@ -1218,6 +1301,9 @@ describe("SearchScreen", () => {
     });
 
     it("filters mentor search results by mine and public categories", async () => {
+        // Tests the mentor visibility filter module.
+        // The user should be able to switch between combined results, private
+        // mentors only, and public mentors only without leaving the search page.
         const privateMentorData = {
             id: 101,
             Chinese_name: "王五",
@@ -1288,6 +1374,9 @@ describe("SearchScreen", () => {
     });
 
     it("encodes mentor visibility in the URL and restores it from router query changes", async () => {
+        // Tests two-way sync between the mentor visibility filter and the URL.
+        // Toggling visibility should update the shallow-pushed search URL, and
+        // later router-query changes should restore the same filtered state.
         const privateMentorData = {
             id: 101,
             Chinese_name: "王五",
@@ -1392,6 +1481,9 @@ describe("SearchScreen", () => {
     });
 
     it("re-fetches and restores search state when router query changes after initial render", async () => {
+        // Tests post-mount router-query rehydration.
+        // If the URL changes after the initial render, the page should fetch
+        // new results and restore the corresponding mode/toggle/input state.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -1475,6 +1567,10 @@ describe("SearchScreen", () => {
     });
 
     it("restores scroll position and expanded mentor cards on browser back", async () => {
+        // Tests browser-back restoration for search view state.
+        // After drilling from a mentor result into a paper search, returning via
+        // history navigation should restore both the prior scroll position and
+        // the saved expanded/collapsed mentor-card UI state.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -1614,6 +1710,10 @@ describe("SearchScreen", () => {
     });
 
     it("stores push target scroll state under the new history key without overwriting the mentor result entry", async () => {
+        // Tests per-history-entry state isolation.
+        // When search pushes to a new in-page result state, the new history key
+        // should get its own saved view state, leaving the original mentor-entry
+        // state untouched.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -1715,6 +1815,9 @@ describe("SearchScreen", () => {
     });
 
     it("does not overwrite the saved mentor scroll state when the browser resets scroll before pop restore", async () => {
+        // Tests protection against browser-driven scroll resets during popstate.
+        // If the browser briefly resets scroll to 0 before restoration runs, the
+        // previously saved mentor-entry scroll position must still be preserved.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -1857,6 +1960,8 @@ describe("SearchScreen", () => {
     });
 
     it("restores scroll position and expanded mentor cards after visiting mentor homepage with the homepage button", async () => {
+        // Tests search-state restoration after leaving the page for a mentor
+        // homepage through the explicit "homepage" button and then returning.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -1949,6 +2054,8 @@ describe("SearchScreen", () => {
     });
 
     it("restores scroll position and expanded mentor cards after visiting mentor homepage from the mentor name link", async () => {
+        // Tests the same restoration flow when navigation to the mentor detail
+        // page happens through the mentor name link instead of the homepage button.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -2041,6 +2148,10 @@ describe("SearchScreen", () => {
     });
 
     it("stores mentor homepage navigation return markers without overwriting the mentor result entry", async () => {
+        // Tests the mentor-homepage return-marker module.
+        // Navigating from a search result to a mentor homepage should save:
+        // 1. the source search view state under the source history entry;
+        // 2. a dedicated return marker linking source and target entries.
         const longProfile = "这是一段用于测试默认折叠展示的导师画像内容。".repeat(10);
         const longPaperTitles = Array.from({ length: 12 }, (_, index) => `论文${index + 1}`);
 
@@ -2122,6 +2233,9 @@ describe("SearchScreen", () => {
     });
 
     it("clicking a mentor author in paper result triggers exact mentor search", async () => {
+        // Tests cross-search navigation from a paper result back to mentor
+        // search. Only authors that correspond to known mentors should become
+        // clickable and trigger an exact mentor search when selected.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -2200,6 +2314,9 @@ describe("SearchScreen", () => {
     });
 
     it("sends exact mode when toggled from the default fuzzy mode", async () => {
+        // Tests the search-mode toggle module.
+        // Switching from fuzzy to exact mode should immediately re-run the
+        // current search and encode the new mode in the URL.
         renderWithStore();
         await waitForMineRequest();
 
@@ -2224,6 +2341,9 @@ describe("SearchScreen", () => {
     });
 
     it("auto loads all results when switching mode with empty keyword", async () => {
+        // Tests empty-keyword auto-search when switching between mentor and
+        // paper modes. The page should still load all results for the new mode
+        // instead of waiting for the user to type a keyword.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -2289,6 +2409,9 @@ describe("SearchScreen", () => {
     });
 
     it("sends paper sort mode and re-searches when sort toggled", async () => {
+        // Tests the paper sort-mode module.
+        // Changing the paper sort toggle should re-run the current paper search
+        // and persist the new sort mode in the URL.
         renderWithStore();
         await waitForMineRequest();
 
@@ -2331,6 +2454,10 @@ describe("SearchScreen", () => {
     });
 
     it("supports mentor result pagination", async () => {
+        // Tests the mentor-search pagination module.
+        // The page should render paging controls from backend pagination data,
+        // request the correct page on navigation, and sync the page number into
+        // the shallow search URL.
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
                 return { mentors: [] };
@@ -2428,6 +2555,9 @@ describe("SearchScreen", () => {
     });
 
     it("clears keyword and auto searches when clicking clear button", async () => {
+        // Tests the keyword-clear module.
+        // Clearing the input should reset the keyword to empty and immediately
+        // re-run the current search with the empty keyword state.
         renderWithStore();
         await waitForMineRequest();
 
@@ -2453,6 +2583,9 @@ describe("SearchScreen", () => {
     });
 
     it("stores the full summary string in the title attribute for long keywords", async () => {
+        // Tests summary-heading accessibility/overflow behavior.
+        // When the visible summary text may be truncated for long keywords, the
+        // full summary string should still be available through the title attr.
         const longKeyword = "超长搜索关键词".repeat(12);
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
@@ -2492,6 +2625,9 @@ describe("SearchScreen", () => {
     });
 
     it("renders mentor skeletons while mentor search is pending", async () => {
+        // Tests the mentor-search loading skeleton module.
+        // While a mentor search request is unresolved, the page should render
+        // skeleton placeholders and avoid flashing the empty-result message.
         const mentorDeferred = createDeferred();
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {
@@ -2543,6 +2679,9 @@ describe("SearchScreen", () => {
     });
 
     it("renders paper skeletons while paper search is pending", async () => {
+        // Tests the paper-search loading skeleton module.
+        // The same behavior should hold for paper results restored from the URL:
+        // show skeletons while loading and delay empty-state messaging.
         const paperDeferred = createDeferred();
         mockRouter.query = {
             keyword: "大模型",
@@ -2599,6 +2738,9 @@ describe("SearchScreen", () => {
     });
 
     it("replaces old mentor results with skeletons while paginating", async () => {
+        // Tests pagination transition behavior for mentor search results.
+        // When the user moves to another page, old mentor cards should be
+        // replaced by loading skeletons until the next page finishes loading.
         const pageTwoDeferred = createDeferred();
         request.mockImplementation(async (url) => {
             if (url === "/api/dataset/mentors/mine") {

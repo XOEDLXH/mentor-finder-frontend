@@ -1,3 +1,4 @@
+# Exclude development-only files so Docker builds stay small and reproducible.
 # common
 README.md
 .git

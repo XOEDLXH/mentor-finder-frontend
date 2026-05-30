@@ -16,6 +16,7 @@ interface NavItem {
     activeMatch: (pathname: string) => boolean;
 }
 
+// Centralize top-level navigation rules so desktop and mobile menus stay consistent.
 const NAV_ITEMS: NavItem[] = [
     {
         label: "Search",
@@ -63,15 +64,18 @@ const TopNav = () => {
     const currentRedirect = typeof router.query.redirect === "string" ? router.query.redirect : "";
 
     const visibleNavItems = useMemo(() => {
+        // Non-admin users should never see admin-only navigation entries.
         return NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
     }, [isAdmin]);
 
     useEffect(() => {
+        // Collapse any open menu after route changes so stale panels do not remain visible.
         setMobileMenuOpen(false);
         setAvatarMenuOpen(false);
     }, [currentPath]);
 
     useEffect(() => {
+        // Let keyboard users dismiss both menus with Escape.
         const handleEscape = (event: globalThis.KeyboardEvent) => {
             if (event.key === "Escape") {
                 setMobileMenuOpen(false);
@@ -84,6 +88,7 @@ const TopNav = () => {
     }, []);
 
     const goto = (href: string, requiresAuth = false) => {
+        // Preserve the intended destination when redirecting unauthenticated users to login.
         const targetHref = requiresAuth && !isLoggedIn
             ? buildRedirectHref("/login", href)
             : href;
@@ -92,6 +97,7 @@ const TopNav = () => {
         setAvatarMenuOpen(false);
 
         if (href === "/timeline" && router.pathname === href) {
+            // Re-clicking the current timeline tab should reset the feed viewport instead of remounting.
             window.scrollTo({ top: 0, left: 0, behavior: "auto" });
             return;
         }
@@ -106,6 +112,7 @@ const TopNav = () => {
         }
 
         if (auth.userId !== undefined) {
+            // Reuse the cached user id from Redux when it is already known.
             goto(`/users/${auth.userId}`, true);
             return;
         }
@@ -114,6 +121,7 @@ const TopNav = () => {
         setAvatarMenuOpen(false);
 
         try {
+            // Resolve the current user's profile id lazily so the nav can link to /users/:id.
             const res = await request<{ userId?: number }>("/api/profile/me", "GET", true);
             if (typeof res.userId === "number") {
                 dispatch(setUserId(res.userId));
@@ -121,11 +129,13 @@ const TopNav = () => {
             }
         }
         catch {
+            // If auth is stale, fall back to login and keep the profile page as the redirect target.
             void router.push("/login?redirect=%2Fusers");
         }
     };
 
     const gotoAuthPage = (basePath: "/login" | "/register") => {
+        // Only forward safe in-app redirect targets to avoid open redirect behavior.
         const nextHref = isSafeRelativeRedirect(currentRedirect)
             ? buildRedirectHref(basePath, currentRedirect)
             : basePath;
@@ -143,6 +153,7 @@ const TopNav = () => {
                 return;
             }
 
+            // The top-nav search opens the global paper search in a new tab without disturbing the current page.
             window.open(
                 buildGlobalPaperSearchUrl(trimmedKeyword),
                 "_blank",
@@ -152,12 +163,14 @@ const TopNav = () => {
     };
 
     const handleSignOut = () => {
+        // Clear local auth state immediately before returning to the landing page.
         dispatch(resetAuth());
         setMobileMenuOpen(false);
         setAvatarMenuOpen(false);
         void router.push("/");
     };
 
+    // Fall back to an initial when the user has no avatar image.
     const avatarLabel = auth.name.trim() === ""
         ? "U"
         : auth.name.trim().slice(0, 1).toUpperCase();

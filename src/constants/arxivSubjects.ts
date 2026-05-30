@@ -1,3 +1,4 @@
+// Map compact arXiv subject codes to the bilingual labels shown in the UI.
 export const ARXIV_SUBJECT_DISPLAY_NAMES: Record<string, string> = {
     "cs.AI": "人工智能 (Artificial Intelligence)",
     "cs.CV": "计算机视觉 (Computer Vision)",
@@ -92,6 +93,7 @@ export const ARXIV_SUBJECT_DISPLAY_NAMES: Record<string, string> = {
     "stat.ME": "统计方法论 (Methodology)",
 };
 
+// Return an empty string for unknown subjects so callers can skip rendering missing labels cleanly.
 export const getArxivSubjectDisplayName = (subject: string) => (
     ARXIV_SUBJECT_DISPLAY_NAMES[subject] || ""
 );

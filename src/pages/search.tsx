@@ -27,8 +27,9 @@ import {
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 type MentorResultFilter = SearchMentorVisibility;
 
-const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
-const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量，超过后显示“查看更多”按钮展开完整列表
+// Control how much mentor detail is shown inline before the result card expands.
+const PROFILE_PREVIEW_LENGTH = 100;
+const PAPER_TITLES_PREVIEW_COUNT = 7;
 const SEARCH_VIEW_STATE_STORAGE_PREFIX = "search-view-state:";
 const INITIAL_HISTORY_ENTRY_KEY = "search-entry-initial";
 const SEARCH_PAGINATION_CONTROL_HEIGHT = 33.77;
@@ -108,6 +109,7 @@ interface SearchHistoryViewState {
 
 type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 
+// Carries pending restore context when navigation returns from the mentor detail page back to search.
 let pendingSearchPopRestore:
     | {
         entryKey: string;
@@ -115,7 +117,9 @@ let pendingSearchPopRestore:
     }
     | undefined;
 
+// Read the current browser history entry key used to persist per-entry UI state.
 const getWindowHistoryEntryKey = () => {
+    // Next.js stores a per-entry key in history.state; use it to persist per-entry UI state.
     if (typeof window === "undefined") {
         return INITIAL_HISTORY_ENTRY_KEY;
     }
@@ -129,7 +133,9 @@ const getWindowHistoryEntryKey = () => {
     return INITIAL_HISTORY_ENTRY_KEY;
 };
 
+// Detect clicks that should keep native browser navigation behavior.
 const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
+    // Modified clicks should keep native browser behavior instead of being intercepted for custom restoration.
     return event.defaultPrevented ||
         event.button !== 0 ||
         event.metaKey ||
@@ -138,6 +144,7 @@ const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
         event.altKey;
 };
 
+// Derive the PDF URL from a standard arXiv abstract URL.
 const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
         return "";
@@ -146,6 +153,7 @@ const buildTimelineLikePdfUrl = (arxivUrl?: string) => {
     return arxivUrl.replace("/abs/", "/pdf/");
 };
 
+// Split a comma-separated subject string into normalized subject tags.
 const parseTimelineLikeSubjects = (subjects?: string) => {
     if (typeof subjects !== "string" || subjects.trim() === "") {
         return [];
@@ -157,17 +165,21 @@ const parseTimelineLikeSubjects = (subjects?: string) => {
         .filter((subject) => subject !== "");
 };
 
+// Normalize persisted mentor ids before using them to restore expansion state.
 const normalizeHistoryMentorIds = (values?: Iterable<number> | ArrayLike<number>) => {
+    // Sanitize persisted ids before using them to restore expanded mentor cards.
     return Array.from(values ?? [])
         .map((value) => Number(value))
         .filter((value) => Number.isInteger(value) && value > 0);
 };
 
+// Build the session-storage payload used to restore scroll and expansion state for one search entry.
 const buildSearchHistoryViewState = (
     scrollY: number,
     expandedProfileMentorIds: Iterable<number> | ArrayLike<number>,
     expandedPaperMentorIds: Iterable<number> | ArrayLike<number>,
 ) => {
+    // Persist both split expansion state and the legacy combined list for backward compatibility.
     const normalizedProfileMentorIds = normalizeHistoryMentorIds(expandedProfileMentorIds);
     const normalizedPaperMentorIds = normalizeHistoryMentorIds(expandedPaperMentorIds);
 
@@ -228,10 +240,12 @@ const SEARCH_SKELETON_BLUEPRINTS = [
     },
 ] as const;
 
+// Create stable keys for repeated search-result skeleton placeholders.
 const createSearchSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
+// Build the follow button style used by mentor cards in search results.
 const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
     position: "relative",
     display: "inline-flex",
@@ -256,6 +270,7 @@ const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties =>
     opacity: 1,
 });
 
+// Render the main search page for mentors and papers, including URL-synced query state and history restoration.
 const SearchScreen = () => {
     const router = useRouter();
     const authToken = useSelector((state: RootState) => state.auth.token);
@@ -339,6 +354,7 @@ const SearchScreen = () => {
             const pendingMentorSearchReturn = readPendingMentorSearchReturn();
             const currentEntryKey = getWindowHistoryEntryKey();
 
+            // If the user is returning from a mentor page, treat the next route sync as a pop-style restore.
             if (pendingMentorSearchReturn?.sourceEntryKey === currentEntryKey) {
                 const transitionId = navigationTransitionIdRef.current + 1;
                 navigationTransitionIdRef.current = transitionId;
@@ -352,7 +368,9 @@ const SearchScreen = () => {
         }
     }
 
+    // Clear the current result set while optionally preserving mentor expansion state.
     const resetResults = (clearExpandedMentors = true) => {
+        // Reset only the current result set while leaving the query controls intact.
         setErrorMessage("");
         setMentors([]);
         setPapers([]);
@@ -367,6 +385,7 @@ const SearchScreen = () => {
         setHasNextPage(false);
     };
 
+    // Cancel the delayed skeleton-hide timer for the current search load cycle.
     const clearSearchSkeletonTimer = useCallback(() => {
         if (searchSkeletonTimerRef.current !== undefined) {
             clearTimeout(searchSkeletonTimerRef.current);
@@ -374,15 +393,18 @@ const SearchScreen = () => {
         }
     }, []);
 
+    // Start the visible skeleton phase for a search request and return its generation id.
     const startSearchSkeletonPhase = useCallback(() => {
         clearSearchSkeletonTimer();
         const generation = searchSkeletonGenerationRef.current + 1;
         searchSkeletonGenerationRef.current = generation;
         searchSkeletonStartedAtRef.current = Date.now();
+        // A generation counter prevents stale requests from hiding the newest skeleton prematurely.
         setShowSearchSkeleton(true);
         return generation;
     }, [clearSearchSkeletonTimer]);
 
+    // Finish a search skeleton phase while honoring the minimum visible skeleton duration.
     const finishSearchSkeletonPhase = useCallback((generation: number) => {
         if (searchSkeletonGenerationRef.current !== generation) {
             return;
@@ -409,6 +431,7 @@ const SearchScreen = () => {
         clearSearchSkeletonTimer();
     }, [clearSearchSkeletonTimer]);
 
+    // Normalize pagination metadata from the backend into the page's local pagination state.
     const applyPagination = (
         paginationData: {
             page?: number;
@@ -420,6 +443,7 @@ const SearchScreen = () => {
         fallbackCount: number,
         requestedPage: number,
     ) => {
+        // Normalize partially missing pagination metadata so mentor and paper searches render consistently.
         const resolvedPage = Number(paginationData.page);
         const normalizedPage = Number.isFinite(resolvedPage) && resolvedPage > 0
             ? resolvedPage
@@ -443,14 +467,17 @@ const SearchScreen = () => {
         setHasNextPage(Boolean(paginationData.has_next));
     };
 
+    // Narrow unknown errors to the shared NetworkError class when possible.
     const isNetworkErrorInstance = (err: unknown): err is NetworkError => {
         return typeof NetworkError === "function" && err instanceof NetworkError;
     };
 
+    // Return the current browser history entry key used by search-state persistence.
     const getHistoryEntryKey = () => {
         return getWindowHistoryEntryKey();
     };
 
+    // Read the persisted scroll and expansion state for one search history entry.
     const readHistoryViewState = (entryKey: string) => {
         if (typeof window === "undefined") {
             return undefined;
@@ -462,6 +489,7 @@ const SearchScreen = () => {
                 return undefined;
             }
 
+            // Support both the current split expansion keys and the older combined expandedMentorIds payload.
             const parsedValue = JSON.parse(rawValue) as Partial<SearchHistoryViewState>;
             const legacyExpandedIds = Array.isArray(parsedValue.expandedMentorIds)
                 ? normalizeHistoryMentorIds(parsedValue.expandedMentorIds)
@@ -485,6 +513,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Persist scroll and mentor expansion state for one search history entry.
     const writeHistoryViewState = (entryKey: string, viewState: SearchHistoryViewState) => {
         if (typeof window === "undefined") {
             return;
@@ -501,6 +530,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Save the current scroll position and expanded mentor sections into session storage.
     const persistCurrentViewState = useCallback((entryKey = getHistoryEntryKey(), force = false) => {
         if (typeof window === "undefined") {
             return;
@@ -510,6 +540,7 @@ const SearchScreen = () => {
             return;
         }
 
+        // Save scroll position plus expanded mentor subsections so browser navigation restores reading context.
         const nextViewState = {
             scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
             expandedProfileMentorIds: Array.from(expandedProfileMentorIdsRef.current),
@@ -522,6 +553,7 @@ const SearchScreen = () => {
         ));
     }, []);
 
+    // Restore window scroll position in a browser-safe and test-safe way.
     const scrollWindowTo = useCallback((scrollY: number) => {
         if (typeof window === "undefined") {
             return;
@@ -540,7 +572,9 @@ const SearchScreen = () => {
         }
     }, []);
 
+    // Run a callback after paint so scroll restoration waits for layout-dependent content to settle.
     const scheduleAfterPaint = useCallback((callback: () => void) => {
+        // Two animation frames reliably wait for layout/paint before restoring scroll-sensitive UI.
         if (typeof window === "undefined") {
             callback();
             return;
@@ -555,6 +589,7 @@ const SearchScreen = () => {
         });
     }, []);
 
+    // Compare two canonical search states to decide whether a route change is actually new.
     const areSearchStatesEqual = useCallback((left: SearchQueryState, right: SearchQueryState) => {
         return left.keyword === right.keyword &&
             left.mode === right.mode &&
@@ -564,10 +599,12 @@ const SearchScreen = () => {
             left.visibility === right.visibility;
     }, []);
 
+    // Merge UI overrides into a canonical search state used for URL sync and requests.
     const resolveSearchState = useCallback((
         overrides: SearchNavigationOptions = {},
         baseState: SearchQueryState = activeSearchStateRef.current,
     ) => {
+        // Recompute a canonical query state for URL sync and request-building.
         const nextMode = overrides.mode ?? baseState.mode;
         const nextKeyword = (overrides.keyword ?? baseState.keyword).trim();
         const nextPageRaw = overrides.page ?? baseState.page;
@@ -588,6 +625,7 @@ const SearchScreen = () => {
         } satisfies SearchQueryState;
     }, []);
 
+    // Clear all admin edit-mode state for mentor and paper management.
     const resetAdminEditorState = useCallback(() => {
         setAdminMessage("");
         setMentorEditingId(undefined);
@@ -607,6 +645,7 @@ const SearchScreen = () => {
         });
     }, []);
 
+    // Clear transient dialogs and admin editors before switching to another search state.
     const resetTransientUiState = useCallback(() => {
         resetAdminEditorState();
         setMentorDeleteTarget(undefined);
@@ -615,7 +654,9 @@ const SearchScreen = () => {
         setPaperDeleteSubmitting(false);
     }, [resetAdminEditorState]);
 
+    // Build the backend request URL for mentor search from a canonical search state.
     const buildMentorSearchRequestUrl = useCallback((state: SearchQueryState) => {
+        // Mentor search supports visibility filtering in addition to keyword and match mode.
         const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
         const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
         const visibilityQuery = state.visibility !== "all" ? `&visibility=${state.visibility}` : "";
@@ -623,15 +664,19 @@ const SearchScreen = () => {
         return `/api/search/mentors?${query}${pageQuery}${visibilityQuery}`;
     }, []);
 
+    // Build the backend request URL for paper search from a canonical search state.
     const buildPaperSearchRequestUrl = useCallback((state: SearchQueryState) => {
+        // Paper search uses the same keyword syntax but adds a dedicated sort mode.
         const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
         const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
 
         return `/api/search/papers?${query}&sort_mode=${state.sortMode}${pageQuery}`;
     }, []);
 
+    // Restore scroll and expansion state after a search load depending on push/pop/refresh intent.
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
+            // New navigations reset scroll and collapse mentor cards because they represent a fresh result view.
             const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
             const transitionId = pendingPushRestoreRef.current.transitionId ?? navigationTransitionIdRef.current;
             setExpandedProfileMentorIds(new Set());
@@ -654,6 +699,7 @@ const SearchScreen = () => {
         }
 
         if (intent === "pop") {
+            // Back/forward restores both scroll position and expanded mentor sections from session storage.
             const entryKey = pendingSearchPopRestore?.entryKey ?? getHistoryEntryKey();
             const transitionId = pendingSearchPopRestore?.transitionId ?? navigationTransitionIdRef.current;
             const savedViewState = readHistoryViewState(entryKey);
@@ -694,10 +740,12 @@ const SearchScreen = () => {
         }
     }, [persistCurrentViewState, scheduleAfterPaint, scrollWindowTo]);
 
+    // Load one canonical search state into the page, including data fetch and post-load restoration.
     const loadSearchState = useCallback(async (
         state: SearchQueryState,
         intent: SearchNavigationIntent,
     ) => {
+        // This is the single query-to-results pipeline: sync controls, fetch data, then restore view state.
         activeSearchStateRef.current = state;
         if (intent !== "refresh") {
             resetTransientUiState();
@@ -748,6 +796,7 @@ const SearchScreen = () => {
             setLoading(false);
             finishSearchSkeletonPhase(skeletonGeneration);
             applyLoadedViewState(state, intent);
+            // Reset the intent after every load so later route syncs are treated normally.
             navigationIntentRef.current = "init";
         }
     }, [
@@ -760,11 +809,13 @@ const SearchScreen = () => {
         startSearchSkeletonPhase,
     ]);
 
+    // Re-run the current search state without changing the URL or history entry.
     const refreshCurrentSearch = useCallback(async (state = activeSearchStateRef.current) => {
         navigationIntentRef.current = "refresh";
         await loadSearchState(state, "refresh");
     }, [loadSearchState]);
 
+    // Push a new shallow search URL, persist current view state, and load the next search result set.
     const navigateToSearchState = useCallback(async (nextState: SearchQueryState) => {
         const currentState = activeSearchStateRef.current;
 
@@ -774,6 +825,7 @@ const SearchScreen = () => {
         }
 
         const transitionId = navigationTransitionIdRef.current + 1;
+        // Save the current entry's scroll/expansion state before pushing the next shallow search URL.
         navigationTransitionIdRef.current = transitionId;
         pendingSearchPopRestore = undefined;
         expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
@@ -806,6 +858,7 @@ const SearchScreen = () => {
         router,
     ]);
 
+    // Switch between mentor and paper search modes and reset mode-specific transient UI.
     const switchMode = (nextMode: SearchMode) => {
         if (nextMode === mode) {
             return;
@@ -821,6 +874,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Convert admin-only dataset management errors into short UI messages.
     const formatAdminError = (err: unknown) => {
         if (isNetworkErrorInstance(err)) {
             if (err.type === NetworkErrorType.UNAUTHORIZED) {
@@ -837,6 +891,7 @@ const SearchScreen = () => {
         return FAILURE_PREFIX + String(err);
     };
 
+    // Load the current user's private mentors so search results can show owner-specific state.
     const fetchMyPrivateMentors = useCallback(async () => {
         if (!isLoggedIn) {
             setPrivateMentors([]);
@@ -844,6 +899,7 @@ const SearchScreen = () => {
         }
 
         try {
+            // Search needs the user's private mentor ids so cards can show owner-specific actions and badges.
             const res = await request<PrivateMentorsResponse>("/api/dataset/mentors/mine", "GET", true);
             const mentorList = Array.isArray(res.mentors) ? res.mentors : [];
             setPrivateMentors(mentorList.filter((mentor) => Array.isArray(mentor.paper_ids)));
@@ -857,6 +913,7 @@ const SearchScreen = () => {
         void fetchMyPrivateMentors();
     }, [fetchMyPrivateMentors]);
 
+    // Load the current student's followed mentor ids for follow-button rendering.
     const fetchFollowedMentors = useCallback(async () => {
         if (!canFollowMentor) {
             setFollowedMentorIds(new Set());
@@ -864,6 +921,7 @@ const SearchScreen = () => {
         }
 
         try {
+            // Student users need the followed mentor set so result cards render the correct button state.
             const res = await request<{ mentors?: SearchMentorResult[] }>(
                 "/api/follow/mentors",
                 "GET",
@@ -881,6 +939,7 @@ const SearchScreen = () => {
         void fetchFollowedMentors();
     }, [fetchFollowedMentors]);
 
+    // Follow or unfollow one mentor directly from the search results list.
     const toggleMentorFollow = useCallback(async (mentorId: number) => {
         if (!canFollowMentor) {
             return;
@@ -929,11 +988,13 @@ const SearchScreen = () => {
             return;
         }
 
+        // Mark browser back/forward navigation so the next route sync restores the prior entry state.
         const handlePopState = () => {
             if (pendingSearchPopRestore !== undefined) {
                 return;
             }
 
+            // Browser back/forward should restore the previous search entry instead of acting like a fresh push.
             const transitionId = navigationTransitionIdRef.current + 1;
             navigationTransitionIdRef.current = transitionId;
             blockAutoPersistRef.current = true;
@@ -947,6 +1008,7 @@ const SearchScreen = () => {
         const hasBeforePopState = typeof router.beforePopState === "function";
         if (hasBeforePopState) {
             router.beforePopState((state) => {
+                // beforePopState exposes the upcoming history entry key earlier than raw popstate does.
                 const stateLike = state as { key?: unknown; as?: unknown; url?: unknown } | undefined;
                 const entryKey = typeof stateLike?.key === "string" && stateLike.key.trim() !== ""
                     ? stateLike.key
@@ -977,10 +1039,12 @@ const SearchScreen = () => {
             return;
         }
 
+        // Persist scroll position continuously so return navigation restores nearby results.
         const handleScroll = () => {
             persistCurrentViewState();
         };
 
+        // Persist scroll passively so returning from detail pages lands near the same result card.
         window.addEventListener("scroll", handleScroll, { passive: true });
         return () => {
             window.removeEventListener("scroll", handleScroll);
@@ -991,6 +1055,7 @@ const SearchScreen = () => {
         persistCurrentViewState();
     }, [expandedPaperMentorIds, expandedProfileMentorIds, persistCurrentViewState]);
 
+    // Cache the current user's private mentor ids for fast badge and action checks in result cards.
     const privateMentorIdSet = useMemo(() => {
         return new Set(privateMentors.map((mentor) => mentor.id));
     }, [privateMentors]);
@@ -1003,6 +1068,7 @@ const SearchScreen = () => {
         ? `Search in ${totalResults} entrys:`
         : `Showing ${totalResults} results for all: ${trimmedAppliedKeyword}`;
 
+    // Create a private mentor inline from the "mine" search context and refresh the current results.
     const addPrivateMentorInSearch = useCallback(async () => {
         const chineseName = customMentorChineseName.trim();
         const englishName = customMentorEnglishName.trim();
@@ -1020,6 +1086,7 @@ const SearchScreen = () => {
             return;
         }
 
+        // The search page can create private mentors inline when the user is focused on "mine" results.
         setPrivateMentorSaving(true);
         setPrivateMentorMsg("");
 
@@ -1037,6 +1104,7 @@ const SearchScreen = () => {
             setCustomMentorEmail("");
             setCustomMentorProfile("");
             await fetchMyPrivateMentors();
+            // Refresh the current search so the newly created private mentor can appear immediately.
             await refreshCurrentSearch(resolveSearchState({ page: 1 }));
             setPrivateMentorMsg("私有导师添加成功");
         }
@@ -1076,6 +1144,7 @@ const SearchScreen = () => {
             ? "pop"
             : (hasLoadedRouteStateRef.current ? navigationIntentRef.current : "init");
 
+        // Treat the URL as the source of truth so deep links and browser navigation remain reproducible.
         if (hasLoadedRouteStateRef.current && areSearchStatesEqual(nextRouteState, activeSearchStateRef.current)) {
             navigationIntentRef.current = "init";
             return;
@@ -1085,6 +1154,7 @@ const SearchScreen = () => {
         void loadSearchState(nextRouteState, nextIntent);
     }, [areSearchStatesEqual, loadSearchState, router.isReady, router.query]);
 
+    // Change paper sort mode and rerun search immediately when paper results are already active.
     const changePaperSortMode = (nextSortMode: SearchPaperSortMode) => {
         if (paperSortMode === nextSortMode) {
             return;
@@ -1102,6 +1172,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Change exact/fuzzy match mode and rerun search when there is already an active query.
     const changeMatchMode = (nextMatchMode: SearchMatchMode) => {
         if (matchMode === nextMatchMode) {
             return;
@@ -1119,6 +1190,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Submit the current query when Enter is pressed in the search input.
     const handleEnter = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
             void navigateToSearchState(resolveSearchState({
@@ -1128,6 +1200,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Clear the search box and navigate to the empty-state search URL.
     const clearKeyword = () => {
         setKeyword("");
         void navigateToSearchState(resolveSearchState({
@@ -1136,6 +1209,7 @@ const SearchScreen = () => {
         }));
     };
 
+    // Launch an exact paper search seeded from a clicked paper title.
     const searchPaperByTitle = (paperTitle: string) => {
         setMode("paper");
         setMatchMode("exact");
@@ -1151,6 +1225,7 @@ const SearchScreen = () => {
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
+    // Launch an exact mentor search seeded from a clicked mentor author name.
     const searchMentorByName = (mentorName: string) => {
         setMode("mentor");
         setMatchMode("exact");
@@ -1164,7 +1239,9 @@ const SearchScreen = () => {
         }, DEFAULT_SEARCH_QUERY_STATE));
     };
 
+    // Navigate to a mentor detail page while preserving enough state to restore this search entry on return.
     const navigateToMentorHomepage = useCallback(async (mentorId: number) => {
+        // Save enough context to restore this exact search entry after visiting a mentor detail page.
         expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
         expandedPaperMentorIdsRef.current = new Set(expandedPaperMentorIds);
         const sourceEntryKey = getHistoryEntryKey();
@@ -1196,6 +1273,7 @@ const SearchScreen = () => {
         router,
     ]);
 
+    // Intercept normal left-clicks on mentor links so search-state restoration data can be recorded first.
     const handleMentorHomepageLinkClick = useCallback((
         event: MouseEvent<HTMLAnchorElement>,
         mentorId: number,
@@ -1208,6 +1286,7 @@ const SearchScreen = () => {
         void navigateToMentorHomepage(mentorId);
     }, [navigateToMentorHomepage]);
 
+    // Expand or collapse the mentor profile text for one search result card.
     const toggleMentorProfileExpand = (mentorId: number) => {
         setExpandedProfileMentorIds((prev) => {
             const next = new Set(prev);
@@ -1218,6 +1297,7 @@ const SearchScreen = () => {
                 next.add(mentorId);
             }
             expandedProfileMentorIdsRef.current = next;
+            // Persist immediately so navigation away from the page preserves the just-toggled expansion state.
             writeHistoryViewState(
                 getHistoryEntryKey(),
                 buildSearchHistoryViewState(
@@ -1230,6 +1310,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Expand or collapse the related-paper title list for one mentor card.
     const toggleMentorPaperExpand = (mentorId: number) => {
         setExpandedPaperMentorIds((prev) => {
             const next = new Set(prev);
@@ -1240,6 +1321,7 @@ const SearchScreen = () => {
                 next.add(mentorId);
             }
             expandedPaperMentorIdsRef.current = next;
+            // Persist paper-title expansion separately from profile expansion for accurate restoration.
             writeHistoryViewState(
                 getHistoryEntryKey(),
                 buildSearchHistoryViewState(
@@ -1252,6 +1334,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Create or update a mentor record from the admin editor embedded in the search page.
     const saveMentor = async () => {
         const chineseName = mentorDraft.Chinese_name.trim();
         const researchDirection = mentorDraft.research_direction.trim();
@@ -1300,6 +1383,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Populate and open the delete-confirmation dialog for a mentor.
     const openDeleteMentorDialog = (mentor: SearchMentorResult) => {
         setMentorDeleteTarget({
             id: mentor.id,
@@ -1310,6 +1394,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Close the mentor delete dialog unless deletion is still running.
     const closeDeleteMentorDialog = () => {
         if (mentorDeleteSubmitting) {
             return;
@@ -1318,6 +1403,7 @@ const SearchScreen = () => {
         setMentorDeleteTarget(undefined);
     };
 
+    // Permanently delete the mentor currently selected in the confirmation dialog.
     const confirmDeleteMentor = async () => {
         if (mentorDeleteTarget === undefined) {
             return;
@@ -1346,6 +1432,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Populate and open the delete-confirmation dialog for a paper.
     const openDeletePaperDialog = (paper: SearchPaperResult) => {
         setPaperDeleteTarget({
             id: paper.id,
@@ -1356,6 +1443,7 @@ const SearchScreen = () => {
         });
     };
 
+    // Close the paper delete dialog unless deletion is still running.
     const closeDeletePaperDialog = () => {
         if (paperDeleteSubmitting) {
             return;
@@ -1364,6 +1452,7 @@ const SearchScreen = () => {
         setPaperDeleteTarget(undefined);
     };
 
+    // Permanently delete the paper currently selected in the confirmation dialog.
     const confirmDeletePaper = async () => {
         if (paperDeleteTarget === undefined) {
             return;
@@ -1391,6 +1480,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Create or update a paper record from the admin editor embedded in the search page.
     const savePaper = async () => {
         const title = paperDraft.title.trim();
 
@@ -1436,6 +1526,7 @@ const SearchScreen = () => {
         }
     };
 
+    // Load a mentor result into the admin editor for in-place modification.
     const beginEditMentor = (mentor: SearchMentorResult) => {
         setMode("mentor");
         setMentorEditingId(mentor.id);
@@ -1449,6 +1540,7 @@ const SearchScreen = () => {
         setAdminMessage("");
     };
 
+    // Load a paper result into the admin editor for in-place modification.
     const beginEditPaper = (paper: SearchPaperResult) => {
         setMode("paper");
         setPaperEditingId(paper.id);
@@ -1467,6 +1559,7 @@ const SearchScreen = () => {
         activeValue: TValue,
         onSelect: (value: TValue) => void,
     ) => {
+        // All segmented controls share the same animated pill UI and only differ in option set / callback.
         const activeIndex = Math.max(0, options.findIndex((option) => option.value === activeValue));
         const groupFlex = options.length;
         const groupMinWidth = options.length === 2 ? 180 : 270;
@@ -1556,6 +1649,7 @@ const SearchScreen = () => {
         );
     };
 
+    // Render loading placeholders for mentor search results.
     const renderMentorSkeletonList = () => (
         <div className="searchSkeletonList" aria-label="导师搜索结果加载中" data-testid="search-mentor-skeleton">
             {createSearchSkeletonKeys(SEARCH_SKELETON_COUNT, "search-mentor-skeleton").map((key, idx) => {
@@ -1612,6 +1706,7 @@ const SearchScreen = () => {
         </div>
     );
 
+    // Render loading placeholders for paper search results.
     const renderPaperSkeletonList = () => (
         <div className="searchSkeletonList" aria-label="论文搜索结果加载中" data-testid="search-paper-skeleton">
             {createSearchSkeletonKeys(SEARCH_SKELETON_COUNT, "search-paper-skeleton").map((key, idx) => {
@@ -1661,6 +1756,7 @@ const SearchScreen = () => {
         </div>
     );
 
+    // Render the full loading state, including pagination chrome and result skeleton cards.
     const renderSearchSkeletonResults = () => (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div
@@ -2382,6 +2478,7 @@ const SearchScreen = () => {
                             key={mentor.id}
                             style={{ position: "relative", padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
+                            {/* Students can follow mentors; owners of private mentors can also delete them inline. */}
                             {(canFollowMentor || (isLoggedIn && privateMentorIdSet.has(mentor.id))) && (
                                 <div
                                     style={{

@@ -22,6 +22,7 @@ import {
 const INITIAL_BATCH_SIZE = 6;
 const WINDOW_BATCH_SIZE = 5;
 const DEFAULT_TIMELINE_LIMIT = 20;
+// Timeline rendering uses a mix of initial skeletons, load-more previews, and calendar placeholders.
 const DIRECTION_SKELETON_COUNT = 8;
 const INITIAL_FEED_PREVIEW_COUNT = 4;
 const LOAD_MORE_PREVIEW_COUNT = 1;
@@ -43,10 +44,13 @@ type ScrollAdjustment =
     | { type: "append-anchor"; firstNewPaperId?: number; anchorTop: number; direction: "up" | "down"; }
     | undefined;
 
+// Create stable keys for repeated timeline skeleton placeholders.
 const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
+// Generate the shared shimmer style used by direction cards, feed previews, and calendar placeholders.
+// Build the shared shimmer bar style used by timeline skeleton blocks.
 const createPreviewBarStyle = (
     width: number | string,
     height: number,
@@ -73,15 +77,20 @@ const CALENDAR_HEATMAP_MID_RGB = {
     b: Math.round(CALENDAR_HEATMAP_LIGHT_RGB.b*8 / 9 + CALENDAR_HEATMAP_DARK_RGB.b/9),
 } as const;
 
+// Clamp a numeric value into the given inclusive range.
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+// Interpolate one RGB channel between two values.
 const interpolateChannel = (start: number, end: number, ratio: number) => (
     Math.round(start + ((end - start) * ratio))
 );
 
+// Convert an RGB object into a CSS rgb(...) string.
 const toRgbString = (rgb: { r: number; g: number; b: number; }) => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
 
+// Map a paper count to the background/text colors used by one calendar day cell.
 const createCalendarHeatColor = (paperCount: number) => {
+    // Convert paper counts into a simple light-to-dark heat scale for the calendar grid.
     if (paperCount <= 0) {
         return {
             backgroundColor: "#ffffff",
@@ -133,8 +142,10 @@ const TIMELINE_SKELETON_BLUEPRINTS = [
     },
 ] as const;
 
+// Zero-pad a year/month/day fragment for ISO-style date formatting.
 const padDatePart = (value: number) => String(value).padStart(2, "0");
 
+// Parse a YYYY-MM-DD string into a noon-based Date object to reduce timezone drift.
 const parseIsoDate = (value?: string) => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return undefined;
@@ -148,44 +159,56 @@ const parseIsoDate = (value?: string) => {
     return new Date(year, month - 1, day, 12, 0, 0, 0);
 };
 
+// Format a Date object back into the YYYY-MM-DD string used by the timeline APIs.
 const formatIsoDate = (value: Date) => (
     `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`
 );
 
+// Clone a date while normalizing the time to noon to avoid timezone edge cases.
 const cloneDate = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
 
+// Shift a calendar date forward or backward by a number of days.
 const addCalendarDays = (value: Date, days: number) => {
     const next = cloneDate(value);
     next.setDate(next.getDate() + days);
     return next;
 };
 
+// Shift a calendar month forward or backward by a number of months.
 const addCalendarMonths = (value: Date, months: number) => {
     const next = new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
     next.setMonth(next.getMonth() + months);
     return next;
 };
 
+// Return the first day of the given month at noon.
 const startOfCalendarMonth = (value: Date) => new Date(value.getFullYear(), value.getMonth(), 1, 12, 0, 0, 0);
 
+// Compute the first visible day in the month grid, including the leading days from the previous month.
 const buildCalendarGridStart = (month: Date) => {
     const firstDay = startOfCalendarMonth(month);
     const weekday = (firstDay.getDay() + 6) % 7;
     return addCalendarDays(firstDay, -weekday);
 };
 
+// Format the visible calendar month for the panel header.
 const formatCalendarMonthLabel = (value: Date) => `${value.getFullYear()} 年 ${value.getMonth() + 1} 月`;
+// Format one year option for the calendar picker.
 const formatCalendarYearTriggerLabel = (year: number) => `${year}年`;
+// Format one month option for the calendar picker.
 const formatCalendarMonthTriggerLabel = (month: number) => `${month}月`;
+// Choose a fallback year label when the calendar picker has no selectable year state yet.
 const formatFallbackCalendarYearTriggerLabel = (calendarMeta?: TimelineCalendarResponse) => {
     const fallbackDate = parseIsoDate(calendarMeta?.latest_date || calendarMeta?.default_date || "");
     return fallbackDate !== undefined ? formatCalendarYearTriggerLabel(fallbackDate.getFullYear()) : "年份";
 };
+// Choose a fallback month label when the calendar picker has no selectable month state yet.
 const formatFallbackCalendarMonthTriggerLabel = (calendarMeta?: TimelineCalendarResponse) => {
     const fallbackDate = parseIsoDate(calendarMeta?.latest_date || calendarMeta?.default_date || "");
     return fallbackDate !== undefined ? formatCalendarMonthTriggerLabel(fallbackDate.getMonth() + 1) : "月份";
 };
 
+// Pick the nearest numeric option to the requested target value.
 const findNearestNumericOption = (target: number, options: number[]) => {
     if (options.length === 0) {
         return undefined;
@@ -204,6 +227,7 @@ const findNearestNumericOption = (target: number, options: number[]) => {
     });
 };
 
+// Render the timeline page with direction switching, day-based calendar navigation, and infinite feed loading.
 const TimelinePage = () => {
     const [directions, setDirections] = useState<TimelineDirectionSummary[]>([]);
     const [activeDirection, setActiveDirection] = useState("");
@@ -259,6 +283,7 @@ const TimelinePage = () => {
     const calendarPickerMonthWheelRef = useRef<HTMLDivElement | undefined>(undefined);
 
     useLayoutEffect(() => {
+        // Mirror the latest papers array in a ref so scroll handlers can read it without stale closures.
         papersRef.current = papers;
     }, [papers]);
 
@@ -284,7 +309,9 @@ const TimelinePage = () => {
         }
     }, []);
 
+    // Derive a PDF URL from an arXiv abstract URL for paper link rendering.
     const buildTimelinePdfUrl = (arxivUrl?: string) => {
+        // The PDF URL can be derived directly from a standard arXiv abstract link.
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
             return "";
         }
@@ -292,6 +319,7 @@ const TimelinePage = () => {
         return arxivUrl.replace("/abs/", "/pdf/");
     };
 
+    // Split a comma-separated subject string into normalized subject tags.
     const parseTimelineSubjects = (subjects?: string) => {
         if (typeof subjects !== "string" || subjects.trim() === "") {
             return [];
@@ -303,7 +331,9 @@ const TimelinePage = () => {
             .filter((subject) => subject !== "");
     };
 
+    // Render authors as plain text or mentor profile links depending on whether mentor ids are present.
     const renderPaperAuthors = (paper: TimelinePaper) => {
+        // Mentor-linked authors become profile links; other authors remain plain text.
         const names = (paper.author_names || "").split(/[,，、]/).map((name) => name.trim()).filter(Boolean);
         const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
 
@@ -346,6 +376,7 @@ const TimelinePage = () => {
         });
     };
 
+    // Route a generic load mode to its matching loading state setter.
     const setLoadingFlag = (mode: TimelineLoadMode, loading: boolean) => {
         if (mode === "replace") {
             setLoadingInitial(loading);
@@ -360,6 +391,7 @@ const TimelinePage = () => {
         setLoadingNext(loading);
     };
 
+    // Cancel the delayed initial-skeleton hide timer if it is still pending.
     const clearInitialSkeletonTimer = () => {
         if (initialSkeletonTimerRef.current !== undefined) {
             clearTimeout(initialSkeletonTimerRef.current);
@@ -367,12 +399,15 @@ const TimelinePage = () => {
         }
     };
 
+    // Begin the initial feed skeleton phase for a full direction/date replacement load.
     const startInitialSkeletonPhase = () => {
         clearInitialSkeletonTimer();
         initialSkeletonStartedAtRef.current = Date.now();
+        // Direction/date switches use a dedicated feed skeleton rather than a spinner.
         setShowInitialSkeleton(true);
     };
 
+    // Finish the initial feed skeleton phase while honoring the minimum visible duration.
     const finishInitialSkeletonPhase = (mode: TimelineLoadMode, generation: number) => {
         if (mode !== "replace") {
             return;
@@ -381,6 +416,7 @@ const TimelinePage = () => {
         clearInitialSkeletonTimer();
         const elapsed = Date.now() - initialSkeletonStartedAtRef.current;
         const remaining = Math.max(MIN_INITIAL_SKELETON_MS - elapsed, 0);
+        // Hide the initial skeleton only if this response still belongs to the latest direction generation.
         const finalize = () => {
             if (generation !== directionGenerationRef.current) {
                 return;
@@ -401,10 +437,12 @@ const TimelinePage = () => {
         }, remaining);
     };
 
+    // Return whether any replace/prepend/append feed request is currently in flight.
     const hasAnyFeedLoadInFlight = () => (
         inFlightRef.current.replace || inFlightRef.current.prepend || inFlightRef.current.append
     );
 
+    // Reset all temporary state used for top-overscroll loading gestures.
     const resetTopOverscrollState = () => {
         topWheelPullDistanceRef.current = 0;
         topTouchStartYRef.current = undefined;
@@ -412,6 +450,7 @@ const TimelinePage = () => {
         topOverscrollConsumedRef.current = false;
     };
 
+    // Reset scroll bookkeeping and restore the feed viewport to its top position.
     const resetFeedViewportState = () => {
         lastFeedScrollTopRef.current = 0;
         scrollDirectionRef.current = "down";
@@ -424,7 +463,9 @@ const TimelinePage = () => {
         }
     };
 
+    // Reset feed data and scroll state before replacing the active timeline slice.
     const prepareFeedForReplace = (showSkeleton: boolean) => {
+        // Reset feed-local loading, scroll, and incremental-load state before replacing the active slice.
         clearInitialSkeletonTimer();
         inFlightRef.current = {
             replace: false,
@@ -449,6 +490,7 @@ const TimelinePage = () => {
         resetFeedViewportState();
     };
 
+    // Update the date badge based on the first paper currently visible in the feed viewport.
     const updateLeadVisibleDate = () => {
         const viewport = feedViewportRef.current;
         const currentPapers = papersRef.current;
@@ -457,6 +499,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // The first paper whose bottom edge is below the viewport top defines the visible lead date.
         const threshold = viewport.scrollTop + 8;
         for (const paper of currentPapers) {
             const paperElement = paperRefs.current[paper.id];
@@ -474,11 +517,14 @@ const TimelinePage = () => {
         setLeadVisibleDate(currentPapers[0]?.publish_date || "");
     };
 
+    // Serialize timeline query parameters into the request string expected by the proxy endpoint.
     const buildTimelineQueryString = (params: Record<string, string>) => (
         new URLSearchParams(params).toString()
     );
 
+    // Merge a fetched timeline slice into the current feed according to the active load mode.
     const applyFeedResponse = (response: TimelinePapersResponse, mode: TimelineLoadMode) => {
+        // Merge the fetched slice differently depending on replace / prepend / append mode.
         const normalizedLimit = Math.max(1, Number(response.limit) || DEFAULT_TIMELINE_LIMIT);
         const nextPapers = Array.isArray(response.papers) ? response.papers : [];
         const nextTotal = Number(response.total_papers) > 0 ? Number(response.total_papers) : 0;
@@ -500,6 +546,7 @@ const TimelinePage = () => {
             const uniqueIncoming = nextPapers.filter((paper) => !existingIds.has(paper.id));
             const mergedPapers = [...currentPapers, ...uniqueIncoming];
 
+            // Remember the first appended id so the layout effect can preserve visual position after insertion.
             pendingScrollAdjustmentRef.current = uniqueIncoming.length > 0 && pendingScrollAdjustmentRef.current?.type === "append-anchor"
                 ? {
                     ...pendingScrollAdjustmentRef.current,
@@ -532,12 +579,14 @@ const TimelinePage = () => {
         setHasMoreAfter(Boolean(response.has_older) || hasMoreAfterRef.current);
     };
 
+    // Fetch one timeline slice for the active direction/date window and merge it into the feed.
     const fetchTimelineSlice = async (
         direction: string,
         queryParams: Record<string, string>,
         mode: TimelineLoadMode,
         generation: number,
     ) => {
+        // Only one feed request runs at a time to avoid duplicate prepend/append merges.
         if (hasAnyFeedLoadInFlight()) {
             return;
         }
@@ -554,6 +603,7 @@ const TimelinePage = () => {
                 direction,
                 ...queryParams,
             });
+            // The frontend uses one proxy endpoint and varies behavior through query parameters.
             const response = await request<TimelinePapersResponse>(`/api/timeline?${query}`, "GET", false);
 
             if (generation !== directionGenerationRef.current) {
@@ -590,12 +640,14 @@ const TimelinePage = () => {
     };
 
     useEffect(() => {
+        // Load the available direction list and choose the initial active direction.
         const fetchDirectionOverview = async () => {
             setLoadingDirections(true);
             setHasResolvedInitialFeed(false);
             setErrorMessage("");
 
             try {
+                // First load the available directions and the backend's preferred default direction.
                 const res = await request<TimelineDirectionsResponse>("/api/timeline", "GET", false);
                 const nextDirections = Array.isArray(res.directions) ? res.directions : [];
 
@@ -652,14 +704,17 @@ const TimelinePage = () => {
 
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
+        // Every direction switch starts a new generation so stale async responses can be ignored safely.
         prepareFeedForReplace(true);
         setCalendarMeta(undefined);
         setDisplayedMonth(undefined);
         setLoadingCalendar(true);
         setErrorMessage("");
 
+        // Load the active direction's calendar metadata and then fetch the initial feed slice.
         const fetchCalendarAndInitialFeed = async () => {
             try {
+                // Load the available calendar dates first, then fetch the initial paper slice for the chosen day.
                 const query = buildTimelineQueryString({
                     direction: activeDirection,
                     calendar: "1",
@@ -682,6 +737,7 @@ const TimelinePage = () => {
                     ? selectedDateRef.current
                     : (response.default_date || "");
 
+                // Preserve the previously selected date when it still exists under the new direction.
                 setSelectedDate(preservedDate);
                 selectedDateRef.current = preservedDate;
                 const monthSource = preservedDate || response.latest_date;
@@ -729,21 +785,25 @@ const TimelinePage = () => {
         void fetchCalendarAndInitialFeed();
     }, [activeDirection]);
 
+    // Resolve the full metadata record for the currently active direction.
     const activeDirectionSummary = useMemo(
         () => directions.find((group) => group.direction === activeDirection),
         [activeDirection, directions],
     );
 
+    // Cache selectable timeline dates in a Set for fast calendar click validation.
     const availableDateSet = useMemo(
         () => new Set((calendarMeta?.available_dates || []).map((item) => item.date)),
         [calendarMeta],
     );
 
+    // Map each available date to its paper count for calendar heatmap rendering.
     const availableDateCountMap = useMemo(
         () => new Map((calendarMeta?.available_dates || []).map((item) => [item.date, item.paper_count])),
         [calendarMeta],
     );
 
+    // Group selectable months by year so the year/month picker can constrain valid combinations.
     const availableCalendarMonthsByYear = useMemo(() => {
         const monthsByYear = new Map<number, Set<number>>();
         for (const item of calendarMeta?.available_dates || []) {
@@ -766,6 +826,7 @@ const TimelinePage = () => {
         );
     }, [calendarMeta?.available_dates]);
 
+    // Extract the selectable calendar years in ascending order for the picker.
     const availableCalendarYears = useMemo(
         () => Array.from(availableCalendarMonthsByYear.keys()).sort((left, right) => left - right),
         [availableCalendarMonthsByYear],
@@ -773,6 +834,7 @@ const TimelinePage = () => {
 
     const hasSelectableCalendarMonths = availableCalendarYears.length > 0;
 
+    // Resolve the month currently shown in the right-side calendar panel.
     const currentCalendarMonth = useMemo(() => {
         if (displayedMonth !== undefined) {
             return startOfCalendarMonth(displayedMonth);
@@ -782,6 +844,7 @@ const TimelinePage = () => {
         return fallbackDate !== undefined ? startOfCalendarMonth(fallbackDate) : startOfCalendarMonth(new Date());
     }, [calendarMeta?.latest_date, displayedMonth, selectedDate]);
 
+    // Build a helper that snaps a requested year/month to the nearest selectable picker values.
     const normalizeCalendarPickerDraft = useMemo(() => {
         return (targetYear: number, targetMonth: number) => {
             if (availableCalendarYears.length === 0) {
@@ -807,17 +870,21 @@ const TimelinePage = () => {
         };
     }, [availableCalendarMonthsByYear, availableCalendarYears]);
 
+    // Expose the months currently selectable for the picker draft year.
     const availableCalendarMonthsForDraftYear = useMemo(
         () => availableCalendarMonthsByYear.get(calendarPickerDraftYear) ?? [],
         [availableCalendarMonthsByYear, calendarPickerDraftYear],
     );
 
+    // Move the calendar view one month backward or forward without selecting a specific day yet.
     const handleCalendarMonthChange = (deltaMonths: number) => {
         setIsCalendarPickerOpen(false);
+        // Manual month browsing temporarily overrides auto-sync with the lead visible date.
         setIsCalendarBrowsingManually(true);
         setDisplayedMonth(addCalendarMonths(currentCalendarMonth, deltaMonths));
     };
 
+    // Scroll a picker wheel so the chosen year or month stays centered in view.
     const scrollCalendarPickerOptionIntoView = (
         wheelRef: React.MutableRefObject<HTMLDivElement | undefined>,
         value: number,
@@ -840,15 +907,18 @@ const TimelinePage = () => {
         });
     };
 
+    // Close the year/month calendar picker overlay.
     const closeCalendarPicker = () => {
         setIsCalendarPickerOpen(false);
     };
 
+    // Open the year/month calendar picker and seed it with the nearest selectable values.
     const openCalendarPicker = (column: CalendarPickerColumn) => {
         if (!hasSelectableCalendarMonths) {
             return;
         }
 
+        // Open the picker snapped to the nearest selectable year/month for the currently displayed month.
         if (isCalendarPickerOpen) {
             setCalendarPickerActiveColumn(column);
             return;
@@ -868,6 +938,7 @@ const TimelinePage = () => {
         setIsCalendarPickerOpen(true);
     };
 
+    // Change the draft year in the calendar picker and snap the month to a valid option if needed.
     const handleCalendarPickerYearDraftChange = (nextYear: number) => {
         const nextMonths = availableCalendarMonthsByYear.get(nextYear) ?? [];
         if (nextMonths.length === 0) {
@@ -883,11 +954,13 @@ const TimelinePage = () => {
         setCalendarPickerActiveColumn("year");
     };
 
+    // Change the draft month in the calendar picker.
     const handleCalendarPickerMonthDraftChange = (nextMonth: number) => {
         setCalendarPickerDraftMonth(nextMonth);
         setCalendarPickerActiveColumn("month");
     };
 
+    // Move a calendar-picker wheel selection up or down with mouse-wheel input.
     const handleCalendarPickerWheel = (column: CalendarPickerColumn, deltaY: number) => {
         if (deltaY === 0) {
             return;
@@ -916,6 +989,7 @@ const TimelinePage = () => {
         handleCalendarPickerMonthDraftChange(nextValue);
     };
 
+    // Apply the draft year/month selection from the picker to the visible calendar month.
     const applyCalendarPickerSelection = () => {
         const normalizedDraft = normalizeCalendarPickerDraft(calendarPickerDraftYear, calendarPickerDraftMonth);
         if (normalizedDraft === undefined) {
@@ -923,11 +997,13 @@ const TimelinePage = () => {
             return;
         }
 
+        // Applying the picker changes the viewed month; day selection still happens in the calendar grid.
         setIsCalendarBrowsingManually(true);
         setDisplayedMonth(new Date(normalizedDraft.year, normalizedDraft.month - 1, 1, 12, 0, 0, 0));
         closeCalendarPicker();
     };
 
+    // Build the 6x7 calendar grid cells, including heatmap colors and clickability state.
     const calendarDayCells = useMemo(() => {
         const gridStart = buildCalendarGridStart(currentCalendarMonth);
         return Array.from({ length: CALENDAR_GRID_CELL_COUNT }, (_, idx) => {
@@ -950,6 +1026,7 @@ const TimelinePage = () => {
         });
     }, [availableDateCountMap, currentCalendarMonth]);
 
+    // Summarize which sequence range of papers is currently visible for the lead date badge.
     const currentVisibleDateRange = useMemo(() => {
         const targetDate = leadVisibleDate || papers[0]?.publish_date || selectedDate;
         if (targetDate === "") {
@@ -995,6 +1072,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Keep the month view synchronized with the topmost visible paper date during normal scrolling.
         if (
             currentCalendarMonth.getFullYear() === nextLeadMonth.getFullYear()
             && currentCalendarMonth.getMonth() === nextLeadMonth.getMonth()
@@ -1018,6 +1096,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Close the picker when the user clicks outside its anchor area.
         const handleDocumentMouseDown = (event: MouseEvent) => {
             const pickerAnchor = calendarPickerAnchorRef.current;
             if (pickerAnchor !== undefined && pickerAnchor.contains(event.target as Node)) {
@@ -1026,6 +1105,7 @@ const TimelinePage = () => {
             closeCalendarPicker();
         };
 
+        // Close the picker from the keyboard with Escape.
         const handleDocumentKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 closeCalendarPicker();
@@ -1074,6 +1154,7 @@ const TimelinePage = () => {
         }
     }, [calendarMeta, hasSelectableCalendarMonths, loadingCalendar]);
 
+    // Measure the current bottom edge of the feed viewport in page coordinates.
     const getFeedViewportBottom = () => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined) {
@@ -1083,6 +1164,7 @@ const TimelinePage = () => {
         return viewport.getBoundingClientRect().bottom;
     };
 
+    // Measure the top edge of the load-more preview sentinel card.
     const getFirstLoadMorePreviewTop = () => {
         const firstPreview = feedViewportRef.current?.querySelector<HTMLElement>("[data-load-more-preview-first='true']");
         if (!firstPreview) {
@@ -1092,6 +1174,7 @@ const TimelinePage = () => {
         return firstPreview.getBoundingClientRect().top;
     };
 
+    // Fetch the next newer batch that should be prepended above the current feed.
     const loadPreviousBatch = () => {
         if (
             activeDirectionRef.current === ""
@@ -1106,6 +1189,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Prepending asks for newer papers than the current first visible card.
         void fetchTimelineSlice(activeDirectionRef.current, {
             after_date: firstPaper.publish_date,
             after_id: String(firstPaper.id),
@@ -1113,6 +1197,7 @@ const TimelinePage = () => {
         }, "prepend", directionGenerationRef.current);
     };
 
+    // Fetch the next older batch that should be appended below the current feed.
     const loadNextBatch = () => {
         if (
             activeDirectionRef.current === ""
@@ -1127,6 +1212,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Record the current bottom anchor so appended content does not visually jump too far.
         const anchorTop = paperRefs.current[lastPaper.id]?.offsetTop || 0;
         if (anchorTop > 0) {
             pendingScrollAdjustmentRef.current = {
@@ -1143,6 +1229,7 @@ const TimelinePage = () => {
         }, "append", directionGenerationRef.current);
     };
 
+    // Trigger append loading when the load-more preview sentinel enters the viewport.
     const maybeLoadNextFromViewport = () => {
         if (
             !hasMoreAfterRef.current
@@ -1159,11 +1246,13 @@ const TimelinePage = () => {
 
         const firstPreviewTop = getFirstLoadMorePreviewTop();
         if (firstPreviewTop <= viewportBottom) {
+            // Crossing the preview sentinel triggers exactly one append until new content arrives.
             loadMoreThresholdConsumedRef.current = true;
             loadNextBatch();
         }
     };
 
+    // Trigger a prepend load after a deliberate top-overscroll gesture.
     const triggerTopOverscrollLoad = () => {
         if (
             topOverscrollConsumedRef.current
@@ -1177,6 +1266,7 @@ const TimelinePage = () => {
         loadPreviousBatch();
     };
 
+    // React to feed scrolling by updating direction, lead date, and append-load checks.
     const handleFeedViewportScroll = () => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined) {
@@ -1187,6 +1277,7 @@ const TimelinePage = () => {
         const previousTop = lastFeedScrollTopRef.current;
 
         if (skipNextScrollEventRef.current) {
+            // Ignore the synthetic scroll event caused by our own scrollTop correction after merging data.
             skipNextScrollEventRef.current = false;
             lastFeedScrollTopRef.current = currentTop;
             updateLeadVisibleDate();
@@ -1203,10 +1294,12 @@ const TimelinePage = () => {
             resetTopOverscrollState();
         }
 
+        // A normal scroll may both reveal a new lead date and reach the load-more preview sentinel.
         maybeLoadNextFromViewport();
         updateLeadVisibleDate();
     };
 
+    // Detect upward wheel overscroll at the top of the feed and turn it into a prepend gesture.
     const handleFeedViewportWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined) {
@@ -1224,12 +1317,14 @@ const TimelinePage = () => {
             return;
         }
 
+        // Reaching the top and continuing to scroll upward accumulates toward a "load newer" gesture.
         topWheelPullDistanceRef.current += Math.abs(event.deltaY);
         if (topWheelPullDistanceRef.current >= TOP_OVERSCROLL_WHEEL_THRESHOLD) {
             triggerTopOverscrollLoad();
         }
     };
 
+    // Start tracking a possible mobile pull-down gesture from the top of the feed.
     const handleFeedViewportTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
         const viewport = feedViewportRef.current;
         if (viewport === undefined || viewport.scrollTop > 0) {
@@ -1242,6 +1337,7 @@ const TimelinePage = () => {
         topTouchPullDistanceRef.current = 0;
     };
 
+    // Continue tracking a mobile pull-down gesture and trigger prepend loading when it is strong enough.
     const handleFeedViewportTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
         const viewport = feedViewportRef.current;
         if (
@@ -1260,12 +1356,14 @@ const TimelinePage = () => {
             return;
         }
 
+        // Mobile pull-down at the top mirrors the wheel-based overscroll behavior on desktop.
         topTouchPullDistanceRef.current = Math.max(topTouchPullDistanceRef.current, delta);
         if (topTouchPullDistanceRef.current >= TOP_OVERSCROLL_TOUCH_THRESHOLD) {
             triggerTopOverscrollLoad();
         }
     };
 
+    // Clear temporary touch-gesture state after the user releases the feed.
     const handleFeedViewportTouchEnd = () => {
         topTouchStartYRef.current = undefined;
         topTouchPullDistanceRef.current = 0;
@@ -1279,6 +1377,7 @@ const TimelinePage = () => {
         }
 
         if (pendingAdjustment?.type === "prepend") {
+            // Offset scrollTop by the inserted card heights so prepending feels anchored to the same content.
             const addedHeight = pendingAdjustment.addedIds.reduce((sum, id) => (
                 sum + (paperRefs.current[id]?.offsetHeight || 0)
             ), 0);
@@ -1296,6 +1395,7 @@ const TimelinePage = () => {
             const targetElement = targetId !== undefined ? paperRefs.current[targetId] : undefined;
 
             if (targetElement !== undefined) {
+                // Append adjustments are intentionally tiny so the viewport feels continuous without a jump.
                 const delta = targetElement.offsetTop - pendingAdjustment.anchorTop;
                 const adjustedDelta = delta * APPEND_SCROLL_ADJUSTMENT_RATIO;
 
@@ -1317,6 +1417,7 @@ const TimelinePage = () => {
         updateLeadVisibleDate();
     }, [papers]);
 
+    // Replace the current feed with the papers associated with a selected calendar day.
     const handleSelectDate = (nextDate: string) => {
         if (
             activeDirectionRef.current === ""
@@ -1328,6 +1429,7 @@ const TimelinePage = () => {
 
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
+        // Picking a calendar day is treated like a full feed replacement scoped to that date.
         setSelectedDate(nextDate);
         selectedDateRef.current = nextDate;
         setDisplayedMonth(parseIsoDate(nextDate));
@@ -1341,6 +1443,7 @@ const TimelinePage = () => {
         }, "replace", generation);
     };
 
+    // Render a stack of timeline-card skeletons for initial, prepend, or append loading states.
     const renderSkeletonStack = (count: number, position: "top" | "initial" | "bottom") => (
         <div
             className={`timelineSkeletonStack timelineSkeletonStack${position[0].toUpperCase()}${position.slice(1)}`}
@@ -1396,6 +1499,7 @@ const TimelinePage = () => {
         </div>
     );
 
+    // Render loading placeholders for the direction sidebar.
     const renderDirectionSkeletonList = () => (
         <div
             className="timelineDirectionSkeletonList"
@@ -1456,6 +1560,7 @@ const TimelinePage = () => {
         </div>
     );
 
+    // Render the loading placeholder for the main feed header.
     const renderFeedHeaderSkeleton = () => (
         <div
             className="timelineFeedHeader timelineFeedHeaderSkeleton"
@@ -1517,6 +1622,7 @@ const TimelinePage = () => {
         </div>
     );
 
+    // Render placeholder feed cards for initial load and load-more preview states.
     const renderFeedPreviewCards = ({
         count = INITIAL_FEED_PREVIEW_COUNT,
         keyPrefix = "feed-preview",
@@ -1653,6 +1759,7 @@ const TimelinePage = () => {
         </div>
     );
 
+    // Render the loading placeholder for the right-hand calendar panel.
     const renderCalendarPlaceholder = () => (
         <div className="timelineCalendarPlaceholder" aria-hidden="true">
             <div className="timelineCalendarPlaceholderHeader">

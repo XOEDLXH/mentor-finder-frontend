@@ -33,6 +33,7 @@ const UserPublicProfilePage = () => {
         }
 
         if (!isLoggedIn) {
+            // Clear any stale profile data when auth disappears so protected content does not linger on screen.
             setUser(undefined);
             return;
         }
@@ -40,6 +41,7 @@ const UserPublicProfilePage = () => {
         setLoading(true);
         setErrorMessage("");
 
+        // Public profiles still require authentication in this app, so the page fetches through the authenticated API client.
         request<PublicUserProfileResponse>(`/api/users/${encodeURIComponent(userId)}/profile`, "GET", true)
             .then((res) => setUser(res.user))
             .catch((err) => {
@@ -58,6 +60,7 @@ const UserPublicProfilePage = () => {
             return [];
         }
 
+        // Only render sections the profile owner explicitly marked as visible.
         return [
             {
                 title: "个人简介",
@@ -87,6 +90,7 @@ const UserPublicProfilePage = () => {
             return;
         }
 
+        // Reuse the same button for follow and unfollow, then patch only the followed flag in local state.
         setActionLoading(true);
         setErrorMessage("");
 
@@ -112,6 +116,7 @@ const UserPublicProfilePage = () => {
         return (
             <main className="userPublicPage">
                 <div className="emptyPanel">
+                    {/* Redirect guests through login first because this page is only available to authenticated users. */}
                     <p>请先登录后查看用户主页。</p>
                     <button type="button" onClick={() => void router.push("/login?redirect=/follows")}>
                         去登录
@@ -146,6 +151,7 @@ const UserPublicProfilePage = () => {
                                 <h1>{user.realName || user.username}</h1>
                                 <p>{user.signature || DEFAULT_SIGNATURE}</p>
                                 {user.role === "mentor" && (
+                                    // Mentor accounts receive a badge so visitors can distinguish verified professors from students.
                                     <span className="verifiedProfessorBadge">
                                         <span className="verifiedProfessorIcon" aria-hidden="true" />
                                         已认证教授
@@ -198,6 +204,7 @@ const UserPublicProfilePage = () => {
                                 {sections.map((section) => (
                                     <article className="detailCard" key={section.title}>
                                         <h3>{section.title}</h3>
+                                        {/* Empty strings are replaced with a shared placeholder to avoid blank cards. */}
                                         <p>{section.body.trim() === "" ? EMPTY_TEXT : section.body}</p>
                                     </article>
                                 ))}

@@ -1,7 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 
+// Strip terminal color codes before serializing Jest output into XML.
 const ANSI_ESCAPE_RE = /\u001b\[[0-9;]*m/g;
+// Remove characters that are invalid in XML 1.0 documents.
 const ILLEGAL_XML_RE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u0084\u0086-\u009f]/g;
 
 const escapeXml = (value) => String(value)
@@ -18,6 +20,7 @@ const sanitizeText = (value) => String(value)
 const shortenMessage = (value) => sanitizeText(value).split("\n")[0];
 
 module.exports = (results) => {
+    // SonarQube expects a <testExecutions> document rather than raw Jest JSON.
     const lines = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "<testExecutions version=\"1\">"];
 
     for (const suite of results.testResults || []) {
@@ -44,6 +47,7 @@ module.exports = (results) => {
 
     lines.push("</testExecutions>");
 
+    // Emit the report at the project root because sonar-project.properties reads it from there.
     fs.writeFileSync(path.join(process.cwd(), "test-report.xml"), `${lines.join("\n")}\n`, "utf8");
     return results;
 };
