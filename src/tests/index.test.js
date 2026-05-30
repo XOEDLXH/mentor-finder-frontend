@@ -370,7 +370,9 @@ describe("HomeScreen subject group interactions", () => {
         const user = userEvent.setup();
         renderLoggedInHome();
 
-        await user.click(await screen.findByRole("button", { name: "生成个性周报" }));
+        const generateButton = await screen.findByRole("button", { name: "生成个性周报" });
+        await user.click(generateButton);
+        await screen.findByRole("button", { name: "重新生成个性周报" });
 
         const aiCardButton = await screen.findByRole("button", { name: "查看板块 cs.AI 的 2 篇论文" });
         expect(aiCardButton).toBeInTheDocument();
@@ -403,7 +405,9 @@ describe("HomeScreen subject group interactions", () => {
         const user = userEvent.setup();
         renderLoggedInHome();
 
-        await user.click(await screen.findByRole("button", { name: "生成个性周报" }));
+        const generateButton = await screen.findByRole("button", { name: "生成个性周报" });
+        await user.click(generateButton);
+        await screen.findByRole("button", { name: "重新生成个性周报" });
         await user.click(await screen.findByRole("button", { name: "查看板块 cs.CL 的 1 篇论文" }));
 
         const dialog = await screen.findByRole("dialog", { name: "cs.CL" });
@@ -460,7 +464,9 @@ describe("HomeScreen subject group interactions", () => {
         const user = userEvent.setup();
         renderLoggedInHome();
 
-        await user.click(await screen.findByRole("button", { name: "生成个性周报" }));
+        const generateButton = await screen.findByRole("button", { name: "生成个性周报" });
+        await user.click(generateButton);
+        await screen.findByRole("button", { name: "重新生成个性周报" });
 
         expect(await screen.findByText("你关注的板块本周暂无新增论文。")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /查看板块/ })).not.toBeInTheDocument();
