@@ -32,6 +32,8 @@ const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量�
 const SEARCH_VIEW_STATE_STORAGE_PREFIX = "search-view-state:";
 const INITIAL_HISTORY_ENTRY_KEY = "search-entry-initial";
 const SEARCH_PAGINATION_CONTROL_HEIGHT = 33.77;
+const SEARCH_SKELETON_COUNT = 4;
+const MIN_SEARCH_SKELETON_MS = 5;
 const SEARCH_ACTION_BUTTON_STYLE: CSSProperties = {
     flexShrink: 0,
     height: SEARCH_PAGINATION_CONTROL_HEIGHT,
@@ -199,6 +201,37 @@ const MENTOR_FILTER_OPTIONS: SegmentedOption<MentorResultFilter>[] = [
     { label: "公共", value: "public" },
 ];
 
+const SEARCH_SKELETON_BLUEPRINTS = [
+    {
+        title: "38%",
+        button: "76px",
+        meta: ["42%", "64%", "36%"],
+        profile: ["96%", "88%", "58%"],
+        papers: ["82%", "74%", "68%"],
+        tags: ["56px", "68px", "48px"],
+    },
+    {
+        title: "46%",
+        button: "76px",
+        meta: ["35%", "58%", "44%"],
+        profile: ["92%", "80%"],
+        papers: ["76%", "66%"],
+        tags: ["64px", "52px"],
+    },
+    {
+        title: "32%",
+        button: "76px",
+        meta: ["48%", "52%", "40%"],
+        profile: ["100%", "86%", "62%"],
+        papers: ["84%", "72%", "54%"],
+        tags: ["50px", "72px", "60px"],
+    },
+] as const;
+
+const createSearchSkeletonKeys = (count: number, prefix: string) => (
+    Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
+);
+
 const buildSearchMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
     position: "relative",
     display: "inline-flex",
@@ -237,6 +270,7 @@ const SearchScreen = () => {
     const [keyword, setKeyword] = useState("");
     const [appliedKeyword, setAppliedKeyword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showSearchSkeleton, setShowSearchSkeleton] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [mentors, setMentors] = useState<SearchMentorResult[]>([]);
@@ -294,6 +328,9 @@ const SearchScreen = () => {
     const pendingPushRestoreRef = useRef<{ transitionId?: number; targetEntryKey?: string }>({});
     const blockAutoPersistRef = useRef(false);
     const hasCheckedCrossPageRestoreRef = useRef(false);
+    const searchSkeletonStartedAtRef = useRef(0);
+    const searchSkeletonTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const searchSkeletonGenerationRef = useRef(0);
 
     if (!hasCheckedCrossPageRestoreRef.current) {
         hasCheckedCrossPageRestoreRef.current = true;
@@ -329,6 +366,48 @@ const SearchScreen = () => {
         setHasPreviousPage(false);
         setHasNextPage(false);
     };
+
+    const clearSearchSkeletonTimer = useCallback(() => {
+        if (searchSkeletonTimerRef.current !== undefined) {
+            clearTimeout(searchSkeletonTimerRef.current);
+            searchSkeletonTimerRef.current = undefined;
+        }
+    }, []);
+
+    const startSearchSkeletonPhase = useCallback(() => {
+        clearSearchSkeletonTimer();
+        const generation = searchSkeletonGenerationRef.current + 1;
+        searchSkeletonGenerationRef.current = generation;
+        searchSkeletonStartedAtRef.current = Date.now();
+        setShowSearchSkeleton(true);
+        return generation;
+    }, [clearSearchSkeletonTimer]);
+
+    const finishSearchSkeletonPhase = useCallback((generation: number) => {
+        if (searchSkeletonGenerationRef.current !== generation) {
+            return;
+        }
+
+        clearSearchSkeletonTimer();
+        const elapsed = Date.now() - searchSkeletonStartedAtRef.current;
+        const remaining = Math.max(MIN_SEARCH_SKELETON_MS - elapsed, 0);
+
+        if (remaining === 0) {
+            setShowSearchSkeleton(false);
+            return;
+        }
+
+        searchSkeletonTimerRef.current = setTimeout(() => {
+            searchSkeletonTimerRef.current = undefined;
+            if (searchSkeletonGenerationRef.current === generation) {
+                setShowSearchSkeleton(false);
+            }
+        }, remaining);
+    }, [clearSearchSkeletonTimer]);
+
+    useEffect(() => () => {
+        clearSearchSkeletonTimer();
+    }, [clearSearchSkeletonTimer]);
 
     const applyPagination = (
         paginationData: {
@@ -629,6 +708,7 @@ const SearchScreen = () => {
         setPaperSortMode(state.sortMode);
         setMentorResultFilter(state.visibility);
         setKeyword(state.keyword);
+        const skeletonGeneration = startSearchSkeletonPhase();
         setLoading(true);
         setHasSearched(true);
         setErrorMessage("");
@@ -666,10 +746,19 @@ const SearchScreen = () => {
         }
         finally {
             setLoading(false);
+            finishSearchSkeletonPhase(skeletonGeneration);
             applyLoadedViewState(state, intent);
             navigationIntentRef.current = "init";
         }
-    }, [applyLoadedViewState, buildMentorSearchRequestUrl, buildPaperSearchRequestUrl, isLoggedIn, resetTransientUiState]);
+    }, [
+        applyLoadedViewState,
+        buildMentorSearchRequestUrl,
+        buildPaperSearchRequestUrl,
+        finishSearchSkeletonPhase,
+        isLoggedIn,
+        resetTransientUiState,
+        startSearchSkeletonPhase,
+    ]);
 
     const refreshCurrentSearch = useCallback(async (state = activeSearchStateRef.current) => {
         navigationIntentRef.current = "refresh";
@@ -1467,6 +1556,140 @@ const SearchScreen = () => {
         );
     };
 
+    const renderMentorSkeletonList = () => (
+        <div className="searchSkeletonList" aria-label="导师搜索结果加载中" data-testid="search-mentor-skeleton">
+            {createSearchSkeletonKeys(SEARCH_SKELETON_COUNT, "search-mentor-skeleton").map((key, idx) => {
+                const blueprint = SEARCH_SKELETON_BLUEPRINTS[idx % SEARCH_SKELETON_BLUEPRINTS.length];
+
+                return (
+                    <article key={key} className="searchSkeletonCard searchSkeletonMentorCard" aria-hidden="true">
+                        <div className="searchSkeletonHeaderRow">
+                            <span
+                                className="searchSkeletonBlock searchSkeletonTitle"
+                                style={{ width: blueprint.title }}
+                            />
+                            <span
+                                className="searchSkeletonBlock searchSkeletonButton"
+                                style={{ width: blueprint.button }}
+                            />
+                        </div>
+                        <div className="searchSkeletonMetaStack">
+                            {blueprint.meta.map((width, metaIdx) => (
+                                <div key={`${key}-meta-${metaIdx}`} className="searchSkeletonMetaRow">
+                                    <span className="searchSkeletonBlock searchSkeletonIcon" />
+                                    <span
+                                        className="searchSkeletonBlock searchSkeletonLine"
+                                        style={{ width }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="searchSkeletonMetaRow searchSkeletonProfileRow">
+                            <span className="searchSkeletonBlock searchSkeletonIcon" />
+                            <div className="searchSkeletonParagraph">
+                                {blueprint.profile.map((width, lineIdx) => (
+                                    <span
+                                        key={`${key}-profile-${lineIdx}`}
+                                        className="searchSkeletonBlock searchSkeletonLine"
+                                        style={{ width }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <div className="searchSkeletonPaperPreview">
+                            <span className="searchSkeletonBlock searchSkeletonSectionLabel" />
+                            {blueprint.papers.map((width, paperIdx) => (
+                                <span
+                                    key={`${key}-paper-${paperIdx}`}
+                                    className="searchSkeletonBlock searchSkeletonPaperLine"
+                                    style={{ width }}
+                                />
+                            ))}
+                        </div>
+                    </article>
+                );
+            })}
+        </div>
+    );
+
+    const renderPaperSkeletonList = () => (
+        <div className="searchSkeletonList" aria-label="论文搜索结果加载中" data-testid="search-paper-skeleton">
+            {createSearchSkeletonKeys(SEARCH_SKELETON_COUNT, "search-paper-skeleton").map((key, idx) => {
+                const blueprint = SEARCH_SKELETON_BLUEPRINTS[idx % SEARCH_SKELETON_BLUEPRINTS.length];
+
+                return (
+                    <article key={key} className="searchSkeletonCard searchSkeletonPaperCard" aria-hidden="true">
+                        <div className="searchSkeletonPaperHeader">
+                            <span className="searchSkeletonBlock searchSkeletonDate" />
+                            <span className="searchSkeletonBlock searchSkeletonLinkGroup" />
+                            <div className="searchSkeletonTagRow">
+                                {blueprint.tags.map((width, tagIdx) => (
+                                    <span
+                                        key={`${key}-tag-${tagIdx}`}
+                                        className="searchSkeletonBlock searchSkeletonTag"
+                                        style={{ width }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <span
+                            className="searchSkeletonBlock searchSkeletonPaperTitle"
+                            style={{ width: blueprint.title === "32%" ? "68%" : "78%" }}
+                        />
+                        <div className="searchSkeletonTimelineMetaRow">
+                            <span className="searchSkeletonBlock searchSkeletonMetaLabel" />
+                            <span
+                                className="searchSkeletonBlock searchSkeletonLine"
+                                style={{ width: blueprint.meta[0] }}
+                            />
+                        </div>
+                        <div className="searchSkeletonTimelineMetaRow searchSkeletonAbstractRow">
+                            <span className="searchSkeletonBlock searchSkeletonMetaLabel" />
+                            <div className="searchSkeletonParagraph">
+                                {blueprint.profile.map((width, lineIdx) => (
+                                    <span
+                                        key={`${key}-abstract-${lineIdx}`}
+                                        className="searchSkeletonBlock searchSkeletonLine"
+                                        style={{ width }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </article>
+                );
+            })}
+        </div>
+    );
+
+    const renderSearchSkeletonResults = () => (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    padding: 12,
+                    flexWrap: "wrap",
+                }}
+            >
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    loading={loading}
+                    centered
+                    controlHeight={SEARCH_PAGINATION_CONTROL_HEIGHT}
+                    jumpInputWidth={120}
+                    activePageHighlightColor="rgb(8, 109, 177)"
+                    onPageChange={(newPage) => {
+                        void navigateToSearchState(resolveSearchState({ page: newPage }));
+                    }}
+                />
+            </div>
+            {mode === "mentor" ? renderMentorSkeletonList() : renderPaperSkeletonList()}
+        </div>
+    );
+
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 794, margin: "0 auto", boxSizing: "border-box" }}>
             {mentorDeleteTarget !== undefined && (
@@ -2105,7 +2328,9 @@ const SearchScreen = () => {
                 </div>
             )}
 
-            {mode === "mentor" && mentors.length > 0 && (
+            {showSearchSkeleton && renderSearchSkeletonResults()}
+
+            {!showSearchSkeleton && mode === "mentor" && mentors.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div
                         style={{
@@ -2358,7 +2583,7 @@ const SearchScreen = () => {
                 </div>
             )}
 
-            {mode === "paper" && papers.length > 0 && (
+            {!showSearchSkeleton && mode === "paper" && papers.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div
                         style={{
@@ -2503,13 +2728,13 @@ const SearchScreen = () => {
                 </div>
             )}
 
-            {hasSearched && !loading && errorMessage === "" && mode === "mentor" && mentors.length === 0 && (
+            {hasSearched && !loading && !showSearchSkeleton && errorMessage === "" && mode === "mentor" && mentors.length === 0 && (
                 <div style={{ padding: 12, border: "1px dashed #ccc" }}>
                     未找到匹配的导师结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
             )}
 
-            {hasSearched && !loading && errorMessage === "" && mode === "paper" && papers.length === 0 && (
+            {hasSearched && !loading && !showSearchSkeleton && errorMessage === "" && mode === "paper" && papers.length === 0 && (
                 <div style={{ padding: 12, border: "1px dashed #ccc" }}>
                     未找到匹配的论文结果（当前为{matchMode === "exact" ? "精确" : "模糊"}搜索）。
                 </div>
@@ -2643,6 +2868,177 @@ const SearchScreen = () => {
                     cursor: not-allowed;
                 }
 
+                :global(.searchSkeletonList) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    width: 100%;
+                }
+
+                :global(.searchSkeletonCard) {
+                    box-sizing: border-box;
+                    position: relative;
+                    overflow: hidden;
+                    width: 100%;
+                    padding: 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    background: #ffffff;
+                }
+
+                :global(.searchSkeletonMentorCard) {
+                    padding: 14px 12px 16px;
+                }
+
+                :global(.searchSkeletonPaperCard) {
+                    padding: 16px;
+                }
+
+                :global(.searchSkeletonBlock) {
+                    display: block;
+                    position: relative;
+                    overflow: hidden;
+                    background: linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%);
+                    background-size: 200% 100%;
+                    animation: searchSkeletonShimmer 1.15s ease-in-out infinite;
+                }
+
+                :global(.searchSkeletonHeaderRow) {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 16px;
+                    margin-bottom: 14px;
+                    padding-right: 2px;
+                }
+
+                :global(.searchSkeletonTitle) {
+                    height: 24px;
+                    border-radius: 999px;
+                    flex: 0 1 auto;
+                    max-width: calc(100% - 92px);
+                }
+
+                :global(.searchSkeletonButton) {
+                    height: 28px;
+                    border-radius: 6px;
+                    flex: 0 0 auto;
+                }
+
+                :global(.searchSkeletonMetaStack) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                :global(.searchSkeletonMetaRow),
+                :global(.searchSkeletonTimelineMetaRow) {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 8px;
+                    min-width: 0;
+                }
+
+                :global(.searchSkeletonIcon) {
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 4px;
+                    flex: 0 0 auto;
+                    margin-top: 1px;
+                }
+
+                :global(.searchSkeletonLine) {
+                    height: 12px;
+                    border-radius: 999px;
+                    max-width: 100%;
+                }
+
+                :global(.searchSkeletonProfileRow) {
+                    margin-top: 8px;
+                }
+
+                :global(.searchSkeletonParagraph) {
+                    display: flex;
+                    flex: 1;
+                    min-width: 0;
+                    flex-direction: column;
+                    gap: 10px;
+                    padding-top: 2px;
+                }
+
+                :global(.searchSkeletonPaperPreview) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    margin-top: 14px;
+                    padding-left: 0;
+                }
+
+                :global(.searchSkeletonSectionLabel) {
+                    width: 72px;
+                    height: 14px;
+                    border-radius: 999px;
+                    margin-bottom: 2px;
+                }
+
+                :global(.searchSkeletonPaperLine) {
+                    height: 14px;
+                    border-radius: 999px;
+                    max-width: 100%;
+                }
+
+                :global(.searchSkeletonPaperHeader) {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-bottom: 12px;
+                }
+
+                :global(.searchSkeletonDate) {
+                    width: 86px;
+                    height: 13px;
+                    border-radius: 999px;
+                }
+
+                :global(.searchSkeletonLinkGroup) {
+                    width: 54px;
+                    height: 14px;
+                    border-radius: 999px;
+                }
+
+                :global(.searchSkeletonTagRow) {
+                    display: inline-flex;
+                    flex: 1;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    min-width: 160px;
+                }
+
+                :global(.searchSkeletonTag) {
+                    height: 18px;
+                    border-radius: 4px;
+                }
+
+                :global(.searchSkeletonPaperTitle) {
+                    height: 22px;
+                    max-width: 100%;
+                    border-radius: 999px;
+                    margin-bottom: 14px;
+                }
+
+                :global(.searchSkeletonMetaLabel) {
+                    width: 42px;
+                    height: 14px;
+                    border-radius: 999px;
+                    flex: 0 0 auto;
+                    margin-top: 3px;
+                }
+
+                :global(.searchSkeletonAbstractRow) {
+                    margin-top: 12px;
+                }
+
                 .searchMentorPaperFooter {
                     padding-left: 0;
                     margin-top: 0;
@@ -2761,9 +3157,40 @@ const SearchScreen = () => {
                     flex: 0 0 auto;
                 }
 
+                @keyframes searchSkeletonShimmer {
+                    from {
+                        background-position: 200% 0;
+                    }
+
+                    to {
+                        background-position: -200% 0;
+                    }
+                }
+
                 @media (max-width: 820px) {
                     .searchSegmentRow {
                         width: calc(100% + 4px);
+                    }
+
+                    :global(.searchSkeletonCard) {
+                        padding: 14px 12px 16px;
+                    }
+
+                    :global(.searchSkeletonHeaderRow) {
+                        gap: 12px;
+                    }
+
+                    :global(.searchSkeletonTitle) {
+                        max-width: calc(100% - 88px);
+                    }
+
+                    :global(.searchSkeletonPaperHeader) {
+                        align-items: flex-start;
+                    }
+
+                    :global(.searchSkeletonTagRow) {
+                        flex-basis: 100%;
+                        min-width: 0;
                     }
                 }
             `}</style>

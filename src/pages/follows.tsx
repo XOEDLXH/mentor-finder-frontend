@@ -58,7 +58,7 @@ const FOLLOW_MENTOR_SKELETON_COUNT = 9;
 const FOLLOW_USER_SKELETON_COUNT = 4;
 const FOLLOW_SUBJECT_CHIP_SKELETON_COUNT = 8;
 const FOLLOW_SUBJECT_CARD_SKELETON_COUNT = 3;
-const MIN_FOLLOW_SKELETON_MS = 800;
+const MIN_FOLLOW_SKELETON_MS = 100;
 
 const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
