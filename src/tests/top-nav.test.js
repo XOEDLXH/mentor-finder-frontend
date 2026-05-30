@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import TopNav from "../components/TopNav";
 import { resetAuth } from "../redux/auth";
-import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
+import { buildGlobalPaperSearchUrl, normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 
 // Mock Next.js routing so the navigation component can be tested in isolation
 // while still asserting which routes it tries to open.
@@ -134,6 +134,28 @@ describe("TopNav", () => {
 
         expect(searchInput).toHaveValue("graph neural network");
         expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("truncates overly long top search keywords before opening search", () => {
+        // Tests the top-nav keyword-length guard.
+        // Pasted text longer than the backend limit should be truncated in the
+        // controlled input and in the generated quick-search URL.
+        renderTopNav();
+
+        const searchInput = screen.getByRole("textbox", { name: "Search or jump to" });
+        const longKeyword = "一".repeat(400);
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
+
+        fireEvent.change(searchInput, { target: { value: longKeyword } });
+        expect(searchInput).toHaveValue(truncatedKeyword);
+
+        fireEvent.keyDown(searchInput, { key: "Enter" });
+
+        expect(globalThis.open).toHaveBeenCalledWith(
+            buildGlobalPaperSearchUrl(truncatedKeyword),
+            "_blank",
+            "noopener,noreferrer",
+        );
     });
 
     it("opens a new tab with paper fuzzy search when pressing Enter with keyword", () => {

@@ -6,7 +6,9 @@ import { resetAuth, setUserId } from "../redux/auth";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
 import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
-import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
+import { buildGlobalPaperSearchUrl, normalizeSearchKeywordForUrl } from "../utils/searchQuery";
+
+const MAX_SEARCH_KEYWORD_LENGTH = 255;
 
 interface NavItem {
     label: string;
@@ -148,7 +150,7 @@ const TopNav = () => {
     const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
             event.preventDefault();
-            const trimmedKeyword = searchKeyword.trim();
+            const trimmedKeyword = normalizeSearchKeywordForUrl(searchKeyword);
             if (trimmedKeyword === "") {
                 return;
             }
@@ -239,7 +241,8 @@ const TopNav = () => {
                             placeholder="Search or jump to..."
                             aria-label="Search or jump to"
                             value={searchKeyword}
-                            onChange={(event) => setSearchKeyword(event.target.value)}
+                            maxLength={MAX_SEARCH_KEYWORD_LENGTH}
+                            onChange={(event) => setSearchKeyword(normalizeSearchKeywordForUrl(event.target.value))}
                             onKeyDown={handleSearchKeyDown}
                         />
                     </div>
