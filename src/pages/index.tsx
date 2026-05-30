@@ -16,6 +16,7 @@ const GENERATED_BY_LABELS: Record<string, string> = {
     rule: "规则摘要",
     "thucs-openai": "AI摘要",
 };
+// These constants keep the homepage skeletons and carousels visually consistent across sections.
 const WEEKLY_PUSH_PAPERS_PER_VIEW = 2;
 const WEEKLY_PUSH_CAROUSEL_GAP = 12;
 const SUBJECT_GROUP_CAROUSEL_GAP = 16;
@@ -28,6 +29,7 @@ const createHomeSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
+// Fall back to the raw backend value if a new generation mode appears before the UI labels are updated.
 const formatGeneratedBy = (generatedBy: string) => GENERATED_BY_LABELS[generatedBy] || generatedBy;
 
 const getErrorMessage = (error: unknown) => {
@@ -41,6 +43,7 @@ const fetchPersonalizedWeeklyPush = async (weekStart?: string) => {
     const query = weekStart
         ? `?week_start=${encodeURIComponent(weekStart)}`
         : "";
+    // Personalized reports depend on the current user's follows, so they use a dedicated authenticated endpoint.
     return request<WeeklyPushResponse>(
         `/api/dataset/weekly-push/personalized${query}`,
         "GET",
@@ -61,6 +64,7 @@ const syncCarouselControls = (
     setCanScrollPrev: (value: boolean) => void,
     setCanScrollNext: (value: boolean) => void,
 ) => {
+    // Derive button availability from actual scroll position so resizing does not desync the controls.
     const maxScrollLeft = Math.max(viewport.scrollWidth - viewport.clientWidth, 0);
     setCanScrollPrev(viewport.scrollLeft > 4);
     setCanScrollNext(viewport.scrollLeft < maxScrollLeft - 4);
@@ -72,6 +76,7 @@ const getCarouselScrollStep = (
     fallbackItemCount: number,
     gap: number,
 ) => {
+    // Scroll by one card width when measurable; otherwise estimate from the viewport width.
     const firstCard = viewport.querySelector<HTMLElement>(cardSelector) ?? undefined;
     if (firstCard !== undefined) {
         return firstCard.offsetWidth + gap;
@@ -100,6 +105,7 @@ const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) =
         }
 
         const updateTruncationState = () => {
+            // Compare scrollHeight and clientHeight to detect whether the abstract clamp is actually truncating text.
             setIsTruncated(container.scrollHeight - container.clientHeight > 1);
         };
 
@@ -177,6 +183,7 @@ const WeeklyPushPaperList = ({
         );
         const nextLeft = viewport.scrollLeft + direction * scrollStep;
         if (typeof viewport.scrollBy === "function") {
+            // Prefer smooth native scrolling while keeping a deterministic fallback for unsupported environments.
             viewport.scrollBy({
                 left: direction * scrollStep,
                 behavior: "smooth",
@@ -202,6 +209,7 @@ const WeeklyPushPaperList = ({
             return;
         }
 
+        // Reset the carousel when a different weekly report replaces the paper list.
         if (typeof viewport.scrollTo === "function") {
             viewport.scrollTo({ left: 0, behavior: "auto" });
         }
@@ -423,6 +431,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
         }
 
         previousOverflowRef.current = document.body.style.overflow;
+        // Prevent the page behind the modal from scrolling while a subject detail dialog is open.
         document.body.style.overflow = "hidden";
 
         return () => {
@@ -435,6 +444,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
             return undefined;
         }
 
+        // Support keyboard dismissal and initial focus placement for the subject modal.
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 event.preventDefault();
@@ -617,6 +627,7 @@ export const WeeklyPushDetailCard = ({
     showPersonalizedSummary = false,
     metaItems = [],
 }: WeeklyPushDetailCardProps) => {
+    // Render separate blocks only when the AI summary actually differs from the fixed summary.
     const distinctAiSummary = push.aiSummary.trim() !== "" && push.aiSummary !== push.fixedSummary;
     const resolvedMetaItems = [
         `周期：${push.weekStart} ~ ${push.weekEnd}`,
@@ -777,6 +788,7 @@ const HomeScreen = () => {
         const loadWeeklyPush = async () => {
             setLoadingWeeklyPush(true);
             try {
+                // Load the latest public report and its history in parallel for the homepage dashboard.
                 const [latestRes, historyRes] = await Promise.all([
                     request<WeeklyPushResponse>("/api/dataset/weekly-push/latest", "GET", false),
                     request<WeeklyPushHistoryResponse>("/api/dataset/weekly-push/history", "GET", false),
@@ -811,6 +823,7 @@ const HomeScreen = () => {
         const loadSelectedPush = async () => {
             setLoadingWeeklyPush(true);
             try {
+                // Changing the selected history week reuses the same endpoint with an explicit week_start query.
                 const res = await request<WeeklyPushResponse>(
                     `/api/dataset/weekly-push/latest?week_start=${encodeURIComponent(selectedWeekStart)}`,
                     "GET",
@@ -842,6 +855,7 @@ const HomeScreen = () => {
         const loadStoredPersonalizedPush = async () => {
             setLoadingPersonalizedWeeklyPush(true);
             try {
+                // Logged-in users see their latest personalized report and its history immediately on page load.
                 const [latestRes, historyRes] = await Promise.all([
                     fetchPersonalizedWeeklyPush(),
                     fetchPersonalizedWeeklyPushHistory(),
@@ -901,6 +915,7 @@ const HomeScreen = () => {
         setPersonalizedError("");
 
         try {
+            // Personalized generation is explicit because it may trigger fresh backend summarization work.
             const res = await request<WeeklyPushResponse>(
                 "/api/dataset/weekly-push/personalized",
                 "POST",

@@ -25,6 +25,7 @@ const AdminUsersPage = () => {
     const router = useRouter();
     const token = useSelector((state: RootState) => state.auth.token);
     const role = useSelector((state: RootState) => state.auth.role);
+    // Gate every management action behind an authenticated admin session.
     const isAdmin = token.trim() !== "" && role === "admin";
 
     const [loadingUsers, setLoadingUsers] = useState(false);
@@ -49,6 +50,7 @@ const AdminUsersPage = () => {
     const [draftMentorIdByUserId, setDraftMentorIdByUserId] = useState<Record<number, string>>({});
 
     const formatError = (err: unknown) => {
+        // Normalize network-layer errors into short admin-friendly feedback strings.
         if (err instanceof NetworkError) {
             if (err.type === NetworkErrorType.UNAUTHORIZED) {
                 return "请先登录管理员账号";
@@ -62,6 +64,7 @@ const AdminUsersPage = () => {
     };
 
     const syncDrafts = (nextUsers: AdminUserResult[]) => {
+        // Keep the editable role / mentor binding controls in sync with the latest server snapshot.
         const nextRoleDrafts: Record<number, UserRole> = {};
         const nextMentorDrafts: Record<number, string> = {};
         for (const user of nextUsers) {
@@ -83,6 +86,7 @@ const AdminUsersPage = () => {
         try {
             const trimmedKeyword = (keyword ?? searchKeyword).trim();
             const resolvedRoleFilter = nextRoleFilter ?? roleFilter;
+            // Build a compact query string so the page can filter users server-side.
             const queryParams = new URLSearchParams();
             if (trimmedKeyword !== "") {
                 queryParams.set("keyword", trimmedKeyword);
@@ -94,6 +98,7 @@ const AdminUsersPage = () => {
             const res = await request<AdminUsersResponse>(`/api/management/users${query}`, "GET", true);
             const nextUsers = Array.isArray(res.users) ? res.users : [];
             setUsers(nextUsers);
+            // Verification requests are returned with the user list so the admin has one consolidated dashboard.
             setVerificationRequests(
                 Array.isArray(res.verificationRequests)
                     ? res.verificationRequests : [],
@@ -115,10 +120,12 @@ const AdminUsersPage = () => {
         if (!isAdmin) {
             return;
         }
+        // Load the unfiltered admin view on first entry.
         void fetchUsers("", "");
     }, [isAdmin]);
 
     const publicMentorSearchResults = useMemo(() => {
+        // Admin role binding must point at public mentor records, never a student's private mentor.
         return mentorSearchResults.filter((mentor) => !mentor.is_private);
     }, [mentorSearchResults]);
 
@@ -137,6 +144,7 @@ const AdminUsersPage = () => {
         setErrorMessage("");
 
         try {
+            // Reuse the normal mentor search API to find a public mentor record for role binding.
             const res = await request<SearchMentorsResponse>(
                 `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
                 "GET",
@@ -171,6 +179,7 @@ const AdminUsersPage = () => {
         setErrorMessage("");
 
         try {
+            // Each verification request can search independently because approvals may map to different public mentors.
             const res = await request<SearchMentorsResponse>(
                 `/api/search/mentors?keyword=${encodeURIComponent(trimmedKeyword)}&search_mode=fuzzy`,
                 "GET",
@@ -204,6 +213,7 @@ const AdminUsersPage = () => {
             role: nextRole,
         };
 
+        // Only mentor accounts need a binding to a concrete public mentor record.
         if (nextRole === "mentor" && nextMentorId !== "") {
             payload.mentorId = Number(nextMentorId);
         }
@@ -215,6 +225,7 @@ const AdminUsersPage = () => {
         try {
             const res = await request<UpdateAdminUserResponse>(`/api/management/users/${user.id}`, "PUT", true, payload);
             const updatedUser = res.user;
+            // Patch the edited user into the current list instead of refetching the whole page.
             const nextUsers = users.map((currentUser) => currentUser.id === user.id ? updatedUser : currentUser);
             setUsers(nextUsers);
             syncDrafts(nextUsers);
@@ -243,6 +254,7 @@ const AdminUsersPage = () => {
                 setErrorMessage("审核通过前必须先搜索并选择一位公共导师");
                 return;
             }
+            // Approval both upgrades the user and binds the request to the selected public mentor record.
             payload.mentorId = Number(mentorId);
         }
 
@@ -252,6 +264,7 @@ const AdminUsersPage = () => {
 
         try {
             await request(`/api/management/verification-requests/${requestId}`, "PUT", true, payload);
+            // Refresh after review because both the request list and user table may change.
             await fetchUsers();
             setSuccessMessage(status === "approved" ? "认证请求已审核通过" : "认证请求已拒绝");
         } catch (err) {
@@ -361,6 +374,7 @@ const AdminUsersPage = () => {
                                 <p style={{ margin: 0 }}>提交时间：{requestItem.createdAt || "未知"}</p>
                                 {requestItem.status === "pending" && (
                                     <>
+                                        {/* The admin first searches a matching public mentor, then chooses approve or reject. */}
                                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                                             <input
                                                 type="text"
@@ -480,6 +494,7 @@ const AdminUsersPage = () => {
                                     onChange={(e) => {
                                         const nextRole = e.target.value as UserRole;
                                         setDraftRoleByUserId((prev) => ({ ...prev, [user.id]: nextRole }));
+                                        // Clear stale mentor bindings whenever the draft role stops being mentor.
                                         if (nextRole !== "mentor") {
                                             setDraftMentorIdByUserId((prev) => ({ ...prev, [user.id]: "" }));
                                         }

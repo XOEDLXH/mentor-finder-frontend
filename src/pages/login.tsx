@@ -5,6 +5,7 @@ import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { buildRedirectHref, resolveRedirectTarget } from "../utils/authRedirect";
 
+// Some backend endpoints return empty bodies or non-JSON text, so the login page parses them defensively.
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
         const rawText = await response.text();
@@ -44,6 +45,7 @@ const LoginScreen = () => {
 
     const router = useRouter();
     const dispatch = useDispatch();
+    // Keep the post-login destination safe and relative even when the redirect query is malformed.
     const redirectTarget = resolveRedirectTarget(router.query.redirect);
     const bindUserNameInputRef: RefCallback<HTMLInputElement> = (node) => {
         userNameInputRef.current = node ?? undefined;
@@ -70,6 +72,7 @@ const LoginScreen = () => {
 
         setLoginErrorMessage("");
         setSubmitting(true);
+        // Login is handled directly here because the form needs to hydrate Redux auth state from the response.
         fetch("/api/login", {
             method: "POST",
             headers: {
@@ -83,6 +86,7 @@ const LoginScreen = () => {
             .then((res) => parseJsonSafely(res))
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
+                    // Persist the auth token plus lightweight profile fields used across the navbar and profile pages.
                     dispatch(setToken(res.token));
                     dispatch(setRole(typeof res.role === "string" ? res.role : ""));
                     dispatch(setUserId(typeof res.userId === "number" ? res.userId : undefined));
@@ -174,6 +178,7 @@ const LoginScreen = () => {
                     className="loginAuthInlineLink"
                     onClick={(event) => {
                         event.preventDefault();
+                        // Preserve the original redirect target when users switch from login to register.
                         if (submitting) {
                             return;
                         }

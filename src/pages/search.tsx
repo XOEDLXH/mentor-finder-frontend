@@ -27,8 +27,9 @@ import {
 import { PrivateMentorResult, SearchMentorResult, SearchPaperResult } from "../utils/types";
 type MentorResultFilter = SearchMentorVisibility;
 
-const PROFILE_PREVIEW_LENGTH = 100;     // 导师画像预览长度
-const PAPER_TITLES_PREVIEW_COUNT = 7;   // 导师相关论文标题预览数量，超过后显示“查看更多”按钮展开完整列表
+// Control how much mentor detail is shown inline before the result card expands.
+const PROFILE_PREVIEW_LENGTH = 100;
+const PAPER_TITLES_PREVIEW_COUNT = 7;
 const SEARCH_VIEW_STATE_STORAGE_PREFIX = "search-view-state:";
 const INITIAL_HISTORY_ENTRY_KEY = "search-entry-initial";
 const SEARCH_PAGINATION_CONTROL_HEIGHT = 33.77;
@@ -108,6 +109,7 @@ interface SearchHistoryViewState {
 
 type SearchNavigationIntent = "init" | "push" | "pop" | "refresh";
 
+// Carries pending restore context when navigation returns from the mentor detail page back to search.
 let pendingSearchPopRestore:
     | {
         entryKey: string;
@@ -116,6 +118,7 @@ let pendingSearchPopRestore:
     | undefined;
 
 const getWindowHistoryEntryKey = () => {
+    // Next.js stores a per-entry key in history.state; use it to persist per-entry UI state.
     if (typeof window === "undefined") {
         return INITIAL_HISTORY_ENTRY_KEY;
     }
@@ -130,6 +133,7 @@ const getWindowHistoryEntryKey = () => {
 };
 
 const isModifiedNavigationClick = (event: MouseEvent<HTMLElement>) => {
+    // Modified clicks should keep native browser behavior instead of being intercepted for custom restoration.
     return event.defaultPrevented ||
         event.button !== 0 ||
         event.metaKey ||
@@ -158,6 +162,7 @@ const parseTimelineLikeSubjects = (subjects?: string) => {
 };
 
 const normalizeHistoryMentorIds = (values?: Iterable<number> | ArrayLike<number>) => {
+    // Sanitize persisted ids before using them to restore expanded mentor cards.
     return Array.from(values ?? [])
         .map((value) => Number(value))
         .filter((value) => Number.isInteger(value) && value > 0);
@@ -168,6 +173,7 @@ const buildSearchHistoryViewState = (
     expandedProfileMentorIds: Iterable<number> | ArrayLike<number>,
     expandedPaperMentorIds: Iterable<number> | ArrayLike<number>,
 ) => {
+    // Persist both split expansion state and the legacy combined list for backward compatibility.
     const normalizedProfileMentorIds = normalizeHistoryMentorIds(expandedProfileMentorIds);
     const normalizedPaperMentorIds = normalizeHistoryMentorIds(expandedPaperMentorIds);
 
@@ -339,6 +345,7 @@ const SearchScreen = () => {
             const pendingMentorSearchReturn = readPendingMentorSearchReturn();
             const currentEntryKey = getWindowHistoryEntryKey();
 
+            // If the user is returning from a mentor page, treat the next route sync as a pop-style restore.
             if (pendingMentorSearchReturn?.sourceEntryKey === currentEntryKey) {
                 const transitionId = navigationTransitionIdRef.current + 1;
                 navigationTransitionIdRef.current = transitionId;
@@ -353,6 +360,7 @@ const SearchScreen = () => {
     }
 
     const resetResults = (clearExpandedMentors = true) => {
+        // Reset only the current result set while leaving the query controls intact.
         setErrorMessage("");
         setMentors([]);
         setPapers([]);
@@ -379,6 +387,7 @@ const SearchScreen = () => {
         const generation = searchSkeletonGenerationRef.current + 1;
         searchSkeletonGenerationRef.current = generation;
         searchSkeletonStartedAtRef.current = Date.now();
+        // A generation counter prevents stale requests from hiding the newest skeleton prematurely.
         setShowSearchSkeleton(true);
         return generation;
     }, [clearSearchSkeletonTimer]);
@@ -420,6 +429,7 @@ const SearchScreen = () => {
         fallbackCount: number,
         requestedPage: number,
     ) => {
+        // Normalize partially missing pagination metadata so mentor and paper searches render consistently.
         const resolvedPage = Number(paginationData.page);
         const normalizedPage = Number.isFinite(resolvedPage) && resolvedPage > 0
             ? resolvedPage
@@ -462,6 +472,7 @@ const SearchScreen = () => {
                 return undefined;
             }
 
+            // Support both the current split expansion keys and the older combined expandedMentorIds payload.
             const parsedValue = JSON.parse(rawValue) as Partial<SearchHistoryViewState>;
             const legacyExpandedIds = Array.isArray(parsedValue.expandedMentorIds)
                 ? normalizeHistoryMentorIds(parsedValue.expandedMentorIds)
@@ -510,6 +521,7 @@ const SearchScreen = () => {
             return;
         }
 
+        // Save scroll position plus expanded mentor subsections so browser navigation restores reading context.
         const nextViewState = {
             scrollY: Number.isFinite(window.scrollY) ? window.scrollY : 0,
             expandedProfileMentorIds: Array.from(expandedProfileMentorIdsRef.current),
@@ -541,6 +553,7 @@ const SearchScreen = () => {
     }, []);
 
     const scheduleAfterPaint = useCallback((callback: () => void) => {
+        // Two animation frames reliably wait for layout/paint before restoring scroll-sensitive UI.
         if (typeof window === "undefined") {
             callback();
             return;
@@ -568,6 +581,7 @@ const SearchScreen = () => {
         overrides: SearchNavigationOptions = {},
         baseState: SearchQueryState = activeSearchStateRef.current,
     ) => {
+        // Recompute a canonical query state for URL sync and request-building.
         const nextMode = overrides.mode ?? baseState.mode;
         const nextKeyword = (overrides.keyword ?? baseState.keyword).trim();
         const nextPageRaw = overrides.page ?? baseState.page;
@@ -616,6 +630,7 @@ const SearchScreen = () => {
     }, [resetAdminEditorState]);
 
     const buildMentorSearchRequestUrl = useCallback((state: SearchQueryState) => {
+        // Mentor search supports visibility filtering in addition to keyword and match mode.
         const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
         const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
         const visibilityQuery = state.visibility !== "all" ? `&visibility=${state.visibility}` : "";
@@ -624,6 +639,7 @@ const SearchScreen = () => {
     }, []);
 
     const buildPaperSearchRequestUrl = useCallback((state: SearchQueryState) => {
+        // Paper search uses the same keyword syntax but adds a dedicated sort mode.
         const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
         const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
 
@@ -632,6 +648,7 @@ const SearchScreen = () => {
 
     const applyLoadedViewState = useCallback((state: SearchQueryState, intent: SearchNavigationIntent) => {
         if (intent === "push") {
+            // New navigations reset scroll and collapse mentor cards because they represent a fresh result view.
             const targetEntryKey = pendingPushRestoreRef.current.targetEntryKey ?? getHistoryEntryKey();
             const transitionId = pendingPushRestoreRef.current.transitionId ?? navigationTransitionIdRef.current;
             setExpandedProfileMentorIds(new Set());
@@ -654,6 +671,7 @@ const SearchScreen = () => {
         }
 
         if (intent === "pop") {
+            // Back/forward restores both scroll position and expanded mentor sections from session storage.
             const entryKey = pendingSearchPopRestore?.entryKey ?? getHistoryEntryKey();
             const transitionId = pendingSearchPopRestore?.transitionId ?? navigationTransitionIdRef.current;
             const savedViewState = readHistoryViewState(entryKey);
@@ -698,6 +716,7 @@ const SearchScreen = () => {
         state: SearchQueryState,
         intent: SearchNavigationIntent,
     ) => {
+        // This is the single query-to-results pipeline: sync controls, fetch data, then restore view state.
         activeSearchStateRef.current = state;
         if (intent !== "refresh") {
             resetTransientUiState();
@@ -748,6 +767,7 @@ const SearchScreen = () => {
             setLoading(false);
             finishSearchSkeletonPhase(skeletonGeneration);
             applyLoadedViewState(state, intent);
+            // Reset the intent after every load so later route syncs are treated normally.
             navigationIntentRef.current = "init";
         }
     }, [
@@ -774,6 +794,7 @@ const SearchScreen = () => {
         }
 
         const transitionId = navigationTransitionIdRef.current + 1;
+        // Save the current entry's scroll/expansion state before pushing the next shallow search URL.
         navigationTransitionIdRef.current = transitionId;
         pendingSearchPopRestore = undefined;
         expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
@@ -844,6 +865,7 @@ const SearchScreen = () => {
         }
 
         try {
+            // Search needs the user's private mentor ids so cards can show owner-specific actions and badges.
             const res = await request<PrivateMentorsResponse>("/api/dataset/mentors/mine", "GET", true);
             const mentorList = Array.isArray(res.mentors) ? res.mentors : [];
             setPrivateMentors(mentorList.filter((mentor) => Array.isArray(mentor.paper_ids)));
@@ -864,6 +886,7 @@ const SearchScreen = () => {
         }
 
         try {
+            // Student users need the followed mentor set so result cards render the correct button state.
             const res = await request<{ mentors?: SearchMentorResult[] }>(
                 "/api/follow/mentors",
                 "GET",
@@ -934,6 +957,7 @@ const SearchScreen = () => {
                 return;
             }
 
+            // Browser back/forward should restore the previous search entry instead of acting like a fresh push.
             const transitionId = navigationTransitionIdRef.current + 1;
             navigationTransitionIdRef.current = transitionId;
             blockAutoPersistRef.current = true;
@@ -947,6 +971,7 @@ const SearchScreen = () => {
         const hasBeforePopState = typeof router.beforePopState === "function";
         if (hasBeforePopState) {
             router.beforePopState((state) => {
+                // beforePopState exposes the upcoming history entry key earlier than raw popstate does.
                 const stateLike = state as { key?: unknown; as?: unknown; url?: unknown } | undefined;
                 const entryKey = typeof stateLike?.key === "string" && stateLike.key.trim() !== ""
                     ? stateLike.key
@@ -981,6 +1006,7 @@ const SearchScreen = () => {
             persistCurrentViewState();
         };
 
+        // Persist scroll passively so returning from detail pages lands near the same result card.
         window.addEventListener("scroll", handleScroll, { passive: true });
         return () => {
             window.removeEventListener("scroll", handleScroll);
@@ -1020,6 +1046,7 @@ const SearchScreen = () => {
             return;
         }
 
+        // The search page can create private mentors inline when the user is focused on "mine" results.
         setPrivateMentorSaving(true);
         setPrivateMentorMsg("");
 
@@ -1037,6 +1064,7 @@ const SearchScreen = () => {
             setCustomMentorEmail("");
             setCustomMentorProfile("");
             await fetchMyPrivateMentors();
+            // Refresh the current search so the newly created private mentor can appear immediately.
             await refreshCurrentSearch(resolveSearchState({ page: 1 }));
             setPrivateMentorMsg("私有导师添加成功");
         }
@@ -1076,6 +1104,7 @@ const SearchScreen = () => {
             ? "pop"
             : (hasLoadedRouteStateRef.current ? navigationIntentRef.current : "init");
 
+        // Treat the URL as the source of truth so deep links and browser navigation remain reproducible.
         if (hasLoadedRouteStateRef.current && areSearchStatesEqual(nextRouteState, activeSearchStateRef.current)) {
             navigationIntentRef.current = "init";
             return;
@@ -1165,6 +1194,7 @@ const SearchScreen = () => {
     };
 
     const navigateToMentorHomepage = useCallback(async (mentorId: number) => {
+        // Save enough context to restore this exact search entry after visiting a mentor detail page.
         expandedProfileMentorIdsRef.current = new Set(expandedProfileMentorIds);
         expandedPaperMentorIdsRef.current = new Set(expandedPaperMentorIds);
         const sourceEntryKey = getHistoryEntryKey();
@@ -1218,6 +1248,7 @@ const SearchScreen = () => {
                 next.add(mentorId);
             }
             expandedProfileMentorIdsRef.current = next;
+            // Persist immediately so navigation away from the page preserves the just-toggled expansion state.
             writeHistoryViewState(
                 getHistoryEntryKey(),
                 buildSearchHistoryViewState(
@@ -1240,6 +1271,7 @@ const SearchScreen = () => {
                 next.add(mentorId);
             }
             expandedPaperMentorIdsRef.current = next;
+            // Persist paper-title expansion separately from profile expansion for accurate restoration.
             writeHistoryViewState(
                 getHistoryEntryKey(),
                 buildSearchHistoryViewState(
@@ -1467,6 +1499,7 @@ const SearchScreen = () => {
         activeValue: TValue,
         onSelect: (value: TValue) => void,
     ) => {
+        // All segmented controls share the same animated pill UI and only differ in option set / callback.
         const activeIndex = Math.max(0, options.findIndex((option) => option.value === activeValue));
         const groupFlex = options.length;
         const groupMinWidth = options.length === 2 ? 180 : 270;
@@ -2382,6 +2415,7 @@ const SearchScreen = () => {
                             key={mentor.id}
                             style={{ position: "relative", padding: 12, border: "1px solid #ccc", borderRadius: 6 }}
                         >
+                            {/* Students can follow mentors; owners of private mentors can also delete them inline. */}
                             {(canFollowMentor || (isLoggedIn && privateMentorIdSet.has(mentor.id))) && (
                                 <div
                                     style={{

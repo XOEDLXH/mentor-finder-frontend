@@ -22,6 +22,7 @@ import {
 const INITIAL_BATCH_SIZE = 6;
 const WINDOW_BATCH_SIZE = 5;
 const DEFAULT_TIMELINE_LIMIT = 20;
+// Timeline rendering uses a mix of initial skeletons, load-more previews, and calendar placeholders.
 const DIRECTION_SKELETON_COUNT = 8;
 const INITIAL_FEED_PREVIEW_COUNT = 4;
 const LOAD_MORE_PREVIEW_COUNT = 1;
@@ -47,6 +48,7 @@ const createSkeletonKeys = (count: number, prefix: string) => (
     Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
 );
 
+// Generate the shared shimmer style used by direction cards, feed previews, and calendar placeholders.
 const createPreviewBarStyle = (
     width: number | string,
     height: number,
@@ -82,6 +84,7 @@ const interpolateChannel = (start: number, end: number, ratio: number) => (
 const toRgbString = (rgb: { r: number; g: number; b: number; }) => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
 
 const createCalendarHeatColor = (paperCount: number) => {
+    // Convert paper counts into a simple light-to-dark heat scale for the calendar grid.
     if (paperCount <= 0) {
         return {
             backgroundColor: "#ffffff",
@@ -259,6 +262,7 @@ const TimelinePage = () => {
     const calendarPickerMonthWheelRef = useRef<HTMLDivElement | undefined>(undefined);
 
     useLayoutEffect(() => {
+        // Mirror the latest papers array in a ref so scroll handlers can read it without stale closures.
         papersRef.current = papers;
     }, [papers]);
 
@@ -285,6 +289,7 @@ const TimelinePage = () => {
     }, []);
 
     const buildTimelinePdfUrl = (arxivUrl?: string) => {
+        // The PDF URL can be derived directly from a standard arXiv abstract link.
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
             return "";
         }
@@ -304,6 +309,7 @@ const TimelinePage = () => {
     };
 
     const renderPaperAuthors = (paper: TimelinePaper) => {
+        // Mentor-linked authors become profile links; other authors remain plain text.
         const names = (paper.author_names || "").split(/[,，、]/).map((name) => name.trim()).filter(Boolean);
         const mentorIds = Array.isArray(paper.mentor_ids) ? paper.mentor_ids : [];
 
@@ -370,6 +376,7 @@ const TimelinePage = () => {
     const startInitialSkeletonPhase = () => {
         clearInitialSkeletonTimer();
         initialSkeletonStartedAtRef.current = Date.now();
+        // Direction/date switches use a dedicated feed skeleton rather than a spinner.
         setShowInitialSkeleton(true);
     };
 
@@ -425,6 +432,7 @@ const TimelinePage = () => {
     };
 
     const prepareFeedForReplace = (showSkeleton: boolean) => {
+        // Reset feed-local loading, scroll, and incremental-load state before replacing the active slice.
         clearInitialSkeletonTimer();
         inFlightRef.current = {
             replace: false,
@@ -457,6 +465,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // The first paper whose bottom edge is below the viewport top defines the visible lead date.
         const threshold = viewport.scrollTop + 8;
         for (const paper of currentPapers) {
             const paperElement = paperRefs.current[paper.id];
@@ -479,6 +488,7 @@ const TimelinePage = () => {
     );
 
     const applyFeedResponse = (response: TimelinePapersResponse, mode: TimelineLoadMode) => {
+        // Merge the fetched slice differently depending on replace / prepend / append mode.
         const normalizedLimit = Math.max(1, Number(response.limit) || DEFAULT_TIMELINE_LIMIT);
         const nextPapers = Array.isArray(response.papers) ? response.papers : [];
         const nextTotal = Number(response.total_papers) > 0 ? Number(response.total_papers) : 0;
@@ -500,6 +510,7 @@ const TimelinePage = () => {
             const uniqueIncoming = nextPapers.filter((paper) => !existingIds.has(paper.id));
             const mergedPapers = [...currentPapers, ...uniqueIncoming];
 
+            // Remember the first appended id so the layout effect can preserve visual position after insertion.
             pendingScrollAdjustmentRef.current = uniqueIncoming.length > 0 && pendingScrollAdjustmentRef.current?.type === "append-anchor"
                 ? {
                     ...pendingScrollAdjustmentRef.current,
@@ -538,6 +549,7 @@ const TimelinePage = () => {
         mode: TimelineLoadMode,
         generation: number,
     ) => {
+        // Only one feed request runs at a time to avoid duplicate prepend/append merges.
         if (hasAnyFeedLoadInFlight()) {
             return;
         }
@@ -554,6 +566,7 @@ const TimelinePage = () => {
                 direction,
                 ...queryParams,
             });
+            // The frontend uses one proxy endpoint and varies behavior through query parameters.
             const response = await request<TimelinePapersResponse>(`/api/timeline?${query}`, "GET", false);
 
             if (generation !== directionGenerationRef.current) {
@@ -596,6 +609,7 @@ const TimelinePage = () => {
             setErrorMessage("");
 
             try {
+                // First load the available directions and the backend's preferred default direction.
                 const res = await request<TimelineDirectionsResponse>("/api/timeline", "GET", false);
                 const nextDirections = Array.isArray(res.directions) ? res.directions : [];
 
@@ -652,6 +666,7 @@ const TimelinePage = () => {
 
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
+        // Every direction switch starts a new generation so stale async responses can be ignored safely.
         prepareFeedForReplace(true);
         setCalendarMeta(undefined);
         setDisplayedMonth(undefined);
@@ -660,6 +675,7 @@ const TimelinePage = () => {
 
         const fetchCalendarAndInitialFeed = async () => {
             try {
+                // Load the available calendar dates first, then fetch the initial paper slice for the chosen day.
                 const query = buildTimelineQueryString({
                     direction: activeDirection,
                     calendar: "1",
@@ -682,6 +698,7 @@ const TimelinePage = () => {
                     ? selectedDateRef.current
                     : (response.default_date || "");
 
+                // Preserve the previously selected date when it still exists under the new direction.
                 setSelectedDate(preservedDate);
                 selectedDateRef.current = preservedDate;
                 const monthSource = preservedDate || response.latest_date;
@@ -814,6 +831,7 @@ const TimelinePage = () => {
 
     const handleCalendarMonthChange = (deltaMonths: number) => {
         setIsCalendarPickerOpen(false);
+        // Manual month browsing temporarily overrides auto-sync with the lead visible date.
         setIsCalendarBrowsingManually(true);
         setDisplayedMonth(addCalendarMonths(currentCalendarMonth, deltaMonths));
     };
@@ -849,6 +867,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Open the picker snapped to the nearest selectable year/month for the currently displayed month.
         if (isCalendarPickerOpen) {
             setCalendarPickerActiveColumn(column);
             return;
@@ -923,6 +942,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Applying the picker changes the viewed month; day selection still happens in the calendar grid.
         setIsCalendarBrowsingManually(true);
         setDisplayedMonth(new Date(normalizedDraft.year, normalizedDraft.month - 1, 1, 12, 0, 0, 0));
         closeCalendarPicker();
@@ -995,6 +1015,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Keep the month view synchronized with the topmost visible paper date during normal scrolling.
         if (
             currentCalendarMonth.getFullYear() === nextLeadMonth.getFullYear()
             && currentCalendarMonth.getMonth() === nextLeadMonth.getMonth()
@@ -1106,6 +1127,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Prepending asks for newer papers than the current first visible card.
         void fetchTimelineSlice(activeDirectionRef.current, {
             after_date: firstPaper.publish_date,
             after_id: String(firstPaper.id),
@@ -1127,6 +1149,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Record the current bottom anchor so appended content does not visually jump too far.
         const anchorTop = paperRefs.current[lastPaper.id]?.offsetTop || 0;
         if (anchorTop > 0) {
             pendingScrollAdjustmentRef.current = {
@@ -1159,6 +1182,7 @@ const TimelinePage = () => {
 
         const firstPreviewTop = getFirstLoadMorePreviewTop();
         if (firstPreviewTop <= viewportBottom) {
+            // Crossing the preview sentinel triggers exactly one append until new content arrives.
             loadMoreThresholdConsumedRef.current = true;
             loadNextBatch();
         }
@@ -1187,6 +1211,7 @@ const TimelinePage = () => {
         const previousTop = lastFeedScrollTopRef.current;
 
         if (skipNextScrollEventRef.current) {
+            // Ignore the synthetic scroll event caused by our own scrollTop correction after merging data.
             skipNextScrollEventRef.current = false;
             lastFeedScrollTopRef.current = currentTop;
             updateLeadVisibleDate();
@@ -1203,6 +1228,7 @@ const TimelinePage = () => {
             resetTopOverscrollState();
         }
 
+        // A normal scroll may both reveal a new lead date and reach the load-more preview sentinel.
         maybeLoadNextFromViewport();
         updateLeadVisibleDate();
     };
@@ -1224,6 +1250,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Reaching the top and continuing to scroll upward accumulates toward a "load newer" gesture.
         topWheelPullDistanceRef.current += Math.abs(event.deltaY);
         if (topWheelPullDistanceRef.current >= TOP_OVERSCROLL_WHEEL_THRESHOLD) {
             triggerTopOverscrollLoad();
@@ -1260,6 +1287,7 @@ const TimelinePage = () => {
             return;
         }
 
+        // Mobile pull-down at the top mirrors the wheel-based overscroll behavior on desktop.
         topTouchPullDistanceRef.current = Math.max(topTouchPullDistanceRef.current, delta);
         if (topTouchPullDistanceRef.current >= TOP_OVERSCROLL_TOUCH_THRESHOLD) {
             triggerTopOverscrollLoad();
@@ -1279,6 +1307,7 @@ const TimelinePage = () => {
         }
 
         if (pendingAdjustment?.type === "prepend") {
+            // Offset scrollTop by the inserted card heights so prepending feels anchored to the same content.
             const addedHeight = pendingAdjustment.addedIds.reduce((sum, id) => (
                 sum + (paperRefs.current[id]?.offsetHeight || 0)
             ), 0);
@@ -1296,6 +1325,7 @@ const TimelinePage = () => {
             const targetElement = targetId !== undefined ? paperRefs.current[targetId] : undefined;
 
             if (targetElement !== undefined) {
+                // Append adjustments are intentionally tiny so the viewport feels continuous without a jump.
                 const delta = targetElement.offsetTop - pendingAdjustment.anchorTop;
                 const adjustedDelta = delta * APPEND_SCROLL_ADJUSTMENT_RATIO;
 
@@ -1328,6 +1358,7 @@ const TimelinePage = () => {
 
         directionGenerationRef.current += 1;
         const generation = directionGenerationRef.current;
+        // Picking a calendar day is treated like a full feed replacement scoped to that date.
         setSelectedDate(nextDate);
         selectedDateRef.current = nextDate;
         setDisplayedMonth(parseIsoDate(nextDate));

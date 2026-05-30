@@ -57,6 +57,7 @@ const PrivateMentorScreen = () => {
     };
 
     const formatPrivateMentorError = useCallback((err: unknown) => {
+        // Map backend validation details into messages suitable for end users.
         if (isNetworkErrorInstance(err)) {
             const rawMsg = String(err);
 
@@ -90,6 +91,7 @@ const PrivateMentorScreen = () => {
         try {
             const res = await request<PrivateMentorsResponse>("/api/dataset/mentors/mine", "GET", true);
             const mentorList = Array.isArray(res.mentors) ? res.mentors : [];
+            // Only keep records with a normalized paper_ids array so the list renderer can stay simple.
             setPrivateMentors(mentorList.filter((mentor) => Array.isArray(mentor.paper_ids)));
             setPrivateMentorMessage("");
         }
@@ -108,6 +110,7 @@ const PrivateMentorScreen = () => {
     const displayedPrivateMentors = useMemo(() => {
         const keyword = privateMentorFilter.trim().toLowerCase();
 
+        // Apply keyword filtering, category filtering, then a client-side sort to the user's private mentor list.
         const filtered = privateMentors.filter((mentor) => {
             const matchKeyword = keyword === "" ||
                 mentor.Chinese_name.toLowerCase().includes(keyword) ||
@@ -173,6 +176,7 @@ const PrivateMentorScreen = () => {
             return;
         }
 
+        // Creating a private mentor uses the custom mentor endpoint and refreshes the list after success.
         setPrivateMentorSaving(true);
         setPrivateMentorMessage("");
 
@@ -204,6 +208,7 @@ const PrivateMentorScreen = () => {
     };
 
     const openEditDialog = (mentor: PrivateMentorResult) => {
+        // Seed the dialog with the current mentor snapshot so edits feel like inline modification.
         setEditDialogTarget(mentor);
         setEditDialogDraft({
             Chinese_name: mentor.Chinese_name || "",
@@ -237,6 +242,7 @@ const PrivateMentorScreen = () => {
             return;
         }
 
+        // Update the selected private mentor and then refresh the canonical list from the server.
         setEditDialogSubmitting(true);
         setPrivateMentorMessage("");
 
@@ -277,6 +283,7 @@ const PrivateMentorScreen = () => {
             return;
         }
 
+        // The confirm dialog holds the deleting id so buttons elsewhere stay disabled until the request settles.
         setDeleteDialogSubmitting(true);
         setPrivateMentorDeletingId(deleteDialogTarget.id);
         setPrivateMentorMessage("");
@@ -559,6 +566,7 @@ const PrivateMentorScreen = () => {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid #ccc", borderRadius: 6, padding: 12 }}>
+                {/* Filters and sort options operate entirely on the local private mentor list. */}
                 <input
                     type="text"
                     placeholder="筛选我的私有导师（姓名/方向）"
@@ -699,6 +707,7 @@ const PrivateMentorScreen = () => {
                                 <p style={{ margin: "4px 0" }}>邮箱：{mentor.email || "暂无邮箱"}</p>
                                 <p style={{ margin: "4px 0" }}>导师画像：{mentor.profile || "暂无导师画像"}</p>
                                 <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                    {/* Edit and delete both route through modal dialogs to avoid accidental destructive actions. */}
                                     <button
                                         onClick={() => openEditDialog(mentor)}
                                         disabled={privateMentorSaving || privateMentorLoading || privateMentorDeletingId !== undefined}

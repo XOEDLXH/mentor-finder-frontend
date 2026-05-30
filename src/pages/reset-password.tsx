@@ -20,6 +20,7 @@ import {
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
 
+// Password reset shares the same defensive response parsing strategy as registration.
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
         const rawText = await response.text();
@@ -88,6 +89,7 @@ const ResetPasswordScreen = () => {
 
     useEffect(() => {
         return () => {
+            // Stop the resend countdown when leaving the page.
             if (resendCooldownTimerRef.current !== undefined) {
                 window.clearInterval(resendCooldownTimerRef.current);
             }
@@ -95,6 +97,7 @@ const ResetPasswordScreen = () => {
     }, []);
 
     const startResendCooldown = (seconds: number) => {
+        // Reinitialize the cooldown interval each time a new verification code is sent.
         if (resendCooldownTimerRef.current !== undefined) {
             window.clearInterval(resendCooldownTimerRef.current);
         }
@@ -159,6 +162,7 @@ const ResetPasswordScreen = () => {
         }
 
         setSendingCode(true);
+        // Request a reset code before the password form is submitted, mirroring the registration flow.
         fetch("/api/password-reset/verification-code", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -168,6 +172,7 @@ const ResetPasswordScreen = () => {
             .then((res) => {
                 const code = Number(res.code);
                 if (code === 0) {
+                    // Track the email tied to the current code so the UI can clear stale success messages.
                     const cooldownSeconds = typeof res.cooldownSeconds === "number"
                         ? res.cooldownSeconds
                         : DEFAULT_RESEND_COOLDOWN_SECONDS;
@@ -225,6 +230,7 @@ const ResetPasswordScreen = () => {
         }
 
         setSubmitting(true);
+        // Only submit once all local validity checks pass, then let the backend verify the code.
         fetch("/api/password-reset", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -238,6 +244,7 @@ const ResetPasswordScreen = () => {
             .then((res) => {
                 const code = Number(res.code);
                 if (code === 0) {
+                    // Clear sensitive inputs and redirect back to login shortly after a successful reset.
                     setResetStatusMessage(RESET_PASSWORD_SUCCESS);
                     setVerificationCode("");
                     setPassword("");

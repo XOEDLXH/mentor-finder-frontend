@@ -91,6 +91,7 @@ const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSPropertie
 });
 
 const formatViewSwitchCount = (value: number) => {
+    // Compact larger counts so the segmented controls stay readable on narrower screens.
     const safeValue = Math.max(0, Math.floor(value));
 
     if (safeValue < 1000) {
@@ -148,6 +149,7 @@ const FollowsPage = () => {
     });
 
     const setSectionLoading = useCallback((section: FollowSkeletonSection, loading: boolean) => {
+        // Route a generic section key to the matching loading flag.
         if (section === "mentor") {
             setMentorLoading(loading);
             return;
@@ -174,6 +176,7 @@ const FollowsPage = () => {
     const startSkeletonPhase = useCallback((section: FollowSkeletonSection) => {
         clearSkeletonTimer(section);
         skeletonStartedAtRef.current[section] = Date.now();
+        // Each section enforces its own minimum skeleton duration to avoid flash-of-loaded-content.
         setSectionLoading(section, true);
     }, [clearSkeletonTimer, setSectionLoading]);
 
@@ -199,6 +202,7 @@ const FollowsPage = () => {
     }, [clearSkeletonTimer]);
 
     const resetFollowData = useCallback(() => {
+        // Clear every tab's cached data when auth disappears or the page needs a full reset.
         setMentors([]);
         setUsers([]);
         setFollowers([]);
@@ -221,6 +225,7 @@ const FollowsPage = () => {
 
         try {
             const mentorRes = await request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true);
+            // Store followed=true directly on mentor cards so the shared toggle button can render from local state.
             setMentors(
                 Array.isArray(mentorRes.mentors)
                     ? mentorRes.mentors.map((mentor) => ({
@@ -353,6 +358,7 @@ const FollowsPage = () => {
             const updateUser = (item: FollowUserResult) => (
                 item.id === targetUserId ? { ...item, followed } : item
             );
+            // Reflect follow changes across the followed list, follower list, and search results simultaneously.
             setUsers((currentUsers) => {
                 const updatedUsers = currentUsers.map(updateUser);
                 if (updatedUsers.some((item) => item.id === targetUserId)) {
@@ -388,6 +394,7 @@ const FollowsPage = () => {
             )));
 
             if (nextFollowed && typeof res.subject === "object" && Boolean(res.subject)) {
+                // Insert a newly followed subject immediately when the backend returns its summary payload.
                 setSubjects((currentSubjects) => {
                     if (currentSubjects.some((item) => item.subject === targetSubject)) {
                         return currentSubjects;
@@ -444,6 +451,7 @@ const FollowsPage = () => {
     };
 
     const buildPaperPdfUrl = (arxivUrl?: string) => {
+        // Mirror the search/timeline behavior by deriving the PDF link from the arXiv abstract URL.
         if (typeof arxivUrl !== "string" || arxivUrl.trim() === "" || !arxivUrl.includes("/abs/")) {
             return "";
         }
@@ -465,6 +473,7 @@ const FollowsPage = () => {
     };
 
     const navigateToSubjectSearch = (subjectCode: string) => {
+        // Reuse the search page for exact subject-code paper search from the follows dashboard.
         const url = buildSearchUrl({
             keyword: subjectCode,
             mode: "paper",
@@ -506,6 +515,7 @@ const FollowsPage = () => {
                 </div>
             </div>
             <div className="userFollowButtonShell" onClick={(event) => event.stopPropagation()}>
+                {/* Prevent follow clicks from also triggering navigation into the user profile. */}
                 <FollowToggleButton
                     className="followToggleButton"
                     followed={user.followed}
@@ -592,6 +602,7 @@ const FollowsPage = () => {
 
     const handleViewChange = (nextView: FollowView) => {
         setActiveView(nextView);
+        // Followers are loaded lazily because many sessions never leave the default "following" tab.
         if (nextView === "followers" && !hasLoadedFollowers && !followerLoading) {
             void fetchFollowers();
         }
@@ -599,6 +610,7 @@ const FollowsPage = () => {
 
     const handleCategoryChange = (nextCategory: FollowCategory) => {
         setActiveCategory(nextCategory);
+        // User and subject tabs are also lazy-loaded to keep the initial mentor view responsive.
         if (nextCategory === "user" && !hasLoadedUsers && !userLoading) {
             void fetchUsers();
         }
@@ -616,6 +628,7 @@ const FollowsPage = () => {
     );
     const filteredAvailableSubjects = useMemo(() => {
         const keyword = subjectSearchKeyword.trim().toLowerCase();
+        // Hide subjects that are already followed from the discovery chip list.
         return availableSubjects.filter((subject) => {
             if (subject.followed || followedSubjectSet.has(subject.subject)) {
                 return false;
@@ -642,6 +655,7 @@ const FollowsPage = () => {
     );
 
     useEffect(() => {
+        // The page opens by loading followed mentors first.
         void fetchMentors();
     }, [fetchMentors]);
 

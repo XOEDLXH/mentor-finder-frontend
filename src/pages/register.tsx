@@ -21,12 +21,14 @@ import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { buildRedirectHref } from "../utils/authRedirect";
 
+// Registration validates usernames locally before asking the backend to avoid unnecessary requests.
 const USERNAME_REGEX = /^[\w-]+$/;
 const EMAIL_REGEX = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const FEATURE_LIST_CLOSE_ANIMATION_MS = 500;
 const USERNAME_DUPLICATE_ERROR = "duplicate";
 const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
 
+// The registration APIs do not always guarantee strict JSON payloads, so parse responses defensively.
 const parseJsonSafely = async (response: Response) => {
     if (typeof response.text === "function") {
         const rawText = await response.text();
@@ -105,6 +107,7 @@ const RegisterScreen = () => {
 
     useEffect(() => {
         return () => {
+            // Clear pending timers so the accordion animation and resend countdown do not leak across unmounts.
             if (featureListCloseTimerRef.current !== undefined) {
                 window.clearTimeout(featureListCloseTimerRef.current);
             }
@@ -115,6 +118,7 @@ const RegisterScreen = () => {
     }, []);
 
     const startResendCooldown = (seconds: number) => {
+        // Reuse a single interval to drive the resend button countdown.
         if (resendCooldownTimerRef.current !== undefined) {
             window.clearInterval(resendCooldownTimerRef.current);
         }
@@ -134,6 +138,7 @@ const RegisterScreen = () => {
     };
 
     const featureItems = [
+        // The left-hand marketing panel summarizes the major product capabilities during sign-up.
         {
             title: "Discover mentors by research interests",
             description: "Search mentors and papers together to quickly narrow down the right academic fit.",
@@ -157,6 +162,7 @@ const RegisterScreen = () => {
     ];
 
     const isPasswordStrong = (passwordToCheck: string) => {
+        // Match the backend rule: password must contain both letters and numbers and be at least 8 chars.
         if (passwordToCheck.length < 8) {
             return false;
         }
@@ -229,6 +235,7 @@ const RegisterScreen = () => {
         }
 
         setSendingCode(true);
+        // Request the verification code separately so the user can finish the rest of the form at their own pace.
         fetch("/api/register/verification-code", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -238,6 +245,7 @@ const RegisterScreen = () => {
             .then((res) => {
                 const code = Number(res.code);
                 if (code === 0) {
+                    // Store which email the current code belongs to so stale messages disappear when the email changes.
                     const cooldownSeconds = typeof res.cooldownSeconds === "number"
                         ? res.cooldownSeconds
                         : DEFAULT_RESEND_COOLDOWN_SECONDS;
@@ -303,6 +311,7 @@ const RegisterScreen = () => {
         }
 
         setSubmitting(true);
+        // Submit only after local validation passes so the backend mainly handles uniqueness and code verification.
         fetch("/api/register", {
             method: "POST",
             headers: {
@@ -318,6 +327,7 @@ const RegisterScreen = () => {
             .then((res) => parseJsonSafely(res))
             .then((res) => {
                 if (Number(res.code) === 0 && typeof res.token === "string") {
+                    // Registration logs the user in immediately and seeds the global auth store.
                     dispatch(setToken(res.token));
                     dispatch(setRole(typeof res.role === "string" ? res.role : "student"));
                     dispatch(setUserId(typeof res.userId === "number" ? res.userId : undefined));
@@ -349,6 +359,7 @@ const RegisterScreen = () => {
             featureListCloseTimerRef.current = undefined;
         }
 
+        // Keep the closing animation visible briefly instead of snapping the details block shut immediately.
         if (featureListClosing) {
             setFeatureListClosing(false);
             setFeatureListOpen(true);
@@ -450,6 +461,7 @@ const RegisterScreen = () => {
                         className="registerAuthTopLinkAnchor"
                         onClick={(event) => {
                             event.preventDefault();
+                            // Mirror the login page by preserving redirect intent when switching auth pages.
                             void router.push(buildRedirectHref("/login", router.query.redirect));
                         }}
                     >

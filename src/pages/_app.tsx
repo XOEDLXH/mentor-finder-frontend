@@ -14,9 +14,11 @@ import store from "../redux/store";
 const App = ({ Component, pageProps }: AppProps) => {
     const dispatch = useDispatch();
     const router = useRouter();
+    // Auth pages use a simplified shell without the global navigation bar.
     const isAuthPage = router.pathname === "/login" || router.pathname === "/register" || router.pathname === "/reset-password";
 
     useEffect(() => {
+        // Rehydrate auth state from local storage once at app startup so page refreshes preserve login.
         dispatch(hydrateAuth(loadAuthFromStorage()));
     }, [dispatch]);
 
@@ -36,6 +38,7 @@ const App = ({ Component, pageProps }: AppProps) => {
 };
 
 export default function AppWrapper(props: AppProps) {
+    // Provide the Redux store to every page through the custom Next.js app entry point.
     return (
         <Provider store={store}>
             <App {...props} />
