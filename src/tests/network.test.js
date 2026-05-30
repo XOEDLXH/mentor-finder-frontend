@@ -4,6 +4,9 @@ import { resetAuth } from "../redux/auth";
 const mockGetState = jest.fn();
 const mockDispatch = jest.fn();
 
+// Mock the Redux store used internally by the network helper.
+// These tests need to control the current auth token and verify whether the
+// request layer dispatches resetAuth() when authorization expires.
 jest.mock("../redux/store", () => ({
     __esModule: true,
     default: {
@@ -12,7 +15,12 @@ jest.mock("../redux/store", () => ({
     },
 }));
 
+// Small helper to access the fetch mock installed in beforeEach.
 const getFetchMock = () => globalThis.fetch;
+
+// Builds a minimal fetch-like response object for JSON responses.
+// This lets the tests focus on request-layer behavior instead of repeating the
+// same response-shape boilerplate in every case.
 const createJsonResponse = (status, payload) => ({
     status,
     headers: {
@@ -23,6 +31,8 @@ const createJsonResponse = (status, payload) => ({
 
 describe("request", () => {
     beforeEach(() => {
+        // Reset store spies and install a default unauthenticated auth state
+        // plus a fresh fetch mock before each request-layer test.
         mockGetState.mockReset();
         mockDispatch.mockReset();
         mockGetState.mockReturnValue({
@@ -36,6 +46,9 @@ describe("request", () => {
     });
 
     it("adds auth and content-type headers for authenticated POST request", async () => {
+        // Tests the request-construction module for authenticated JSON writes.
+        // A protected POST request should serialize the body, attach the JSON
+        // content-type header, and include the bearer token from Redux state.
         mockGetState.mockReturnValue({
             auth: {
                 token: "token-1",
@@ -64,6 +77,9 @@ describe("request", () => {
     });
 
     it("does not add authorization header when token is empty", async () => {
+        // Tests the auth-header guard.
+        // Even when the caller marks a request as authenticated, the helper
+        // should not send an Authorization header if no token is available.
         getFetchMock().mockResolvedValue({
             ...createJsonResponse(200, { code: 0, data: "ok" }),
         });
@@ -77,6 +93,12 @@ describe("request", () => {
     });
 
     it("throws unauthorized network error for 401 + code=2", async () => {
+        // Tests the expired-auth handling module.
+        // When a protected request returns the backend's unauthorized pattern
+        // (HTTP 401 with code=2), the helper should:
+        // 1. throw a NetworkError of type UNAUTHORIZED;
+        // 2. preserve a stable error message;
+        // 3. dispatch resetAuth() to clear the stale login state.
         mockGetState.mockReturnValue({
             auth: {
                 token: "expired-token",
@@ -100,6 +122,9 @@ describe("request", () => {
     });
 
     it("does not reset auth for public requests that return 401 + code=2", async () => {
+        // Tests the distinction between protected and public requests.
+        // A public endpoint such as login may also return 401 + code=2, but in
+        // that case the request layer must not wipe the current auth state.
         getFetchMock().mockResolvedValue({
             ...createJsonResponse(401, { code: 2, info: "bad credentials" }),
         });
@@ -113,6 +138,10 @@ describe("request", () => {
     });
 
     it("throws corrupted response for 200 + non-zero code", async () => {
+        // Tests backend-contract validation.
+        // If the HTTP request succeeds but the JSON payload reports a non-zero
+        // application code, the helper should treat the response as corrupted
+        // and surface a structured CORRUPTED_RESPONSE error.
         getFetchMock().mockResolvedValue({
             ...createJsonResponse(200, { code: 9, info: "bad payload" }),
         });
@@ -124,6 +153,9 @@ describe("request", () => {
     });
 
     it("throws stable error for empty response body instead of crashing on json parse", async () => {
+        // Tests resilience against empty non-JSON error responses.
+        // Instead of crashing while parsing, the helper should convert an empty
+        // body into a stable UNKNOWN_ERROR with an explicit message.
         getFetchMock().mockResolvedValue({
             status: 502,
             headers: {
@@ -139,6 +171,9 @@ describe("request", () => {
     });
 
     it("throws stable error for non-json response body", async () => {
+        // Tests resilience against plain-text or HTML backend failures.
+        // If the response body is not JSON, the helper should surface that raw
+        // body text through a stable UNKNOWN_ERROR message.
         getFetchMock().mockResolvedValue({
             status: 502,
             headers: {

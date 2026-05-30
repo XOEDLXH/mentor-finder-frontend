@@ -22,16 +22,23 @@ import RegisterScreen from "../pages/register";
 import ResetPasswordScreen from "../pages/reset-password";
 import authReducer, { resetAuth, setName, setRole, setToken } from "../redux/auth";
 
+// Mock Next.js routing so the tests can inspect navigation decisions without
+// relying on the real browser/router runtime.
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock Redux dispatch so UI tests can verify which auth actions are emitted
+// after login/register flows complete.
 jest.mock("react-redux", () => ({
     useDispatch: jest.fn(),
 }));
 
 describe("auth reducer", () => {
     it("returns initial state for unknown action", () => {
+        // Tests the reducer default-state module.
+        // When an unrelated action is received, the reducer should return the
+        // stable initial auth state instead of mutating anything unexpectedly.
         const state = authReducer(undefined, { type: "unknown/action" });
 
         expect(state).toEqual({
@@ -44,6 +51,9 @@ describe("auth reducer", () => {
     });
 
     it("sets token and user name", () => {
+        // Tests the reducer update module for successful authentication.
+        // This verifies that individual auth actions correctly write token,
+        // username, and role into the Redux auth slice.
         let state = authReducer(undefined, { type: "unknown/action" });
 
         state = authReducer(state, setToken("jwt-token"));
@@ -60,6 +70,9 @@ describe("auth reducer", () => {
     });
 
     it("resets auth state", () => {
+        // Tests the reducer reset module.
+        // After logout or auth cleanup, all persisted auth fields should be
+        // restored to their empty initial values.
         const stateWithAuth = {
             token: "jwt-token",
             name: "alice",
@@ -89,6 +102,8 @@ describe("LoginScreen", () => {
     };
 
     beforeEach(() => {
+        // Reset router/dispatch mocks and install a fresh fetch mock before
+        // every login test so each case runs with isolated state.
         mockPush.mockReset();
         mockDispatch.mockReset();
         mockRouter.query = {};
@@ -105,6 +120,9 @@ describe("LoginScreen", () => {
     });
 
     it("dispatches auth info and navigates home when login succeeds", async () => {
+        // Tests the main successful login module:
+        // the page should submit credentials, store returned auth data in
+        // Redux, and redirect the user to the default landing page.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", username: "alice", role: "admin" }),
         });
@@ -140,6 +158,9 @@ describe("LoginScreen", () => {
     });
 
     it("uses returned username as display name when login is submitted with email", async () => {
+        // Tests the login identity normalization module.
+        // Even if the user signs in with an email address, the UI should use
+        // the backend-returned username as the stored display name.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", username: "alice", role: "student" }),
         });
@@ -156,6 +177,9 @@ describe("LoginScreen", () => {
     });
 
     it("submits login form when the form is submitted", async () => {
+        // Tests form submission wiring.
+        // The login flow should work not only through button click, but also
+        // through native form submission semantics.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "jwt-token", role: "student" }),
         });
@@ -181,6 +205,9 @@ describe("LoginScreen", () => {
     });
 
     it("keeps sign in enabled and focuses username when both fields are empty", () => {
+        // Tests client-side required-field guidance for login.
+        // If both fields are empty, the page should not submit and should move
+        // focus to the username/email input to guide the user.
         render(<LoginScreen />);
 
         const userNameInput = screen.getByPlaceholderText("Username or email address");
@@ -194,6 +221,9 @@ describe("LoginScreen", () => {
     });
 
     it("focuses password when username is filled but password is missing", () => {
+        // Tests the second validation step in the login form.
+        // Once the username is present, the next missing required field should
+        // receive focus instead of allowing a network request.
         render(<LoginScreen />);
 
         const userNameInput = screen.getByPlaceholderText("Username or email address");
@@ -207,6 +237,9 @@ describe("LoginScreen", () => {
     });
 
     it("redirects to the requested relative path after successful login", async () => {
+        // Tests safe post-login redirect handling.
+        // If a relative redirect target is present in the query string, the
+        // page should send the user there after authentication succeeds.
         mockRouter.query = {
             redirect: "/profile",
         };
@@ -226,6 +259,9 @@ describe("LoginScreen", () => {
     });
 
     it("falls back to home after successful login when redirect is unsafe", async () => {
+        // Tests redirect sanitization.
+        // Unsafe redirect targets such as absolute external URLs must be
+        // ignored to prevent open-redirect behavior.
         mockRouter.query = {
             redirect: "https://evil.example.com",
         };
@@ -245,6 +281,9 @@ describe("LoginScreen", () => {
     });
 
     it("shows failure message and stays on page when login fails", async () => {
+        // Tests the generic login failure module.
+        // A failed backend response should render a stable error message and
+        // must not navigate away from the login screen.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 1 }),
         });
@@ -263,6 +302,9 @@ describe("LoginScreen", () => {
     });
 
     it("shows stable failure message when login is rejected for banned user", async () => {
+        // Tests error normalization for a specific backend rejection reason.
+        // Even if the backend exposes a banned-user detail, the UI should show
+        // the stable login failure message rather than leaking backend wording.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 3, info: "User is banned" }),
         });
@@ -281,6 +323,9 @@ describe("LoginScreen", () => {
     });
 
     it("does not crash when login response body is empty", async () => {
+        // Tests resilience against malformed empty responses.
+        // If the backend returns an empty body, the page should still fail
+        // gracefully instead of throwing or partially updating auth state.
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue(""),
         });
@@ -300,6 +345,9 @@ describe("LoginScreen", () => {
     });
 
     it("shows stable failure message when login response is non-json text", async () => {
+        // Tests resilience against non-JSON login responses.
+        // HTML or gateway text should be treated as a failure case with the
+        // same stable user-facing error message.
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue("<html>502 Bad Gateway</html>"),
         });
@@ -319,6 +367,10 @@ describe("LoginScreen", () => {
     });
 
     it("renders the MentorFinder login shell and placeholder actions", () => {
+        // Tests the static login page shell.
+        // This verifies that the intended branding, CTA layout, and supported
+        // entry points are present, while unsupported placeholder actions stay
+        // hidden from the current product UI.
         render(<LoginScreen />);
 
         expect(screen.getByRole("heading", { name: "Sign in to MentorFinder" })).toBeInTheDocument();
@@ -332,6 +384,8 @@ describe("LoginScreen", () => {
     });
 
     it("navigates to register page when clicking account creation link", () => {
+        // Tests the login-to-register navigation module.
+        // Users without an account should be able to move to the signup page.
         render(<LoginScreen />);
 
         fireEvent.click(screen.getByRole("link", { name: "Create an account" }));
@@ -340,6 +394,7 @@ describe("LoginScreen", () => {
     });
 
     it("navigates to home page when clicking the login logo", () => {
+        // Tests logo-based navigation from the login screen back to home.
         render(<LoginScreen />);
 
         fireEvent.click(screen.getByRole("button", { name: "Go to home page" }));
@@ -348,6 +403,9 @@ describe("LoginScreen", () => {
     });
 
     it("preserves redirect when navigating from login to register", () => {
+        // Tests redirect propagation between auth pages.
+        // If login was opened with a redirect target, that target should be
+        // preserved when the user chooses to register instead.
         mockRouter.query = {
             redirect: "/follows",
         };
@@ -360,6 +418,7 @@ describe("LoginScreen", () => {
     });
 
     it("navigates to reset-password page when clicking forgot password", () => {
+        // Tests entry into the password recovery module from the login page.
         render(<LoginScreen />);
 
         fireEvent.click(screen.getByRole("link", { name: "Forgot password?" }));
@@ -377,6 +436,8 @@ describe("ResetPasswordScreen", () => {
     };
 
     beforeEach(() => {
+        // Reset navigation, dispatch, and fetch mocks for the password-reset
+        // suite so each case observes only its own interactions.
         mockPush.mockReset();
         mockDispatch.mockReset();
         mockRouter.query = {};
@@ -393,6 +454,9 @@ describe("ResetPasswordScreen", () => {
     });
 
     it("requests a password reset verification code for an existing email", async () => {
+        // Tests the password-reset code request module.
+        // The page should call the verification-code endpoint with the email
+        // and show the success message when the backend accepts the request.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, cooldownSeconds: 60 }),
         });
@@ -413,6 +477,9 @@ describe("ResetPasswordScreen", () => {
     });
 
     it("resets password with email code and returns to login", async () => {
+        // Tests the full password reset completion workflow:
+        // submit email + verification code + new password, show the success
+        // message, then redirect back to login after the short delay.
         jest.useFakeTimers();
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0 }),
@@ -446,6 +513,9 @@ describe("ResetPasswordScreen", () => {
     });
 
     it("shows email-not-found message when reset code request is rejected", async () => {
+        // Tests the rejected reset-code request module.
+        // If the backend reports that the email does not exist, the page
+        // should show the dedicated "email not found" error message.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 2 }),
         });
@@ -468,6 +538,8 @@ describe("RegisterScreen", () => {
     };
 
     beforeEach(() => {
+        // Reset navigation, dispatch, fetch, and alert spies before each
+        // register test to keep the signup scenarios isolated.
         mockPush.mockReset();
         mockDispatch.mockReset();
         mockRouter.query = {};
@@ -484,6 +556,9 @@ describe("RegisterScreen", () => {
     });
 
     it("keeps create account enabled and focuses email when the form is empty", () => {
+        // Tests the first required-field validation step in signup.
+        // With a fully empty form, submission should be blocked and focus
+        // should move to the email field.
         render(<RegisterScreen />);
 
         const emailInput = screen.getByPlaceholderText("Email");
@@ -497,6 +572,9 @@ describe("RegisterScreen", () => {
     });
 
     it("focuses password when email is filled but password is missing", () => {
+        // Tests progressive validation in the register form.
+        // Once email is present, the next required missing field should take
+        // focus before any backend request is sent.
         render(<RegisterScreen />);
 
         const emailInput = screen.getByPlaceholderText("Email");
@@ -510,6 +588,9 @@ describe("RegisterScreen", () => {
     });
 
     it("focuses confirm password when password is filled but confirmation is missing", () => {
+        // Tests confirmation-field guidance.
+        // If the password exists but confirmation is missing, focus should move
+        // to the confirmation input to complete the pair.
         render(<RegisterScreen />);
 
         fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
@@ -521,6 +602,9 @@ describe("RegisterScreen", () => {
     });
 
     it("focuses username when other fields are valid but username is missing", () => {
+        // Tests late-stage required-field validation in signup.
+        // After email and passwords are valid, the form should still block
+        // submission until the username field is completed.
         render(<RegisterScreen />);
 
         fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "alice@example.com" } });
@@ -533,6 +617,9 @@ describe("RegisterScreen", () => {
     });
 
     it("shows weak-password hint after password input is blurred", () => {
+        // Tests password-strength hint rendering.
+        // The weak-password message should appear after the field has been
+        // interacted with and blurred, not immediately on each keystroke.
         render(<RegisterScreen />);
 
         const passwordInput = screen.getByPlaceholderText("Password");
@@ -546,6 +633,9 @@ describe("RegisterScreen", () => {
     });
 
     it("prioritizes mismatch hint over weak-password hint", () => {
+        // Tests validation message priority.
+        // When both "weak password" and "password mismatch" could apply, the
+        // mismatch message should take precedence because it blocks correction.
         render(<RegisterScreen />);
 
         const passwordInput = screen.getByPlaceholderText("Password");
@@ -562,6 +652,7 @@ describe("RegisterScreen", () => {
     });
 
     it("shows invalid-email hint after email input is blurred", () => {
+        // Tests client-side email format validation in signup.
         render(<RegisterScreen />);
 
         const emailInput = screen.getByPlaceholderText("Email");
@@ -573,6 +664,7 @@ describe("RegisterScreen", () => {
     });
 
     it("shows invalid-username hint after username input is blurred", () => {
+        // Tests client-side username format validation in signup.
         render(<RegisterScreen />);
 
         const usernameInput = screen.getByPlaceholderText("Username");
@@ -584,6 +676,9 @@ describe("RegisterScreen", () => {
     });
 
     it("dispatches auth info and navigates home when register succeeds", async () => {
+        // Tests the main successful registration module:
+        // submit all required signup data, trim the username, persist returned
+        // auth info to Redux, and redirect to the home page.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
         });
@@ -625,6 +720,9 @@ describe("RegisterScreen", () => {
     });
 
     it("submits register form when the form is submitted", async () => {
+        // Tests native form submission wiring for signup.
+        // The register request should be triggered through the form submit
+        // event, not only through clicking the button.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
         });
@@ -655,6 +753,9 @@ describe("RegisterScreen", () => {
     });
 
     it("still navigates home after successful register when redirect is present", async () => {
+        // Tests the post-register navigation policy.
+        // Unlike login, registration currently ignores redirect targets and
+        // still returns the user to the home page after success.
         mockRouter.query = {
             redirect: "/follows",
         };
@@ -677,6 +778,8 @@ describe("RegisterScreen", () => {
     });
 
     it("falls back to home after successful register when redirect is unsafe", async () => {
+        // Tests the same safe navigation policy under an explicitly unsafe
+        // redirect value, confirming that signup still ends at home.
         mockRouter.query = {
             redirect: "//evil.example.com",
         };
@@ -699,6 +802,9 @@ describe("RegisterScreen", () => {
     });
 
     it("does not crash when register response body is empty", async () => {
+        // Tests resilience against empty backend responses during signup.
+        // The page should show a stable register failure message instead of
+        // navigating or dispatching partial auth state.
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue(""),
         });
@@ -721,6 +827,7 @@ describe("RegisterScreen", () => {
     });
 
     it("shows stable message when register response is non-json text", async () => {
+        // Tests resilience against malformed non-JSON register responses.
         globalThis.fetch.mockResolvedValue({
             text: jest.fn().mockResolvedValue("<html>502 Bad Gateway</html>"),
         });
@@ -743,6 +850,9 @@ describe("RegisterScreen", () => {
     });
 
     it("shows a clear message when register username is already used", async () => {
+        // Tests backend-to-UI mapping for duplicate username errors.
+        // A backend duplicate-username code should become the specific
+        // user-facing "username already taken" message.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 3, info: "User already exists" }),
         });
@@ -766,6 +876,7 @@ describe("RegisterScreen", () => {
     });
 
     it("shows a clear message when register email is already used", async () => {
+        // Tests backend-to-UI mapping for duplicate email errors.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 4, info: "Email already exists" }),
         });
@@ -789,6 +900,9 @@ describe("RegisterScreen", () => {
     });
 
     it("replaces invalid-username hint with duplicate-username hint when duplicate is triggered later", async () => {
+        // Tests validation state replacement.
+        // A local "invalid username" hint should be replaced by the backend
+        // duplicate-username error once the input becomes valid and submit runs.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 3, info: "User already exists" }),
         });
@@ -814,6 +928,9 @@ describe("RegisterScreen", () => {
     });
 
     it("clears duplicate-username hint when username changes", async () => {
+        // Tests stale-error cleanup for signup.
+        // After a duplicate-username error is shown, editing the username
+        // should clear that error so the UI reflects the new input state.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 3, info: "User already exists" }),
         });
@@ -838,6 +955,9 @@ describe("RegisterScreen", () => {
     });
 
     it("renders the MentorFinder signup shell and marketing content", () => {
+        // Tests the static signup page shell and marketing module.
+        // This verifies the expected branding/content blocks and confirms that
+        // unsupported external-auth or unrelated profile controls are absent.
         render(<RegisterScreen />);
 
         expect(screen.getByRole("heading", { name: "Sign up for MentorFinder" })).toBeInTheDocument();
@@ -853,6 +973,9 @@ describe("RegisterScreen", () => {
     });
 
     it("toggles the marketing feature list", () => {
+        // Tests the expandable marketing-details module.
+        // The feature list should appear when expanded, remain during the close
+        // animation window, and disappear after the collapse timer completes.
         jest.useFakeTimers();
         try {
             render(<RegisterScreen />);
@@ -881,6 +1004,7 @@ describe("RegisterScreen", () => {
     });
 
     it("navigates to login page when clicking sign-in link", () => {
+        // Tests signup-to-login navigation for existing users.
         render(<RegisterScreen />);
 
         fireEvent.click(screen.getByRole("link", { name: "Sign in →" }));
@@ -889,6 +1013,7 @@ describe("RegisterScreen", () => {
     });
 
     it("navigates to home page when clicking the signup logo", () => {
+        // Tests logo-based navigation from the signup page back to home.
         render(<RegisterScreen />);
 
         fireEvent.click(screen.getByRole("button", { name: "Go to home page" }));
@@ -897,6 +1022,7 @@ describe("RegisterScreen", () => {
     });
 
     it("preserves redirect when navigating from register to login", () => {
+        // Tests redirect propagation when switching from register to login.
         mockRouter.query = {
             redirect: "/profile",
         };
@@ -909,6 +1035,8 @@ describe("RegisterScreen", () => {
     });
 
     it("renders the verification code field and send-code button", () => {
+        // Tests that the email-verification module is present in the register
+        // form: both the code input and the send-code action must be rendered.
         render(<RegisterScreen />);
 
         expect(screen.getByPlaceholderText("Enter the 6-digit code")).toBeInTheDocument();
@@ -916,12 +1044,17 @@ describe("RegisterScreen", () => {
     });
 
     it("disables send-code button when email is empty", () => {
+        // Tests the precondition guard for requesting a verification code.
+        // The send-code action must stay disabled until an email is provided.
         render(<RegisterScreen />);
 
         expect(screen.getByRole("button", { name: "Send verification code" })).toBeDisabled();
     });
 
     it("requests verification code from backend when send-code button is clicked", async () => {
+        // Tests the signup verification-code request module.
+        // Clicking the send-code button should call the backend with the email
+        // and then show the "code sent" confirmation message.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, cooldownSeconds: 60 }),
         });
@@ -945,6 +1078,9 @@ describe("RegisterScreen", () => {
     });
 
     it("blocks registration when verification code is missing", async () => {
+        // Tests the register pre-submit gate for email verification.
+        // Even if the main form fields are valid, signup must not proceed until
+        // the verification code field is filled.
         render(<RegisterScreen />);
 
         fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "newuser@example.com" } });
@@ -958,6 +1094,8 @@ describe("RegisterScreen", () => {
     });
 
     it("shows code-invalid error when backend returns code 5 from register", async () => {
+        // Tests backend-to-UI mapping for invalid or expired verification code
+        // errors returned by the register endpoint.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 5, info: "Verification code is invalid or expired" }),
         });
@@ -978,6 +1116,9 @@ describe("RegisterScreen", () => {
     });
 
     it("includes the verification code in the register body", async () => {
+        // Tests request payload completeness for signup.
+        // The verification code must be included in the final register request
+        // body, not only stored in local UI state.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, token: "register-token", role: "student" }),
         });
@@ -1006,6 +1147,9 @@ describe("RegisterScreen", () => {
     });
 
     it("disables send-code button and shows resend countdown after successful send", async () => {
+        // Tests the resend cooldown module for signup verification emails.
+        // After a successful send, the button should be disabled and display a
+        // countdown so the user cannot spam the endpoint immediately.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 0, cooldownSeconds: 60 }),
         });
@@ -1025,6 +1169,9 @@ describe("RegisterScreen", () => {
     });
 
     it("shows code-send-failed when backend returns unknown error from verification-code endpoint", async () => {
+        // Tests the error branch of the signup verification-code module.
+        // Unknown backend failures while sending the code should map to the
+        // stable "send verification code failed" user-facing message.
         globalThis.fetch.mockResolvedValue({
             json: jest.fn().mockResolvedValue({ code: 7, info: "smtp down" }),
         });
