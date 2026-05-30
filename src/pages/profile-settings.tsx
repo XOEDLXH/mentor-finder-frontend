@@ -61,7 +61,7 @@ const ProfileSettingsPage = () => {
     const currentUsername = useSelector((state: RootState) => state.auth.name);
     const [usernameInput, setUsernameInput] = useState("");
     const [usernameUpdating, setUsernameUpdating] = useState(false);
-    const [usernameMessage, setUsernameMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+    const [usernameMessage, setUsernameMessage] = useState<{ type: "error" | "success"; text: string } | undefined>(undefined);
     const [settings, setSettings] = useState<ProfileSettings>(EMPTY_SETTINGS);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -119,7 +119,7 @@ const ProfileSettingsPage = () => {
         }
 
         setUsernameUpdating(true);
-        setUsernameMessage(null);
+        setUsernameMessage(undefined);
 
         try {
             const response = await fetch("/api/profile/username", {
@@ -299,7 +299,7 @@ const ProfileSettingsPage = () => {
                             placeholder="输入新的用户名"
                             onChange={(e) => {
                                 setUsernameInput(e.target.value);
-                                setUsernameMessage(null);
+                                setUsernameMessage(undefined);
                             }}
                             disabled={usernameUpdating}
                         />

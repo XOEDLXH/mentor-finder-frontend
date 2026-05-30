@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 
