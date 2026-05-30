@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// Route frontend timeline requests to the local backend in development and the deployed backend elsewhere.
 const BACKEND_BASE_URL = process.env.NODE_ENV !== "production"
     ? "http://127.0.0.1:8000"
     : process.env.BACKEND_URL || "http://backend.MentorFinder.secoder.local"; // 修改默认值为内部域名
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    // Forward every incoming query parameter so pagination and filters stay transparent to the proxy.
     const searchParams = new URLSearchParams();
     for (const [key, value] of Object.entries(req.query)) {
         if (Array.isArray(value)) {
@@ -37,6 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
         });
 
+        // Fail early if the upstream service returns HTML or plain text error pages.
         const contentType = response.headers.get("content-type") || "";
         if (!contentType.includes("application/json")) {
             const text = await response.text();

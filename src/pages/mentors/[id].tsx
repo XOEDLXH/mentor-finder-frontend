@@ -14,6 +14,7 @@ import {
     SearchMentorResult,
 } from "../../utils/types";
 
+// Next.js stores an internal key in history.state, which lets the page detect whether "back" returns to the same search entry.
 const getCurrentHistoryEntryKey = () => {
     if (typeof window === "undefined") {
         return "";
@@ -23,6 +24,7 @@ const getCurrentHistoryEntryKey = () => {
     return typeof historyState?.key === "string" ? historyState.key.trim() : "";
 };
 
+// Keep the page-level inline layout constants together so the three-column view stays easy to tune.
 const mentorPageShellStyle = {
     width: "100%",
     margin: "0 auto",
@@ -43,6 +45,7 @@ const mentorPageMainColumnStyle = {
     minWidth: 0,
 };
 
+// Match the follow button style to the mentor detail card instead of the generic list-page button skin.
 const buildMentorFollowButtonStyle = (followed: boolean) => ({
     position: "relative" as const,
     display: "inline-flex",
@@ -67,6 +70,7 @@ const buildMentorFollowButtonStyle = (followed: boolean) => ({
     opacity: 1,
 });
 
+// These headings are highlighted inside the generated mentor profile block to make long prose easier to scan.
 const mentorProfileHighlightedHeadings = new Set([
     "教育背景",
     "社会兼职",
@@ -99,6 +103,7 @@ const MentorDetailPage = () => {
         const fetchMentor = async () => {
             setLoading(true);
             setErrorMessage("");
+            // Reset the previous AI result when switching to a different mentor.
             setAnalysisResult(undefined);
 
             try {
@@ -122,12 +127,14 @@ const MentorDetailPage = () => {
 
     useEffect(() => {
         if (!canFollow || typeof id !== "string") {
+            // Non-students and signed-out users should always see the mentor as not followable here.
             setFollowed(false);
             return;
         }
 
         const fetchFollowedMentors = async () => {
             try {
+                // Reuse the follow list endpoint to infer whether this mentor is already in the user's collection.
                 const res = await request<{ mentors?: SearchMentorResult[] }>(
                     "/api/follow/mentors",
                     "GET",
@@ -149,6 +156,7 @@ const MentorDetailPage = () => {
             return;
         }
 
+        // Use POST to follow and DELETE to unfollow through the same resource path.
         setFollowLoading(true);
         setErrorMessage("");
 
@@ -173,6 +181,7 @@ const MentorDetailPage = () => {
             return;
         }
 
+        // Ask the backend to summarize only this mentor's recent papers and expose the source list alongside the summary.
         setAnalysisLoading(true);
         setErrorMessage("");
 
@@ -197,6 +206,7 @@ const MentorDetailPage = () => {
         const pendingSearchReturn = readPendingMentorSearchReturn();
         const currentEntryKey = getCurrentHistoryEntryKey();
 
+        // When the user came from a search result card in the same history entry, preserve their previous search state via router.back().
         if (
             Number.isInteger(mentorId) &&
             mentorId > 0 &&
@@ -326,6 +336,7 @@ const MentorDetailPage = () => {
                             <div className="mentorDetailSidebarValue mentorDetailProfileValue">
                                 {mentorProfileLines.map((line, index) => {
                                     const trimmedLine = line.trim();
+                                    // Highlight a few known section titles inside the free-form profile text.
                                     const isHighlightedHeading = mentorProfileHighlightedHeadings.has(trimmedLine);
 
                                     return (
@@ -443,6 +454,7 @@ const MentorDetailPage = () => {
                 }
 
                 .mentorDetailPageWide {
+                    /* Keep the sticky sidebars below the global top navigation. */
                     --mentor-detail-sticky-top: 80px;
                 }
 
