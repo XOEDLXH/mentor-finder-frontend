@@ -8,7 +8,7 @@ import Pagination from "../components/Pagination";
 import { RootState } from "../redux/store";
 import { describeRequestError } from "../utils/errorMessage";
 import { request } from "../utils/network";
-import { buildSearchUrl } from "../utils/searchQuery";
+import { buildSearchUrl, normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 import { FollowUserResult, SearchMentorResult, TimelinePaper } from "../utils/types";
 
 interface FollowedMentorsResponse {
@@ -74,8 +74,6 @@ const FOLLOW_SUBJECT_CHIP_SKELETON_COUNT = 8;
 const FOLLOW_SUBJECT_CARD_SKELETON_COUNT = 3;
 const MIN_FOLLOW_SKELETON_MS = 100;
 const MAX_SEARCH_KEYWORD_LENGTH = 255;
-
-const normalizeSearchKeyword = (value: string) => value.trim().slice(0, MAX_SEARCH_KEYWORD_LENGTH);
 
 // Create stable keys for repeated follow-page skeleton placeholders.
 const createSkeletonKeys = (count: number, prefix: string) => (
@@ -602,7 +600,7 @@ const FollowsPage = () => {
 
     // Search users that can be followed from the user tab.
     const searchUsers = async () => {
-        const keyword = normalizeSearchKeyword(userSearchKeyword);
+        const keyword = normalizeSearchKeywordForUrl(userSearchKeyword);
         if (keyword === "") {
             setUserSearchResults([]);
             return;
@@ -1073,7 +1071,7 @@ const FollowsPage = () => {
                                     value={userSearchKeyword}
                                     placeholder="搜索用户名、姓名或邮箱"
                                     maxLength={MAX_SEARCH_KEYWORD_LENGTH}
-                                    onChange={(event) => setUserSearchKeyword(normalizeSearchKeyword(event.target.value))}
+                                    onChange={(event) => setUserSearchKeyword(normalizeSearchKeywordForUrl(event.target.value))}
                                     onKeyDown={(event) => {
                                         if (event.key === "Enter") {
                                             void searchUsers();

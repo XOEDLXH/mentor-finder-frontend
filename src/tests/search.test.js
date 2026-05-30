@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { request } from "../utils/network";
 import authReducer from "../redux/auth";
 import SearchScreen from "../pages/search";
+import { normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 
 // Mock Next.js routing so the search page tests can fully control query-state,
 // shallow pushes/replaces, and back-navigation restoration logic.
@@ -799,6 +800,12 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "短画像导师" })).toBeInTheDocument();
+        });
+
+        await waitForSearchSkeletonsToFinish();
+
+        await waitFor(() => {
+            expect(screen.getByTestId("mentor-homepage-button-66")).toBeInTheDocument();
         });
 
         expect(screen.queryByTestId("mentor-profile-toggle-66")).not.toBeInTheDocument();
@@ -2590,7 +2597,7 @@ describe("SearchScreen", () => {
         await waitForMineRequest();
 
         const longKeyword = "超长搜索关键词".repeat(40);
-        const truncatedKeyword = longKeyword.slice(0, 255);
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
         const input = screen.getByPlaceholderText("输入导师姓名或研究方向");
 
         fireEvent.change(input, { target: { value: longKeyword } });

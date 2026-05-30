@@ -7,6 +7,7 @@ import authReducer from "../redux/auth";
 import { request } from "../utils/network";
 import FollowsPage from "../pages/follows";
 import MentorDetailPage from "../pages/mentors/[id]";
+import { normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 
 // Mock routing so tests can control the mentor id in the URL and inspect any
 // navigation side effects without using the real Next.js router.
@@ -257,8 +258,8 @@ describe("follow confirmation", () => {
         await screen.findByRole("heading", { name: "关注用户" });
 
         const searchInput = screen.getByPlaceholderText("搜索用户名、姓名或邮箱");
-        const longKeyword = "follow-user-keyword-".repeat(20);
-        const truncatedKeyword = longKeyword.slice(0, 255);
+        const longKeyword = "一".repeat(400);
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
 
         fireEvent.change(searchInput, { target: { value: longKeyword } });
         expect(searchInput).toHaveValue(truncatedKeyword);

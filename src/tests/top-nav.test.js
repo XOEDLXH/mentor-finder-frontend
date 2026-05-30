@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import TopNav from "../components/TopNav";
 import { resetAuth } from "../redux/auth";
-import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
+import { buildGlobalPaperSearchUrl, normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 
 // Mock Next.js routing so the navigation component can be tested in isolation
 // while still asserting which routes it tries to open.
@@ -143,8 +143,8 @@ describe("TopNav", () => {
         renderTopNav();
 
         const searchInput = screen.getByRole("textbox", { name: "Search or jump to" });
-        const longKeyword = "graph neural network".repeat(20);
-        const truncatedKeyword = longKeyword.slice(0, 255);
+        const longKeyword = "一".repeat(400);
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
 
         fireEvent.change(searchInput, { target: { value: longKeyword } });
         expect(searchInput).toHaveValue(truncatedKeyword);
