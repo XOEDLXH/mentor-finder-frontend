@@ -19,6 +19,14 @@ const GENERATED_BY_LABELS: Record<string, string> = {
 const WEEKLY_PUSH_PAPERS_PER_VIEW = 2;
 const WEEKLY_PUSH_CAROUSEL_GAP = 12;
 const SUBJECT_GROUP_CAROUSEL_GAP = 16;
+const HOME_SKELETON_HISTORY_COUNT = 3;
+const HOME_SKELETON_STAT_COUNT = 5;
+const HOME_SKELETON_PAPER_COUNT = 2;
+const HOME_SKELETON_SUBJECT_COUNT = 2;
+
+const createHomeSkeletonKeys = (count: number, prefix: string) => (
+    Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
+);
 
 const formatGeneratedBy = (generatedBy: string) => GENERATED_BY_LABELS[generatedBy] || generatedBy;
 
@@ -665,6 +673,89 @@ export const WeeklyPushDetailCard = ({
     );
 };
 
+const renderHomePaperSkeletonGrid = () => (
+    <div className="homeSkeletonPaperGrid" aria-hidden="true">
+        {createHomeSkeletonKeys(HOME_SKELETON_PAPER_COUNT, "home-paper").map((key) => (
+            <article key={key} className="homeSkeletonPaperCard">
+                <span className="homeSkeletonBlock homeSkeletonPaperTitle" />
+                <span className="homeSkeletonBlock homeSkeletonPaperMeta" />
+                <span className="homeSkeletonBlock homeSkeletonPaperMeta homeSkeletonPaperMetaShort" />
+                <div className="homeSkeletonParagraph">
+                    <span className="homeSkeletonBlock homeSkeletonLine" />
+                    <span className="homeSkeletonBlock homeSkeletonLine" />
+                    <span className="homeSkeletonBlock homeSkeletonLine homeSkeletonLineShort" />
+                </div>
+            </article>
+        ))}
+    </div>
+);
+
+const renderHomeWeeklyPushSkeleton = () => (
+    <div className="homeSkeletonStack" data-testid="home-weekly-push-skeleton" aria-hidden="true">
+        <div className="homeSkeletonHeader">
+            <span className="homeSkeletonBlock homeSkeletonTitle" />
+            <span className="homeSkeletonBlock homeSkeletonMeta" />
+        </div>
+        <div className="homeSkeletonParagraph">
+            <span className="homeSkeletonBlock homeSkeletonLine" />
+            <span className="homeSkeletonBlock homeSkeletonLine" />
+            <span className="homeSkeletonBlock homeSkeletonLine homeSkeletonLineMedium" />
+        </div>
+        <span className="homeSkeletonBlock homeSkeletonSectionTitle" />
+        {renderHomePaperSkeletonGrid()}
+    </div>
+);
+
+const renderHomePersonalizedPushSkeleton = () => (
+    <div className="homeSkeletonStack" data-testid="home-personalized-push-skeleton" aria-hidden="true">
+        <div className="homeSkeletonStats">
+            {createHomeSkeletonKeys(HOME_SKELETON_STAT_COUNT, "home-stat").map((key) => (
+                <div key={key} className="homeSkeletonStatCard">
+                    <span className="homeSkeletonBlock homeSkeletonStatLabel" />
+                    <span className="homeSkeletonBlock homeSkeletonStatValue" />
+                </div>
+            ))}
+        </div>
+        <div className="homeSkeletonSummaryGrid">
+            <div className="homeSkeletonSummaryBlock">
+                <span className="homeSkeletonBlock homeSkeletonSummaryLabel" />
+                <span className="homeSkeletonBlock homeSkeletonLine" />
+                <span className="homeSkeletonBlock homeSkeletonLine" />
+                <span className="homeSkeletonBlock homeSkeletonLine homeSkeletonLineMedium" />
+            </div>
+            <div className="homeSkeletonSummaryBlock">
+                <span className="homeSkeletonBlock homeSkeletonSummaryLabel" />
+                <span className="homeSkeletonBlock homeSkeletonLine" />
+                <span className="homeSkeletonBlock homeSkeletonLine" />
+                <span className="homeSkeletonBlock homeSkeletonLine homeSkeletonLineShort" />
+            </div>
+        </div>
+        <span className="homeSkeletonBlock homeSkeletonSectionTitle" />
+        {renderHomePaperSkeletonGrid()}
+        <span className="homeSkeletonBlock homeSkeletonSectionTitle" />
+        <div className="homeSkeletonSubjectGrid">
+            {createHomeSkeletonKeys(HOME_SKELETON_SUBJECT_COUNT, "home-subject").map((key) => (
+                <div key={key} className="homeSkeletonSubjectCard">
+                    <span className="homeSkeletonBlock homeSkeletonSubjectCode" />
+                    <span className="homeSkeletonBlock homeSkeletonSubjectName" />
+                    <span className="homeSkeletonBlock homeSkeletonSubjectCount" />
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+const renderHomeHistorySkeleton = (testId: string) => (
+    <div className="homeSkeletonHistoryList" data-testid={testId} aria-hidden="true">
+        {createHomeSkeletonKeys(HOME_SKELETON_HISTORY_COUNT, testId).map((key) => (
+            <div key={key} className="homeSkeletonHistoryItem">
+                <span className="homeSkeletonBlock homeSkeletonHistoryTitle" />
+                <span className="homeSkeletonBlock homeSkeletonHistoryMeta" />
+            </div>
+        ))}
+    </div>
+);
+
 const HomeScreen = () => {
     const auth = useSelector((state: RootState) => state.auth);
     const isLoggedIn = auth.token !== "";
@@ -674,11 +765,14 @@ const HomeScreen = () => {
     const [personalizedWeeklyPush, setPersonalizedWeeklyPush] = useState<WeeklyPushItem | undefined>(undefined);
     const [personalizedWeeklyPushHistory, setPersonalizedWeeklyPushHistory] = useState<WeeklyPushHistoryResponse["history"]>([]);
     const [selectedPersonalizedWeekStart, setSelectedPersonalizedWeekStart] = useState("");
+    const [loadingWeeklyPush, setLoadingWeeklyPush] = useState(true);
+    const [loadingPersonalizedWeeklyPush, setLoadingPersonalizedWeeklyPush] = useState(isLoggedIn);
     const [isGeneratingPersonalized, setIsGeneratingPersonalized] = useState(false);
     const [personalizedError, setPersonalizedError] = useState("");
 
     useEffect(() => {
         const loadWeeklyPush = async () => {
+            setLoadingWeeklyPush(true);
             try {
                 const [latestRes, historyRes] = await Promise.all([
                     request<WeeklyPushResponse>("/api/dataset/weekly-push/latest", "GET", false),
@@ -694,6 +788,9 @@ const HomeScreen = () => {
                 setWeeklyPushHistory([]);
                 setSelectedWeekStart("");
             }
+            finally {
+                setLoadingWeeklyPush(false);
+            }
         };
 
         void loadWeeklyPush();
@@ -704,7 +801,12 @@ const HomeScreen = () => {
             return;
         }
 
+        if (weeklyPush?.weekStart === selectedWeekStart) {
+            return;
+        }
+
         const loadSelectedPush = async () => {
+            setLoadingWeeklyPush(true);
             try {
                 const res = await request<WeeklyPushResponse>(
                     `/api/dataset/weekly-push/latest?week_start=${encodeURIComponent(selectedWeekStart)}`,
@@ -716,10 +818,13 @@ const HomeScreen = () => {
             catch {
                 setWeeklyPush(undefined);
             }
+            finally {
+                setLoadingWeeklyPush(false);
+            }
         };
 
         void loadSelectedPush();
-    }, [selectedWeekStart]);
+    }, [selectedWeekStart, weeklyPush?.weekStart]);
 
     useEffect(() => {
         if (!isLoggedIn) {
@@ -727,10 +832,12 @@ const HomeScreen = () => {
             setPersonalizedWeeklyPushHistory([]);
             setSelectedPersonalizedWeekStart("");
             setPersonalizedError("");
+            setLoadingPersonalizedWeeklyPush(false);
             return;
         }
 
         const loadStoredPersonalizedPush = async () => {
+            setLoadingPersonalizedWeeklyPush(true);
             try {
                 const [latestRes, historyRes] = await Promise.all([
                     fetchPersonalizedWeeklyPush(),
@@ -751,6 +858,9 @@ const HomeScreen = () => {
                 setPersonalizedWeeklyPushHistory([]);
                 setSelectedPersonalizedWeekStart("");
             }
+            finally {
+                setLoadingPersonalizedWeeklyPush(false);
+            }
         };
 
         void loadStoredPersonalizedPush();
@@ -761,7 +871,12 @@ const HomeScreen = () => {
             return;
         }
 
+        if (personalizedWeeklyPush?.weekStart === selectedPersonalizedWeekStart) {
+            return;
+        }
+
         const loadSelectedPersonalizedPush = async () => {
+            setLoadingPersonalizedWeeklyPush(true);
             try {
                 const res = await fetchPersonalizedWeeklyPush(selectedPersonalizedWeekStart);
                 setPersonalizedWeeklyPush(res.weeklyPush);
@@ -770,10 +885,13 @@ const HomeScreen = () => {
             catch {
                 setPersonalizedWeeklyPush(undefined);
             }
+            finally {
+                setLoadingPersonalizedWeeklyPush(false);
+            }
         };
 
         void loadSelectedPersonalizedPush();
-    }, [isLoggedIn, selectedPersonalizedWeekStart]);
+    }, [isLoggedIn, personalizedWeeklyPush?.weekStart, selectedPersonalizedWeekStart]);
 
     const handleGeneratePersonalizedPush = async () => {
         setIsGeneratingPersonalized(true);
@@ -853,7 +971,11 @@ const HomeScreen = () => {
                             <div className="homePersonalizedErrorCard">{personalizedError}</div>
                         )}
 
-                        {isLoggedIn && personalizedWeeklyPush && (
+                        {isLoggedIn && loadingPersonalizedWeeklyPush && !isGeneratingPersonalized && (
+                            renderHomePersonalizedPushSkeleton()
+                        )}
+
+                        {isLoggedIn && !loadingPersonalizedWeeklyPush && personalizedWeeklyPush && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                                 <div className="homePersonalizedStats">
                                     <div className="homePersonalizedStatItem">
@@ -893,6 +1015,13 @@ const HomeScreen = () => {
                             </div>
                         )}
 
+                        {isLoggedIn && loadingPersonalizedWeeklyPush && personalizedWeeklyPushHistory.length === 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <h4 style={{ margin: "4px 0 0" }}>往期个性周报</h4>
+                                {renderHomeHistorySkeleton("home-personalized-history-skeleton")}
+                            </div>
+                        )}
+
                         {isLoggedIn && personalizedWeeklyPushHistory.length > 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <h4 style={{ margin: "4px 0 0" }}>往期个性周报</h4>
@@ -921,7 +1050,7 @@ const HomeScreen = () => {
                             </div>
                         )}
 
-                        {isLoggedIn && !isGeneratingPersonalized && personalizedWeeklyPush === undefined && (
+                        {isLoggedIn && !loadingPersonalizedWeeklyPush && !isGeneratingPersonalized && personalizedWeeklyPush === undefined && (
                             <div className="homePersonalizedPlaceholder">
                                 点击上方按钮后，会按你当前关注的导师和板块即时生成一份专属周报。
                             </div>
@@ -930,7 +1059,9 @@ const HomeScreen = () => {
 
                     <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
                         <h3 style={{ margin: "0 0 8px" }}>每周论文推送</h3>
-                        {weeklyPush ? (
+                        {loadingWeeklyPush ? (
+                            renderHomeWeeklyPushSkeleton()
+                        ) : weeklyPush ? (
                             <WeeklyPushDetailCard
                                 push={weeklyPush}
                                 emptyPaperText="本周暂无论文明细。"
@@ -939,6 +1070,13 @@ const HomeScreen = () => {
                             <div style={{ color: "#666" }}>暂无周推送，请等待定时任务生成。</div>
                         )}
                     </section>
+
+                    {(loadingWeeklyPush && weeklyPushHistory.length === 0) && (
+                        <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
+                            <h3 style={{ margin: "0 0 8px" }}>往期周报</h3>
+                            {renderHomeHistorySkeleton("home-weekly-history-skeleton")}
+                        </section>
+                    )}
 
                     {weeklyPushHistory.length > 0 && (
                         <section style={{ marginTop: 12, border: "1px solid #ddd", borderRadius: 8, padding: 12, backgroundColor: "#fff" }}>
