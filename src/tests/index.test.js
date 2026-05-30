@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
@@ -10,6 +10,17 @@ import { request } from "../utils/network";
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
+
+const createDeferred = () => {
+    let resolve;
+    let reject;
+    const promise = new Promise((promiseResolve, promiseReject) => {
+        resolve = promiseResolve;
+        reject = promiseReject;
+    });
+
+    return { promise, resolve, reject };
+};
 
 describe("HomeScreen weekly paper abstracts", () => {
     const buildWeeklyPush = (paperOverrides = {}) => ({
@@ -35,7 +46,7 @@ describe("HomeScreen weekly paper abstracts", () => {
         }],
     });
 
-    const renderWithStore = (name = "") => {
+    const renderWithStore = (name = "", authOverrides = {}) => {
         const store = configureStore({
             reducer: {
                 auth: authReducer,
@@ -45,6 +56,7 @@ describe("HomeScreen weekly paper abstracts", () => {
                     name,
                     token: "",
                     role: "",
+                    ...authOverrides,
                 },
             },
         });
@@ -247,6 +259,251 @@ describe("HomeScreen weekly paper abstracts", () => {
         expect(screen.queryByText(/abstract/i)).not.toBeInTheDocument();
         await waitFor(() => {
             expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(1);
+        });
+    });
+
+    it("renders the public weekly push skeleton while the initial request is pending", async () => {
+        const latestDeferred = createDeferred();
+        const historyDeferred = createDeferred();
+
+        request.mockImplementation((url) => {
+            if (url === "/api/dataset/weekly-push/latest") {
+                return latestDeferred.promise;
+            }
+
+            if (url === "/api/dataset/weekly-push/history") {
+                return historyDeferred.promise;
+            }
+
+            if (url === "/api/dataset/weekly-push/latest?week_start=2026-05-01") {
+                return Promise.resolve({
+                    weeklyPush: buildWeeklyPush(),
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore();
+
+        expect(screen.getByTestId("home-weekly-push-skeleton")).toBeInTheDocument();
+        expect(screen.getByTestId("home-weekly-history-skeleton")).toBeInTheDocument();
+
+        await act(async () => {
+            latestDeferred.resolve({
+                weeklyPush: buildWeeklyPush(),
+            });
+            historyDeferred.resolve({
+                history: [{
+                    weekStart: "2026-05-01",
+                    weekEnd: "2026-05-07",
+                    title: "本周论文速递",
+                    paperCount: 1,
+                    generatedBy: "rule",
+                    updatedAt: "2026-05-12 12:00:00",
+                }],
+            });
+        });
+
+        await screen.findByText("默认摘要");
+        expect(screen.queryByTestId("home-weekly-push-skeleton")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("home-weekly-history-skeleton")).not.toBeInTheDocument();
+    });
+});
+
+describe("HomeScreen loading skeletons", () => {
+    const buildWeeklyPush = () => ({
+        weekStart: "2026-05-01",
+        weekEnd: "2026-05-07",
+        paperCount: 1,
+        title: "本周论文速递",
+        fixedSummary: "",
+        aiSummary: "",
+        content: "公共周报正文",
+        generatedBy: "rule",
+        updatedAt: "2026-05-12 12:00:00",
+        papers: [{
+            id: 1,
+            title: "Weekly Paper",
+            publishDate: "2026-05-01",
+            authorNames: "Alice",
+            arxivUrl: "https://arxiv.org/abs/2501.00001",
+            arxivId: "2501.00001",
+            abstract: "公共摘要",
+            tldr: "",
+        }],
+    });
+
+    const buildPersonalizedWeeklyPush = () => ({
+        weekStart: "2026-05-01",
+        weekEnd: "2026-05-07",
+        paperCount: 1,
+        title: "个性周报",
+        fixedSummary: "规则摘要",
+        aiSummary: "AI 摘要",
+        content: "个性周报正文",
+        generatedBy: "thucs-openai",
+        updatedAt: "2026-05-12 12:00:00",
+        papers: [{
+            id: 11,
+            title: "Mentor weekly paper",
+            publishDate: "2026-05-01",
+            authorNames: "Alice",
+            abstract: "导师论文摘要",
+            tldr: "",
+            mentorNames: ["张老师"],
+        }],
+        mentorGroups: [],
+        subjectGroups: [],
+        trackedMentorCount: 1,
+        activeMentorCount: 1,
+        trackedSubjectCount: 2,
+        activeSubjectCount: 1,
+    });
+
+    const renderLoggedInHome = () => {
+        const store = configureStore({
+            reducer: {
+                auth: authReducer,
+            },
+            preloadedState: {
+                auth: {
+                    name: "Alice",
+                    token: "token",
+                    role: "",
+                },
+            },
+        });
+
+        return render(
+            <Provider store={store}>
+                <HomeScreen />
+            </Provider>,
+        );
+    };
+
+    const mockResolvedPublicWeeklyPush = (url) => {
+        if (url === "/api/dataset/weekly-push/latest" || url === "/api/dataset/weekly-push/latest?week_start=2026-05-01") {
+            return Promise.resolve({
+                weeklyPush: buildWeeklyPush(),
+            });
+        }
+
+        if (url === "/api/dataset/weekly-push/history") {
+            return Promise.resolve({
+                history: [{
+                    weekStart: "2026-05-01",
+                    weekEnd: "2026-05-07",
+                    title: "本周论文速递",
+                    paperCount: 1,
+                    generatedBy: "rule",
+                    updatedAt: "2026-05-12 12:00:00",
+                }],
+            });
+        }
+
+        return undefined;
+    };
+
+    beforeEach(() => {
+        request.mockReset();
+    });
+
+    it("renders the personalized weekly push skeleton while stored data is pending", async () => {
+        const personalizedDeferred = createDeferred();
+        const personalizedHistoryDeferred = createDeferred();
+
+        request.mockImplementation((url) => {
+            const publicResult = mockResolvedPublicWeeklyPush(url);
+            if (publicResult !== undefined) {
+                return publicResult;
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized") {
+                return personalizedDeferred.promise;
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized/history") {
+                return personalizedHistoryDeferred.promise;
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized?week_start=2026-05-01") {
+                return Promise.resolve({
+                    weeklyPush: buildPersonalizedWeeklyPush(),
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderLoggedInHome();
+
+        expect(await screen.findByTestId("home-personalized-push-skeleton")).toBeInTheDocument();
+        expect(screen.getByTestId("home-personalized-history-skeleton")).toBeInTheDocument();
+
+        await act(async () => {
+            personalizedDeferred.resolve({
+                weeklyPush: buildPersonalizedWeeklyPush(),
+            });
+            personalizedHistoryDeferred.resolve({
+                history: [{
+                    weekStart: "2026-05-01",
+                    weekEnd: "2026-05-07",
+                    title: "个性周报",
+                    paperCount: 1,
+                    generatedBy: "thucs-openai",
+                    updatedAt: "2026-05-12 12:00:00",
+                }],
+            });
+        });
+
+        await screen.findByText("导师论文摘要");
+        expect(screen.getByText("关注导师")).toBeInTheDocument();
+        expect(screen.queryByTestId("home-personalized-push-skeleton")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("home-personalized-history-skeleton")).not.toBeInTheDocument();
+    });
+
+    it("keeps the generation status text instead of showing the personalized read skeleton", async () => {
+        const generateDeferred = createDeferred();
+
+        request.mockImplementation((url, method) => {
+            const publicResult = mockResolvedPublicWeeklyPush(url);
+            if (publicResult !== undefined) {
+                return publicResult;
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized" && method === "POST") {
+                return generateDeferred.promise;
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized") {
+                return Promise.resolve({
+                    weeklyPush: undefined,
+                });
+            }
+
+            if (url === "/api/dataset/weekly-push/personalized/history") {
+                return Promise.resolve({
+                    history: [],
+                });
+            }
+
+            return Promise.resolve({});
+        });
+
+        const user = userEvent.setup();
+        renderLoggedInHome();
+
+        await screen.findByText("点击上方按钮后，会按你当前关注的导师和板块即时生成一份专属周报。");
+        await user.click(screen.getByRole("button", { name: "生成个性周报" }));
+
+        expect(screen.getByText("正在整理你关注导师和板块本周的新增论文，并生成 AI 总结，请稍候。")).toBeInTheDocument();
+        expect(screen.queryByTestId("home-personalized-push-skeleton")).not.toBeInTheDocument();
+
+        await act(async () => {
+            generateDeferred.resolve({
+                weeklyPush: buildPersonalizedWeeklyPush(),
+            });
         });
     });
 });
