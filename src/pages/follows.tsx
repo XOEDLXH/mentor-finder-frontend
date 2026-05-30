@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
@@ -54,6 +54,17 @@ type FollowCategory = "mentor" | "user" | "subject";
 type FollowView = "following" | "followers";
 
 const FOLLOWED_MENTOR_CARDS_PER_PAGE = 18;
+const FOLLOW_MENTOR_SKELETON_COUNT = 9;
+const FOLLOW_USER_SKELETON_COUNT = 4;
+const FOLLOW_SUBJECT_CHIP_SKELETON_COUNT = 8;
+const FOLLOW_SUBJECT_CARD_SKELETON_COUNT = 3;
+const MIN_FOLLOW_SKELETON_MS = 800;
+
+const createSkeletonKeys = (count: number, prefix: string) => (
+    Array.from({ length: count }, (_, idx) => `${prefix}-${idx}`)
+);
+
+type FollowSkeletonSection = "mentor" | "user" | "subject" | "follower";
 
 const buildSearchLikeMentorFollowButtonStyle = (followed: boolean): CSSProperties => ({
     position: "relative",
@@ -111,32 +122,105 @@ const FollowsPage = () => {
     const [activeView, setActiveView] = useState<FollowView>("following");
     const [activeCategory, setActiveCategory] = useState<FollowCategory>("mentor");
     const [mentorCurrentPage, setMentorCurrentPage] = useState(1);
-    const [loading, setLoading] = useState(false);
+    const [mentorLoading, setMentorLoading] = useState(false);
+    const [userLoading, setUserLoading] = useState(false);
+    const [subjectLoading, setSubjectLoading] = useState(false);
+    const [followerLoading, setFollowerLoading] = useState(false);
+    const [hasLoadedMentors, setHasLoadedMentors] = useState(false);
+    const [hasLoadedUsers, setHasLoadedUsers] = useState(false);
+    const [hasLoadedSubjects, setHasLoadedSubjects] = useState(false);
+    const [hasLoadedFollowers, setHasLoadedFollowers] = useState(false);
     const [actionMentorId, setActionMentorId] = useState<number | undefined>(undefined);
     const [actionUserId, setActionUserId] = useState<number | undefined>(undefined);
     const [actionSubject, setActionSubject] = useState<string | undefined>(undefined);
     const [errorMessage, setErrorMessage] = useState("");
+    const skeletonStartedAtRef = useRef<Record<FollowSkeletonSection, number>>({
+        mentor: 0,
+        user: 0,
+        subject: 0,
+        follower: 0,
+    });
+    const skeletonTimerRef = useRef<Record<FollowSkeletonSection, ReturnType<typeof setTimeout> | undefined>>({
+        mentor: undefined,
+        user: undefined,
+        subject: undefined,
+        follower: undefined,
+    });
 
-    const fetchFollows = useCallback(async () => {
-        if (!isLoggedIn) {
-            setMentors([]);
-            setUsers([]);
-            setFollowers([]);
-            setSubjects([]);
-            setAvailableSubjects([]);
+    const setSectionLoading = useCallback((section: FollowSkeletonSection, loading: boolean) => {
+        if (section === "mentor") {
+            setMentorLoading(loading);
+            return;
+        }
+        if (section === "user") {
+            setUserLoading(loading);
+            return;
+        }
+        if (section === "subject") {
+            setSubjectLoading(loading);
+            return;
+        }
+        setFollowerLoading(loading);
+    }, []);
+
+    const clearSkeletonTimer = useCallback((section: FollowSkeletonSection) => {
+        const timer = skeletonTimerRef.current[section];
+        if (timer !== undefined) {
+            clearTimeout(timer);
+            skeletonTimerRef.current[section] = undefined;
+        }
+    }, []);
+
+    const startSkeletonPhase = useCallback((section: FollowSkeletonSection) => {
+        clearSkeletonTimer(section);
+        skeletonStartedAtRef.current[section] = Date.now();
+        setSectionLoading(section, true);
+    }, [clearSkeletonTimer, setSectionLoading]);
+
+    const finishSkeletonPhase = useCallback((section: FollowSkeletonSection) => {
+        clearSkeletonTimer(section);
+        const elapsed = Date.now() - skeletonStartedAtRef.current[section];
+        const remaining = Math.max(MIN_FOLLOW_SKELETON_MS - elapsed, 0);
+        if (remaining === 0) {
+            setSectionLoading(section, false);
             return;
         }
 
-        setLoading(true);
+        skeletonTimerRef.current[section] = setTimeout(() => {
+            skeletonTimerRef.current[section] = undefined;
+            setSectionLoading(section, false);
+        }, remaining);
+    }, [clearSkeletonTimer, setSectionLoading]);
+
+    useEffect(() => () => {
+        (Object.keys(skeletonTimerRef.current) as FollowSkeletonSection[]).forEach((section) => {
+            clearSkeletonTimer(section);
+        });
+    }, [clearSkeletonTimer]);
+
+    const resetFollowData = useCallback(() => {
+        setMentors([]);
+        setUsers([]);
+        setFollowers([]);
+        setSubjects([]);
+        setAvailableSubjects([]);
+        setHasLoadedMentors(false);
+        setHasLoadedUsers(false);
+        setHasLoadedSubjects(false);
+        setHasLoadedFollowers(false);
+    }, []);
+
+    const fetchMentors = useCallback(async () => {
+        if (!isLoggedIn) {
+            resetFollowData();
+            return;
+        }
+
+        startSkeletonPhase("mentor");
         setErrorMessage("");
 
         try {
-            const [mentorRes, userRes, followerRes, subjectRes] = await Promise.all([
-                request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true),
-                request<FollowedUsersResponse>("/api/follow/users", "GET", true),
-                request<FollowersResponse>("/api/follow/followers", "GET", true),
-                request<FollowedSubjectsResponse>("/api/follow/subjects", "GET", true),
-            ]);
+            const mentorRes = await request<FollowedMentorsResponse>("/api/follow/mentors", "GET", true);
             setMentors(
                 Array.isArray(mentorRes.mentors)
                     ? mentorRes.mentors.map((mentor) => ({
@@ -145,18 +229,86 @@ const FollowsPage = () => {
                     }))
                     : [],
             );
-            setUsers(Array.isArray(userRes.users) ? userRes.users : []);
-            setFollowers(Array.isArray(followerRes.users) ? followerRes.users : []);
-            setSubjects(Array.isArray(subjectRes.subjects) ? subjectRes.subjects : []);
-            setAvailableSubjects(Array.isArray(subjectRes.availableSubjects) ? subjectRes.availableSubjects : []);
+            setHasLoadedMentors(true);
         }
         catch (err) {
+            setHasLoadedMentors(false);
             setErrorMessage(FAILURE_PREFIX + String(err));
         }
         finally {
-            setLoading(false);
+            finishSkeletonPhase("mentor");
         }
-    }, [isLoggedIn]);
+    }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
+
+    const fetchUsers = useCallback(async () => {
+        if (!isLoggedIn) {
+            resetFollowData();
+            return;
+        }
+
+        startSkeletonPhase("user");
+        setErrorMessage("");
+
+        try {
+            const userRes = await request<FollowedUsersResponse>("/api/follow/users", "GET", true);
+            setUsers(Array.isArray(userRes.users) ? userRes.users : []);
+            setHasLoadedUsers(true);
+        }
+        catch (err) {
+            setHasLoadedUsers(false);
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            finishSkeletonPhase("user");
+        }
+    }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
+
+    const fetchSubjects = useCallback(async () => {
+        if (!isLoggedIn) {
+            resetFollowData();
+            return;
+        }
+
+        startSkeletonPhase("subject");
+        setErrorMessage("");
+
+        try {
+            const subjectRes = await request<FollowedSubjectsResponse>("/api/follow/subjects", "GET", true);
+            setSubjects(Array.isArray(subjectRes.subjects) ? subjectRes.subjects : []);
+            setAvailableSubjects(Array.isArray(subjectRes.availableSubjects) ? subjectRes.availableSubjects : []);
+            setHasLoadedSubjects(true);
+        }
+        catch (err) {
+            setHasLoadedSubjects(false);
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            finishSkeletonPhase("subject");
+        }
+    }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
+
+    const fetchFollowers = useCallback(async () => {
+        if (!isLoggedIn) {
+            resetFollowData();
+            return;
+        }
+
+        startSkeletonPhase("follower");
+        setErrorMessage("");
+
+        try {
+            const followerRes = await request<FollowersResponse>("/api/follow/followers", "GET", true);
+            setFollowers(Array.isArray(followerRes.users) ? followerRes.users : []);
+            setHasLoadedFollowers(true);
+        }
+        catch (err) {
+            setHasLoadedFollowers(false);
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        }
+        finally {
+            finishSkeletonPhase("follower");
+        }
+    }, [finishSkeletonPhase, isLoggedIn, resetFollowData, startSkeletonPhase]);
 
     const toggleFollow = async (mentor: FollowedMentorCardState) => {
         const mentorId = mentor.id;
@@ -364,6 +516,97 @@ const FollowsPage = () => {
         </div>
     );
 
+    const renderMentorSkeletonGrid = () => (
+        <div className="followSkeletonMentorGrid" aria-label="导师关注加载中" data-testid="follow-mentor-skeleton">
+            {createSkeletonKeys(FOLLOW_MENTOR_SKELETON_COUNT, "mentor-skeleton").map((key) => (
+                <div className="followSkeletonMentorCard" key={key} aria-hidden="true">
+                    <div className="followSkeletonMentorHeader">
+                        <span className="followSkeletonBlock followSkeletonMentorTitle" />
+                        <span className="followSkeletonBlock followSkeletonMentorButton" />
+                    </div>
+                    <span className="followSkeletonBlock followSkeletonMentorMeta followSkeletonMentorMetaShort" />
+                    <span className="followSkeletonBlock followSkeletonMentorMeta" />
+                    <span className="followSkeletonBlock followSkeletonMentorMeta followSkeletonMentorMetaWide" />
+                </div>
+            ))}
+        </div>
+    );
+
+    const renderUserSkeletonList = (testId = "follow-user-skeleton") => (
+        <div className="userList" aria-label="用户关注加载中" data-testid={testId}>
+            {createSkeletonKeys(FOLLOW_USER_SKELETON_COUNT, `${testId}-item`).map((key) => (
+                <div className="userCard followSkeletonUserCard" key={key} aria-hidden="true">
+                    <div className="userCardProfile">
+                        <span className="followSkeletonBlock followSkeletonAvatar" />
+                        <div className="userText followSkeletonUserText">
+                            <span className="followSkeletonBlock followSkeletonUserName" />
+                            <span className="followSkeletonBlock followSkeletonUserMeta" />
+                            <span className="followSkeletonBlock followSkeletonUserSignature" />
+                        </div>
+                    </div>
+                    <span className="followSkeletonBlock followSkeletonUserButton" />
+                </div>
+            ))}
+        </div>
+    );
+
+    const renderSubjectSkeletonSection = () => (
+        <div className="subjectFollowSection" aria-label="板块关注加载中" data-testid="follow-subject-skeleton">
+            <section className="subjectSearchSection" aria-label="搜索关注板块加载中">
+                <div className="sectionHeader">
+                    <h3>关注板块</h3>
+                </div>
+                <span className="followSkeletonBlock followSkeletonSearchInput" aria-hidden="true" />
+                <div className="subjectChipGrid" aria-hidden="true">
+                    {createSkeletonKeys(FOLLOW_SUBJECT_CHIP_SKELETON_COUNT, "subject-chip-skeleton").map((key) => (
+                        <span className="followSkeletonBlock followSkeletonSubjectChip" key={key} />
+                    ))}
+                </div>
+            </section>
+
+            <section className="followedSubjectSection" aria-label="已关注板块加载中">
+                <div className="sectionHeader">
+                    <h3>已关注板块</h3>
+                    <span>0</span>
+                </div>
+                <div className="subjectList" aria-hidden="true">
+                    {createSkeletonKeys(FOLLOW_SUBJECT_CARD_SKELETON_COUNT, "subject-card-skeleton").map((key) => (
+                        <article className="subjectCard followSkeletonSubjectCard" key={key}>
+                            <div className="subjectCardHeader">
+                                <div className="followSkeletonSubjectTitleGroup">
+                                    <span className="followSkeletonBlock followSkeletonSubjectTitle" />
+                                    <span className="followSkeletonBlock followSkeletonSubjectMeta" />
+                                </div>
+                                <div className="subjectActionGroup">
+                                    <span className="followSkeletonBlock followSkeletonSubjectAction" />
+                                    <span className="followSkeletonBlock followSkeletonSubjectAction" />
+                                    <span className="followSkeletonBlock followSkeletonSubjectAction" />
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </section>
+        </div>
+    );
+
+    const handleViewChange = (nextView: FollowView) => {
+        setActiveView(nextView);
+        if (nextView === "followers" && !hasLoadedFollowers && !followerLoading) {
+            void fetchFollowers();
+        }
+    };
+
+    const handleCategoryChange = (nextCategory: FollowCategory) => {
+        setActiveCategory(nextCategory);
+        if (nextCategory === "user" && !hasLoadedUsers && !userLoading) {
+            void fetchUsers();
+        }
+        if (nextCategory === "subject" && !hasLoadedSubjects && !subjectLoading) {
+            void fetchSubjects();
+        }
+    };
+
     const followedUserIds = new Set(
         users.filter((user) => user.followed).map((user) => user.id),
     );
@@ -399,8 +642,8 @@ const FollowsPage = () => {
     );
 
     useEffect(() => {
-        void fetchFollows();
-    }, [fetchFollows]);
+        void fetchMentors();
+    }, [fetchMentors]);
 
     useEffect(() => {
         if (mentorCurrentPage > mentorTotalPages) {
@@ -440,7 +683,7 @@ const FollowsPage = () => {
                                     className={activeView === "following" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
                                     type="button"
                                     aria-pressed={activeView === "following"}
-                                    onClick={() => setActiveView("following")}
+                                    onClick={() => handleViewChange("following")}
                                 >
                                     <span className="viewSwitchButtonLabel">我的关注</span>
                                     <span className="viewSwitchButtonCount" aria-hidden="true">
@@ -451,7 +694,7 @@ const FollowsPage = () => {
                                     className={activeView === "followers" ? "searchSegmentButton viewSwitchButton viewSwitchButtonActive" : "searchSegmentButton viewSwitchButton"}
                                     type="button"
                                     aria-pressed={activeView === "followers"}
-                                    onClick={() => setActiveView("followers")}
+                                    onClick={() => handleViewChange("followers")}
                                 >
                                     <span className="viewSwitchButtonLabel">我的粉丝</span>
                                     <span className="viewSwitchButtonCount" aria-hidden="true">
@@ -481,7 +724,7 @@ const FollowsPage = () => {
                                 type="button"
                                 aria-pressed={activeCategory === "mentor"}
                                 aria-label={`导师（${formatViewSwitchCount(mentors.filter((mentor) => mentor.followed).length)}）`}
-                                onClick={() => setActiveCategory("mentor")}
+                                onClick={() => handleCategoryChange("mentor")}
                             >
                                 <span className="categorySwitchButtonLabel">导师</span>
                                 <span className="categorySwitchButtonCount" aria-hidden="true">
@@ -493,7 +736,7 @@ const FollowsPage = () => {
                                 type="button"
                                 aria-pressed={activeCategory === "user"}
                                 aria-label={`用户（${formatViewSwitchCount(users.filter((user) => user.followed).length)}）`}
-                                onClick={() => setActiveCategory("user")}
+                                onClick={() => handleCategoryChange("user")}
                             >
                                 <span className="categorySwitchButtonLabel">用户</span>
                                 <span className="categorySwitchButtonCount" aria-hidden="true">
@@ -505,7 +748,7 @@ const FollowsPage = () => {
                                 type="button"
                                 aria-pressed={activeCategory === "subject"}
                                 aria-label={`板块（${formatViewSwitchCount(subjects.length)}）`}
-                                onClick={() => setActiveCategory("subject")}
+                                onClick={() => handleCategoryChange("subject")}
                             >
                                 <span className="categorySwitchButtonLabel">板块</span>
                                 <span className="categorySwitchButtonCount" aria-hidden="true">
@@ -517,64 +760,67 @@ const FollowsPage = () => {
                 </aside>
 
                 <main className="main">
-                    {loading && <p>加载中...</p>}
                     {errorMessage !== "" && <p style={{ color: "#c62828" }}>{errorMessage}</p>}
 
-                    {activeCategory === "mentor" && !loading && mentors.length === 0 && errorMessage === "" && (
+                    {activeCategory === "mentor" && !mentorLoading && hasLoadedMentors && mentors.length === 0 && errorMessage === "" && (
                         <p>暂无关注导师</p>
                     )}
 
                     {activeCategory === "mentor" && (
                         <div className="mentorSection">
-                            <div className="mentorGrid">
-                                {paginatedMentors.map((mentor) => (
-                                    <div
-                                        key={mentor.id}
-                                        className="mentorCard"
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-label={`进入${mentor.Chinese_name}导师主页`}
-                                        onClick={() => router.push(`/mentors/${mentor.id}`)}
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter" || event.key === " ") {
-                                                event.preventDefault();
-                                                void router.push(`/mentors/${mentor.id}`);
-                                            }
-                                        }}
-                                    >
-                                        <div className="mentorCardHeader" data-testid={`mentor-card-header-${mentor.id}`}>
-                                            <h3 className="mentorName">
-                                                {mentor.Chinese_name}
-                                                {mentor.is_private && (
-                                                    <span className="privateBadge">我的私有导师</span>
-                                                )}
-                                            </h3>
-                                            <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
-                                                <FollowToggleButton
-                                                    className="followToggleButton"
-                                                    followed={mentor.followed}
-                                                    followedLabel="已关注"
-                                                    loading={actionMentorId === mentor.id}
-                                                    onClick={() => void toggleFollow(mentor)}
-                                                    style={buildSearchLikeMentorFollowButtonStyle(mentor.followed)}
-                                                />
+                            {mentorLoading ? (
+                                renderMentorSkeletonGrid()
+                            ) : (
+                                <div className="mentorGrid">
+                                    {paginatedMentors.map((mentor) => (
+                                        <div
+                                            key={mentor.id}
+                                            className="mentorCard"
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`进入${mentor.Chinese_name}导师主页`}
+                                            onClick={() => router.push(`/mentors/${mentor.id}`)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    void router.push(`/mentors/${mentor.id}`);
+                                                }
+                                            }}
+                                        >
+                                            <div className="mentorCardHeader" data-testid={`mentor-card-header-${mentor.id}`}>
+                                                <h3 className="mentorName">
+                                                    {mentor.Chinese_name}
+                                                    {mentor.is_private && (
+                                                        <span className="privateBadge">我的私有导师</span>
+                                                    )}
+                                                </h3>
+                                                <div className="followButtonShell" onClick={(event) => event.stopPropagation()}>
+                                                    <FollowToggleButton
+                                                        className="followToggleButton"
+                                                        followed={mentor.followed}
+                                                        followedLabel="已关注"
+                                                        loading={actionMentorId === mentor.id}
+                                                        onClick={() => void toggleFollow(mentor)}
+                                                        style={buildSearchLikeMentorFollowButtonStyle(mentor.followed)}
+                                                    />
+                                                </div>
                                             </div>
+                                            {mentor.English_name && (
+                                                <p className="mentorMeta">英文名：{mentor.English_name}</p>
+                                            )}
+                                            <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
+                                            <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
                                         </div>
-                                        {mentor.English_name && (
-                                            <p className="mentorMeta">英文名：{mentor.English_name}</p>
-                                        )}
-                                        <p className="mentorMeta">研究方向：{mentor.research_direction || "暂无研究方向"}</p>
-                                        <p className="mentorMeta">邮箱：{mentor.email || "暂无邮箱"}</p>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
 
                             {mentors.length > 0 && (
                                 <div className="mentorPagination">
                                     <Pagination
                                         currentPage={safeMentorCurrentPage}
                                         totalPages={mentorTotalPages}
-                                        loading={loading}
+                                        loading={mentorLoading}
                                         centered
                                         controlHeight={33.77}
                                         jumpInputWidth={120}
@@ -623,7 +869,9 @@ const FollowsPage = () => {
                                 <span>{users.filter((user) => user.followed).length}</span>
                             </div>
 
-                            {!loading && users.length === 0 ? (
+                            {userLoading ? (
+                                renderUserSkeletonList()
+                            ) : hasLoadedUsers && users.length === 0 ? (
                                 <p>暂无关注用户</p>
                             ) : (
                                 <div className="userList" aria-label="已关注用户">
@@ -635,6 +883,9 @@ const FollowsPage = () => {
                     )}
 
                     {activeCategory === "subject" && (
+                    subjectLoading ? (
+                        renderSubjectSkeletonSection()
+                    ) : (
                     <section className="subjectFollowSection" aria-label="关注板块">
                         <section className="subjectSearchSection" aria-label="搜索关注板块">
                             <div className="sectionHeader">
@@ -674,7 +925,7 @@ const FollowsPage = () => {
                                 <span>{subjects.length}</span>
                             </div>
 
-                            {!loading && subjects.length === 0 ? (
+                            {hasLoadedSubjects && subjects.length === 0 ? (
                                 <p>暂无关注板块</p>
                             ) : (
                                 <div className="subjectList" aria-label="已关注板块">
@@ -752,15 +1003,17 @@ const FollowsPage = () => {
                             )}
                         </section>
                     </section>
+                    )
                     )}
                 </main>
             </div>
             ) : (
                 <main className="followersMain" aria-label="我的粉丝">
-                    {loading && <p>加载中...</p>}
                     {errorMessage !== "" && <p style={{ color: "#c62828" }}>{errorMessage}</p>}
 
-                    {!loading && followers.length === 0 && errorMessage === "" ? (
+                    {followerLoading ? (
+                        renderUserSkeletonList("follow-follower-skeleton")
+                    ) : hasLoadedFollowers && followers.length === 0 && errorMessage === "" ? (
                         <p>暂无粉丝</p>
                     ) : (
                         <div className="userList" aria-label="关注自己的用户">
@@ -1045,6 +1298,136 @@ const FollowsPage = () => {
                 .mentorPagination {
                     display: flex;
                     justify-content: center;
+                }
+
+                :global(.followSkeletonBlock) {
+                    display: block;
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 999px;
+                    background: linear-gradient(90deg, #e3e9f0 0%, #edf2f7 40%, #ffffff 50%, #edf2f7 60%, #e3e9f0 100%);
+                    background-size: 200% 100%;
+                    animation: followSkeletonShimmer 1.15s ease-in-out infinite;
+                }
+
+                :global(.followSkeletonMentorGrid) {
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 12px;
+                }
+
+                :global(.followSkeletonMentorCard) {
+                    min-height: 158px;
+                    padding: 14px;
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    background: #fff;
+                    cursor: default;
+                    pointer-events: none;
+                }
+
+                :global(.followSkeletonMentorHeader) {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin-bottom: 8px;
+                }
+
+                :global(.followSkeletonUserCard),
+                :global(.followSkeletonSubjectCard) {
+                    cursor: default;
+                    pointer-events: none;
+                }
+
+                :global(.followSkeletonMentorTitle) {
+                    width: min(168px, 58%);
+                    height: 23px;
+                }
+
+                :global(.followSkeletonMentorButton),
+                :global(.followSkeletonUserButton) {
+                    flex: 0 0 auto;
+                    width: 72px;
+                    height: 28px;
+                    border-radius: 6px;
+                }
+
+                :global(.followSkeletonMentorMeta) {
+                    width: 82%;
+                    height: 14px;
+                    margin-top: 12px;
+                }
+
+                :global(.followSkeletonMentorMetaShort) {
+                    width: 52%;
+                }
+
+                :global(.followSkeletonMentorMetaWide) {
+                    width: 92%;
+                }
+
+                :global(.followSkeletonAvatar) {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 50%;
+                }
+
+                :global(.followSkeletonUserText) {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    width: 100%;
+                }
+
+                :global(.followSkeletonUserName) {
+                    width: min(180px, 46%);
+                    height: 17px;
+                }
+
+                :global(.followSkeletonUserMeta) {
+                    width: min(240px, 62%);
+                    height: 13px;
+                }
+
+                :global(.followSkeletonUserSignature) {
+                    width: min(360px, 82%);
+                    height: 13px;
+                }
+
+                :global(.followSkeletonSearchInput) {
+                    width: 100%;
+                    height: 42px;
+                    border-radius: 6px;
+                }
+
+                :global(.followSkeletonSubjectChip) {
+                    min-height: 54px;
+                    border-radius: 8px;
+                }
+
+                :global(.followSkeletonSubjectTitleGroup) {
+                    display: flex;
+                    flex: 1 1 auto;
+                    flex-direction: column;
+                    gap: 10px;
+                    min-width: 0;
+                }
+
+                :global(.followSkeletonSubjectTitle) {
+                    width: min(220px, 58%);
+                    height: 20px;
+                }
+
+                :global(.followSkeletonSubjectMeta) {
+                    width: 96px;
+                    height: 13px;
+                }
+
+                :global(.followSkeletonSubjectAction) {
+                    width: 76px;
+                    height: 34px;
+                    border-radius: 6px;
                 }
 
                 :global(.userFollowSection) {
@@ -1468,6 +1851,16 @@ const FollowsPage = () => {
                     line-height: 1.45;
                     overflow-wrap: anywhere;
                     word-break: break-word;
+                }
+
+                @keyframes followSkeletonShimmer {
+                    0% {
+                        background-position: 200% 0;
+                    }
+
+                    100% {
+                        background-position: -200% 0;
+                    }
                 }
 
                 @media (max-width: 720px) {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { useRouter } from "next/router";
@@ -36,6 +36,36 @@ describe("follow confirmation", () => {
         signature: "关注了我",
         followed: false,
     };
+    const followedUser = {
+        id: 21,
+        username: "followed_user",
+        realName: "关注用户",
+        role: "student",
+        signature: "我关注的人",
+        followed: true,
+    };
+    const followedSubject = {
+        subject: "cs.AI",
+        subjectName: "人工智能",
+        paperCount: 2,
+        recentPapers: [],
+    };
+    const availableSubject = {
+        subject: "cs.LG",
+        subjectName: "机器学习",
+        paperCount: 5,
+        followed: false,
+    };
+
+    const createDeferred = () => {
+        let resolve;
+        let reject;
+        const promise = new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+        });
+        return { promise, resolve, reject };
+    };
 
     const renderWithStore = (ui) => {
         const store = configureStore({
@@ -55,6 +85,7 @@ describe("follow confirmation", () => {
     };
 
     beforeEach(() => {
+        jest.useRealTimers();
         mockPush.mockReset();
         request.mockReset();
         useRouter.mockReturnValue({
@@ -64,7 +95,173 @@ describe("follow confirmation", () => {
     });
 
     afterEach(() => {
+        jest.useRealTimers();
         jest.restoreAllMocks();
+    });
+
+    const finishFollowSkeleton = async () => {
+        await act(async () => {
+            jest.advanceTimersByTime(800);
+        });
+    };
+
+    it("loads only followed mentors on initial follows page entry", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/mentors") {
+                return { mentors: [mentor] };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        expect(request).toHaveBeenCalledWith("/api/follow/mentors", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
+    });
+
+    it("lazy loads followed users with a skeleton when the user tab is first opened", async () => {
+        jest.useFakeTimers();
+        const userDeferred = createDeferred();
+        request.mockImplementation((url) => {
+            if (url === "/api/follow/mentors") {
+                return Promise.resolve({ mentors: [mentor] });
+            }
+
+            if (url === "/api/follow/users") {
+                return userDeferred.promise;
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await finishFollowSkeleton();
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "用户（0）" }));
+
+        expect(await screen.findByTestId("follow-user-skeleton")).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/users", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
+
+        await act(async () => {
+            userDeferred.resolve({ users: [followedUser] });
+        });
+
+        expect(screen.getByTestId("follow-user-skeleton")).toBeInTheDocument();
+        await finishFollowSkeleton();
+        await screen.findByText("我关注的人");
+        expect(screen.queryByTestId("follow-user-skeleton")).not.toBeInTheDocument();
+    });
+
+    it("lazy loads followed subjects with a skeleton when the subject tab is first opened", async () => {
+        jest.useFakeTimers();
+        const subjectDeferred = createDeferred();
+        request.mockImplementation((url) => {
+            if (url === "/api/follow/mentors") {
+                return Promise.resolve({ mentors: [mentor] });
+            }
+
+            if (url === "/api/follow/subjects") {
+                return subjectDeferred.promise;
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await finishFollowSkeleton();
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "板块（0）" }));
+
+        expect(await screen.findByTestId("follow-subject-skeleton")).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
+
+        await act(async () => {
+            subjectDeferred.resolve({
+                subjects: [followedSubject],
+                availableSubjects: [availableSubject],
+            });
+        });
+
+        expect(screen.getByTestId("follow-subject-skeleton")).toBeInTheDocument();
+        await finishFollowSkeleton();
+        await screen.findByRole("heading", { name: "人工智能" });
+        expect(screen.queryByTestId("follow-subject-skeleton")).not.toBeInTheDocument();
+    });
+
+    it("lazy loads followers with a skeleton when the fans view is first opened", async () => {
+        jest.useFakeTimers();
+        const followerDeferred = createDeferred();
+        request.mockImplementation((url) => {
+            if (url === "/api/follow/mentors") {
+                return Promise.resolve({ mentors: [mentor] });
+            }
+
+            if (url === "/api/follow/followers") {
+                return followerDeferred.promise;
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await finishFollowSkeleton();
+        await screen.findByRole("heading", { name: "张三" });
+        const viewSwitch = screen.getByRole("group", { name: "关注页面切换" });
+        fireEvent.click(within(viewSwitch).getByRole("button", { name: /我的粉丝/ }));
+
+        expect(await screen.findByTestId("follow-follower-skeleton")).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/followers", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects", "GET", true);
+
+        await act(async () => {
+            followerDeferred.resolve({ users: [follower] });
+        });
+
+        expect(screen.getByTestId("follow-follower-skeleton")).toBeInTheDocument();
+        await finishFollowSkeleton();
+        await screen.findByRole("heading", { name: "粉丝用户" });
+        expect(screen.queryByTestId("follow-follower-skeleton")).not.toBeInTheDocument();
+    });
+
+    it("does not refetch a lazily loaded tab when revisiting it", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/mentors") {
+                return { mentors: [mentor] };
+            }
+
+            if (url === "/api/follow/users") {
+                return { users: [followedUser] };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "用户（0）" }));
+        await screen.findByRole("heading", { name: "关注用户" });
+        fireEvent.click(screen.getByRole("button", { name: "导师（1）" }));
+        fireEvent.click(screen.getByRole("button", { name: "用户（1）" }));
+
+        await waitFor(() => {
+            const userRequests = request.mock.calls.filter(([url, method]) => (
+                url === "/api/follow/users" && method === "GET"
+            ));
+            expect(userRequests).toHaveLength(1);
+        });
     });
 
     it("shows direct unfollow buttons on follows page and updates card state without refetching the list", async () => {
@@ -175,10 +372,10 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         const viewSwitch = await screen.findByRole("group", { name: "关注页面切换" });
-        fireEvent.click(within(viewSwitch).getByRole("button", { name: /我的粉丝/i }));
+        fireEvent.click(within(viewSwitch).getByRole("button", { name: /我的粉丝/ }));
 
         expect(screen.getByRole("heading", { name: "我的粉丝" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "粉丝用户" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "粉丝用户" })).toBeInTheDocument();
         expect(screen.getByText("关注了我")).toBeInTheDocument();
         expect(request).toHaveBeenCalledWith("/api/follow/followers", "GET", true);
     });
