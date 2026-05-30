@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 
 import { FAILURE_PREFIX } from "../constants/string";
-import { setAvatarUrl } from "../redux/auth";
+import { setAvatarUrl, setName, setToken } from "../redux/auth";
 import { RootState } from "../redux/store";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { MentorVerificationRequestResult } from "../utils/types";
@@ -54,6 +54,9 @@ const ProfileSettingsPage = () => {
     const dispatch = useDispatch();
     const token = useSelector((state: RootState) => state.auth.token);
     const userId = useSelector((state: RootState) => state.auth.userId);
+    const currentUsername = useSelector((state: RootState) => state.auth.name);
+    const [usernameInput, setUsernameInput] = useState("");
+    const [usernameUpdating, setUsernameUpdating] = useState(false);
     const [settings, setSettings] = useState<ProfileSettings>(EMPTY_SETTINGS);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -93,6 +96,58 @@ const ProfileSettingsPage = () => {
             })
             .finally(() => setLoading(false));
     }, [token]);
+
+    useEffect(() => {
+        setUsernameInput(currentUsername);
+    }, [currentUsername]);
+
+    const updateUsername = async () => {
+        const nextUsername = usernameInput.trim();
+        if (nextUsername === "") {
+            setErrorMessage("用户名不能为空");
+            return;
+        }
+        if (nextUsername === currentUsername) {
+            setErrorMessage("新用户名与当前用户名相同");
+            return;
+        }
+
+        setUsernameUpdating(true);
+        setSuccessMessage("");
+        setErrorMessage("");
+
+        try {
+            const response = await fetch("/api/profile/username", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ username: nextUsername }),
+            });
+            const payload = await response.json() as { code?: number; info?: string; username?: string; token?: string };
+
+            if (Number(payload.code) === 0) {
+                const updatedName = typeof payload.username === "string" ? payload.username : nextUsername;
+                if (typeof payload.token === "string" && payload.token !== "") {
+                    dispatch(setToken(payload.token));
+                }
+                dispatch(setName(updatedName));
+                setUsernameInput(updatedName);
+                setSuccessMessage("用户名修改成功");
+            } else if (Number(payload.code) === 3) {
+                setErrorMessage("该用户名已被占用，请更换其他用户名");
+            } else if (response.status === 401) {
+                setErrorMessage("登录已失效，请重新登录后再试");
+            } else {
+                setErrorMessage(String(payload.info ?? "用户名修改失败"));
+            }
+        } catch (err) {
+            setErrorMessage(FAILURE_PREFIX + String(err));
+        } finally {
+            setUsernameUpdating(false);
+        }
+    };
 
     const saveSettings = async () => {
         setSaving(true);
@@ -221,6 +276,29 @@ const ProfileSettingsPage = () => {
                 <p>加载中...</p>
             ) : (
                 <>
+                    <section className="settingsSection" aria-label="用户名设置">
+                        <h3>用户名</h3>
+                        <p>修改后将作为你的登录名与主页显示名称。</p>
+                        <label htmlFor="username">用户名</label>
+                        <input
+                            id="username"
+                            type="text"
+                            value={usernameInput}
+                            placeholder="输入新的用户名"
+                            onChange={(e) => setUsernameInput(e.target.value)}
+                            disabled={usernameUpdating}
+                        />
+                        <div className="actions">
+                            <button
+                                type="button"
+                                onClick={() => void updateUsername()}
+                                disabled={usernameUpdating || usernameInput.trim() === "" || usernameInput.trim() === currentUsername}
+                            >
+                                {usernameUpdating ? "修改中..." : "修改用户名"}
+                            </button>
+                        </div>
+                    </section>
+
                     <section className="settingsSection" aria-label="头像和签名设置">
                         <div className="avatarPreview">
                             {settings.avatarUrl.trim() === "" ? (
