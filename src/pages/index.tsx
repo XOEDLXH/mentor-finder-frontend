@@ -116,15 +116,18 @@ const WeeklyPaperAbstractPreview = ({ text }: WeeklyPaperAbstractPreviewProps) =
     }, [text]);
 
     return (
-        <div
-            ref={(node) => {
-                containerRef.current = node ?? undefined;
-            }}
-            className={`homeWeeklyPaperAbstractRow${isTruncated ? " homeWeeklyPaperAbstractRowTruncated" : ""}`}
-        >
-            <div className="homeWeeklyPaperAbstractContent">
-                <LatexText text={text} />
+        <div className="homeWeeklyPaperAbstractRow">
+            <div
+                ref={(node) => {
+                    containerRef.current = node ?? undefined;
+                }}
+                className={`homeWeeklyPaperAbstractClamp${isTruncated ? " homeWeeklyPaperAbstractClampTruncated" : ""}`}
+            >
+                <div className="homeWeeklyPaperAbstractContent">
+                    <LatexText text={text} />
+                </div>
             </div>
+            {isTruncated && <div className="homeWeeklyPaperAbstractEllipsis">...</div>}
         </div>
     );
 };
