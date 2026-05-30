@@ -127,6 +127,14 @@ describe("follow confirmation", () => {
         // On first entry, the page should load the default "followed mentors"
         // tab only, without eagerly fetching followed users, subjects, or fans.
         request.mockImplementation(async (url) => {
+            if (url === "/api/follow/counts") {
+                return {
+                    mentorCount: 1,
+                    userCount: 0,
+                    subjectCount: 0,
+                    followerCount: 0,
+                };
+            }
             if (url === "/api/follow/mentors") {
                 return { mentors: [mentor] };
             }
@@ -137,11 +145,44 @@ describe("follow confirmation", () => {
         renderWithStore(<FollowsPage />);
 
         await screen.findByRole("heading", { name: "张三" });
+        expect(screen.getByRole("button", { name: "用户（0）" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "板块（0）" })).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/counts", "GET", true);
         expect(request).toHaveBeenCalledWith("/api/follow/mentors", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/available", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/followed", "GET", true);
         expect(request).not.toHaveBeenCalledWith("/api/follow/followers", "GET", true);
+    });
+
+    it("preloads sidebar counts without eagerly fetching unopened lists", async () => {
+        request.mockImplementation(async (url) => {
+            if (url === "/api/follow/counts") {
+                return {
+                    mentorCount: 1,
+                    userCount: 2,
+                    subjectCount: 51,
+                    followerCount: 3,
+                };
+            }
+
+            if (url === "/api/follow/mentors") {
+                return { mentors: [mentor] };
+            }
+
+            return {};
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        expect(screen.getByRole("button", { name: "导师（1）" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "用户（2）" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "板块（51）" })).toBeInTheDocument();
+        expect(request).toHaveBeenCalledWith("/api/follow/counts", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/users", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/available", "GET", true);
+        expect(request).not.toHaveBeenCalledWith("/api/follow/subjects/followed", "GET", true);
     });
 
     it("lazy loads followed users with a skeleton when the user tab is first opened", async () => {
@@ -152,6 +193,9 @@ describe("follow confirmation", () => {
         jest.useFakeTimers();
         const userDeferred = createDeferred();
         request.mockImplementation((url) => {
+            if (url === "/api/follow/counts") {
+                return Promise.resolve({ mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 });
+            }
             if (url === "/api/follow/mentors") {
                 return Promise.resolve({ mentors: [mentor] });
             }
@@ -194,6 +238,9 @@ describe("follow confirmation", () => {
         const availableDeferred = createDeferred();
         const followedDeferred = createDeferred();
         request.mockImplementation((url) => {
+            if (url === "/api/follow/counts") {
+                return Promise.resolve({ mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 });
+            }
             if (url === "/api/follow/mentors") {
                 return Promise.resolve({ mentors: [mentor] });
             }
@@ -246,6 +293,9 @@ describe("follow confirmation", () => {
 
     it("loads followed-subject papers only after the user expands one subject", async () => {
         request.mockImplementation(async (url) => {
+            if (url === "/api/follow/counts") {
+                return { mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 };
+            }
             if (url === "/api/follow/mentors") {
                 return { mentors: [mentor] };
             }
@@ -301,6 +351,9 @@ describe("follow confirmation", () => {
         jest.useFakeTimers();
         const followerDeferred = createDeferred();
         request.mockImplementation((url) => {
+            if (url === "/api/follow/counts") {
+                return Promise.resolve({ mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 });
+            }
             if (url === "/api/follow/mentors") {
                 return Promise.resolve({ mentors: [mentor] });
             }
@@ -340,6 +393,9 @@ describe("follow confirmation", () => {
         // Once the followed-users tab has been loaded, returning to that tab
         // later should reuse the existing data instead of sending another GET.
         request.mockImplementation(async (url) => {
+            if (url === "/api/follow/counts") {
+                return { mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 };
+            }
             if (url === "/api/follow/mentors") {
                 return { mentors: [mentor] };
             }
@@ -373,6 +429,9 @@ describe("follow confirmation", () => {
         // DELETE request and update the card/count state locally, without
         // reloading the whole mentor list from the backend.
         request.mockImplementation(async (url, method) => {
+            if (url === "/api/follow/counts") {
+                return { mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 };
+            }
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
                 return { followed: false };
             }
@@ -404,6 +463,9 @@ describe("follow confirmation", () => {
         // After unfollowing, the same card should remain in place and support
         // re-following via POST without rebuilding the page layout.
         request.mockImplementation(async (url, method) => {
+            if (url === "/api/follow/counts") {
+                return { mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 };
+            }
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
                 return { followed: false };
             }
@@ -439,6 +501,9 @@ describe("follow confirmation", () => {
         // disabled, keep its original label, and show the loading overlay.
         let resolveFollow;
         request.mockImplementation((url, method) => {
+            if (url === "/api/follow/counts") {
+                return Promise.resolve({ mentorCount: 1, userCount: 0, subjectCount: 0, followerCount: 0 });
+            }
             if (url === "/api/follow/mentors/7" && method === "DELETE") {
                 return new Promise((resolve) => {
                     resolveFollow = resolve;
@@ -470,6 +535,9 @@ describe("follow confirmation", () => {
         // Once the user switches to "my followers", the page should show the
         // followers heading, follower card content, and request the right API.
         request.mockImplementation(async (url) => {
+            if (url === "/api/follow/counts") {
+                return { mentorCount: 0, userCount: 0, subjectCount: 0, followerCount: 1 };
+            }
             if (url === "/api/follow/mentors") {
                 return { mentors: [] };
             }
