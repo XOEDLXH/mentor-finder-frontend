@@ -1,3 +1,6 @@
+// Utilities for preserving and restoring search-page navigation context when
+// the user leaves a search result and later returns from a mentor detail page.
+
 export interface PendingMentorSearchReturn {
     mentorId: number;
     sourceEntryKey: string;
@@ -7,6 +10,8 @@ export interface PendingMentorSearchReturn {
 
 const SEARCH_RETURN_MARKER_STORAGE_KEY = "search-mentor-return-marker";
 
+// Normalize untrusted storage data into the exact marker shape expected by the
+// search-return flow. Invalid values are discarded instead of partially used.
 const normalizePendingMentorSearchReturn = (
     value: Partial<PendingMentorSearchReturn> | undefined,
 ) => {
@@ -36,6 +41,8 @@ const normalizePendingMentorSearchReturn = (
     } satisfies PendingMentorSearchReturn;
 };
 
+// Read the pending mentor-return marker from sessionStorage when running in the
+// browser. Invalid JSON or malformed values are treated as "no marker".
 export const readPendingMentorSearchReturn = () => {
     if (typeof window === "undefined") {
         return undefined;
@@ -55,6 +62,8 @@ export const readPendingMentorSearchReturn = () => {
     }
 };
 
+// Persist the pending mentor-return marker so the detail page knows how to
+// navigate back to the originating search entry.
 export const writePendingMentorSearchReturn = (value: PendingMentorSearchReturn) => {
     if (typeof window === "undefined") {
         return;
@@ -77,6 +86,8 @@ export const writePendingMentorSearchReturn = (value: PendingMentorSearchReturn)
     }
 };
 
+// Remove any stale pending mentor-return marker after it has been consumed or
+// when a new navigation flow invalidates the old one.
 export const clearPendingMentorSearchReturn = () => {
     if (typeof window === "undefined") {
         return;

@@ -1,18 +1,27 @@
 /**
- * @note 本文件是一个网络请求 wrapper 示例，其作用是将所有网络请求汇总到一个函数内处理
- *       我们推荐你在大作业中也尝试写一个网络请求 wrapper，本文件可以用作参考
+ * Central network-request wrapper used by the frontend.
+ * This module keeps request construction, auth-header injection, response
+ * parsing, and normalized error handling in one place.
  */
 
 import store from "../redux/store";
 import { resetAuth } from "../redux/auth";
 
 export enum NetworkErrorType {
+    // Authentication is missing or expired and the user should re-authenticate.
     UNAUTHORIZED,
+    // The server explicitly rejected the action even though the request shape
+    // itself was valid, for example a forbidden operation.
     REJECTED,
+    // The HTTP layer succeeded, but the response does not match the API
+    // contract expected by the frontend.
     CORRUPTED_RESPONSE,
+    // Fallback bucket for all remaining transport/response failures.
     UNKNOWN_ERROR,
 }
 
+// Custom error class used by the request wrapper so callers can branch on a
+// stable semantic error type instead of parsing raw text messages.
 export class NetworkError extends Error {
     type: NetworkErrorType;
     message: string;
@@ -31,6 +40,12 @@ export class NetworkError extends Error {
     valueOf(): string { return this.message; }
 }
 
+// Perform a typed HTTP request against the backend API.
+// Responsibilities:
+// 1. attach JSON and auth headers when needed;
+// 2. serialize request bodies;
+// 3. parse backend JSON consistently;
+// 4. translate status/code combinations into stable frontend errors.
 export const request = async <T extends object = Record<string, unknown>>(
     url: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -39,10 +54,13 @@ export const request = async <T extends object = Record<string, unknown>>(
 ): Promise<T> => {
     const headers: Record<string, string> = {};
 
+    // Send JSON content-type only when a request body is present.
     if (body !== undefined) {
         headers["Content-Type"] = "application/json";
     }
 
+    // Inject the bearer token for authenticated requests when the Redux auth
+    // store currently contains a non-empty token.
     if (needAuth) {
         const token = store.getState().auth.token;
 
@@ -61,9 +79,13 @@ export const request = async <T extends object = Record<string, unknown>>(
     const rawBody = await response.text();
     let data: Record<string, unknown>;
     try {
+        // The backend contract is JSON-based even for most failures, so parse
+        // the raw body first and classify non-JSON responses explicitly below.
         data = JSON.parse(rawBody);
     }
     catch {
+        // A 200 response with non-JSON content means the backend violated the
+        // expected API contract rather than returning a normal business error.
         if (response.status === 200) {
             throw new NetworkError(
                 NetworkErrorType.CORRUPTED_RESPONSE,
@@ -71,6 +93,8 @@ export const request = async <T extends object = Record<string, unknown>>(
             );
         }
 
+        // Non-200 responses may still return plain text or an empty body.
+        // Convert those cases into stable, non-crashing frontend errors.
         throw new NetworkError(
             NetworkErrorType.UNKNOWN_ERROR,
             `[${response.status}] ${rawBody === "" ? "Empty response body" : rawBody}`,
@@ -80,7 +104,8 @@ export const request = async <T extends object = Record<string, unknown>>(
     const code = Number(data.code);
     const info = String(data.info ?? "Unknown error");
 
-    // HTTP status 401
+    // HTTP 401 is handled specially because protected requests should also
+    // clear stale auth state from Redux when the backend reports code=2.
     if (response.status === 401 && code === 2) {
         if (needAuth) {
             store.dispatch(resetAuth());
@@ -98,7 +123,8 @@ export const request = async <T extends object = Record<string, unknown>>(
         );
     }
 
-    // HTTP status 403
+    // HTTP 403 with code=3 represents an explicit backend rejection rather
+    // than an auth-expiration event.
     if (response.status === 403 && code === 3) {
         throw new NetworkError(
             NetworkErrorType.REJECTED,
@@ -112,7 +138,9 @@ export const request = async <T extends object = Record<string, unknown>>(
         );
     }
 
-    // HTTP status 200
+    // A successful business response is encoded as HTTP 200 + code 0.
+    // The returned object strips the backend's success code because callers
+    // typically only care about the payload fields.
     if (response.status === 200 && code === 0) {
         return { ...data, code: undefined } as T;
     }
@@ -123,10 +151,7 @@ export const request = async <T extends object = Record<string, unknown>>(
         );
     }
 
-    /**
-     * @note 这里的错误处理显然是粗糙的，根据 HTTP status 和 code 的不同应该有更精细的处理
-     *       在大作业中，可以尝试编写更为精细的错误处理代码以理清网络请求逻辑
-     */
+    // Final fallback for status/code combinations not yet classified above.
     throw new NetworkError(
         NetworkErrorType.UNKNOWN_ERROR,
         `[${response.status}] ` + info,

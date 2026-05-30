@@ -1,8 +1,13 @@
+// Shared search-query model and helpers for the global search page.
+// These functions keep URL parsing and URL generation consistent across
+// mentor search, paper search, sorting, pagination, and visibility filters.
+
 export type SearchMode = "mentor" | "paper";
 export type SearchMatchMode = "exact" | "fuzzy";
 export type SearchPaperSortMode = "default" | "early" | "late";
 export type SearchMentorVisibility = "all" | "mine" | "public";
 
+// Canonical in-memory representation of the search page state mirrored in the URL.
 export interface SearchQueryState {
     keyword: string;
     mode: SearchMode;
@@ -21,6 +26,7 @@ export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
     visibility: "all",
 };
 
+// Type guards used when decoding URL query strings from untrusted sources.
 const isSafeSearchMode = (value: unknown): value is SearchMode => {
     return value === "mentor" || value === "paper";
 };
@@ -37,6 +43,8 @@ const isSafeMentorVisibility = (value: unknown): value is SearchMentorVisibility
     return value === "all" || value === "mine" || value === "public";
 };
 
+// Normalize a Next.js query field into a single string value.
+// Arrays are reduced to their first item, and missing values become "".
 const normalizeQueryValue = (value: string | string[] | undefined) => {
     if (typeof value === "string") {
         return value;
@@ -49,6 +57,7 @@ const normalizeQueryValue = (value: string | string[] | undefined) => {
     return "";
 };
 
+// Parse page numbers defensively so invalid values fall back to page 1.
 const parsePositivePage = (value: string) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -58,6 +67,9 @@ const parsePositivePage = (value: string) => {
     return Math.floor(parsed);
 };
 
+// Parse the router query into a validated search state object.
+// Unknown or invalid query values are replaced with safe defaults so the page
+// can rehydrate its UI without trusting raw URL parameters blindly.
 export const parseSearchQuery = (
     query: Record<string, string | string[] | undefined>,
 ) => {
@@ -89,6 +101,11 @@ export const parseSearchQuery = (
     };
 };
 
+// Build the canonical `/search?...` URL for the current search state.
+// Only mode-relevant optional parameters are emitted:
+// - paper mode emits sort_mode;
+// - mentor mode emits visibility when it is not "all";
+// - page is omitted for the first page.
 export const buildSearchUrl = (state: SearchQueryState) => {
     const params = new URLSearchParams();
 
@@ -110,6 +127,8 @@ export const buildSearchUrl = (state: SearchQueryState) => {
     return `/search?${params.toString()}`;
 };
 
+// Convenience helper for the top navigation global search box, which always
+// opens a fuzzy paper search in a new tab.
 export const buildGlobalPaperSearchUrl = (keyword: string) => {
     return buildSearchUrl({
         keyword: keyword.trim(),

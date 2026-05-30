@@ -4,10 +4,14 @@ import { useRouter } from "next/router";
 import { request } from "../utils/network";
 import TimelinePage from "../pages/timeline";
 
+// Mock Next.js routing so the timeline page can be rendered without the real
+// router and any navigation side effects can be observed if needed.
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock the shared network helper so timeline overview, calendar metadata, and
+// batched paper-feed responses can be controlled deterministically.
 jest.mock("../utils/network", () => ({
     request: jest.fn(),
 }));
@@ -15,6 +19,9 @@ jest.mock("../utils/network", () => ({
 describe("TimelinePage date mode", () => {
     const mockPush = jest.fn();
 
+    // Builds a representative timeline paper record. Individual tests override
+    // fields such as title, publish date, and per-day position to target
+    // specific timeline-feed behaviors.
     const createPaper = (id, overrides = {}) => ({
         id,
         title: `Compression Paper ${id}`,
@@ -30,6 +37,8 @@ describe("TimelinePage date mode", () => {
         ...overrides,
     });
 
+    // Helper for tests that need to hold requests open in order to inspect
+    // loading placeholders or pending intermediate states.
     const createDeferred = () => {
         let resolve;
         let reject;
@@ -40,6 +49,8 @@ describe("TimelinePage date mode", () => {
         return { promise, resolve, reject };
     };
 
+    // Mock payload for the timeline overview module, which defines available
+    // research directions and the page-size policy.
     const mockTimelineOverview = (overrides = {}) => ({
         directions: [
             { direction: "机器学习", paper_count: 30 },
@@ -51,6 +62,8 @@ describe("TimelinePage date mode", () => {
         ...overrides,
     });
 
+    // Mock payload for the calendar metadata module, which determines the
+    // current visible month, selectable dates, and date-range boundaries.
     const mockCalendarMeta = (overrides = {}) => ({
         direction: "机器学习",
         default_date: "2026-05-10",
@@ -64,6 +77,8 @@ describe("TimelinePage date mode", () => {
         ...overrides,
     });
 
+    // Mock payload for a timeline feed batch. This shape is reused for the
+    // initial load and for older/newer incremental loads.
     const timelineResponse = (papers, overrides = {}) => ({
         direction: "机器学习",
         limit: 6,
@@ -74,12 +89,16 @@ describe("TimelinePage date mode", () => {
         ...overrides,
     });
 
+    // Utility matcher for timeline API URLs that may vary by date/direction/
+    // pagination parameters. This keeps URL assertions readable in the tests.
     const isTimelineUrl = (url, params = []) => (
         typeof url === "string"
         && url.startsWith("/api/timeline?")
         && params.every((param) => url.includes(param))
     );
 
+    // Helper for asserting which calendar month/year the inline calendar is
+    // currently showing to the user.
     const expectVisibleCalendarMonth = (yearLabel, monthLabel) => {
         const yearTrigger = screen.getByRole("button", { name: "选择年份" });
         const monthTrigger = screen.getByRole("button", { name: "选择月份" });
@@ -87,6 +106,8 @@ describe("TimelinePage date mode", () => {
         expect(monthTrigger).toHaveTextContent(monthLabel);
     };
 
+    // Installs DOM geometry values for the virtual feed viewport so scrolling
+    // and intersection-related logic can be tested in jsdom.
     const setupViewportGeometry = () => {
         const viewport = screen.getByTestId("timeline-feed-viewport");
         Object.defineProperty(viewport, "clientHeight", {
@@ -114,6 +135,7 @@ describe("TimelinePage date mode", () => {
         return viewport;
     };
 
+    // Helper for changing the mocked scrollTop of the feed viewport.
     const setViewportScrollTop = (viewport, scrollTop) => {
         Object.defineProperty(viewport, "scrollTop", {
             configurable: true,
@@ -122,6 +144,8 @@ describe("TimelinePage date mode", () => {
         });
     };
 
+    // Helper for defining the vertical position and height of a paper card
+    // within the feed, which drives "first visible paper" calculations.
     const setPaperGeometry = (paperId, offsetTop, offsetHeight = 180) => {
         const card = screen.getByTestId(`timeline-paper-${paperId}`);
         Object.defineProperty(card, "offsetTop", {
@@ -136,6 +160,8 @@ describe("TimelinePage date mode", () => {
     };
 
     beforeEach(() => {
+        // Reset router/network mocks and browser scrolling helpers before each
+        // timeline scenario so feed state does not leak between tests.
         mockPush.mockReset();
         request.mockReset();
         window.scrollBy = jest.fn();
@@ -147,6 +173,12 @@ describe("TimelinePage date mode", () => {
     });
 
     it("loads timeline overview, calendar metadata, and the default date batch", async () => {
+        // Tests the initial timeline bootstrapping module.
+        // On first render, the page should:
+        // 1. load the overview for directions;
+        // 2. load calendar metadata for the default direction;
+        // 3. load the first batch of papers for the default date;
+        // 4. render feed/date summary text based on that default day.
         const initialDeferred = createDeferred();
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
@@ -185,6 +217,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("keeps the feed header in skeleton state while the calendar request is still pending after overview load", async () => {
+        // Tests partial-loading behavior between overview and calendar data.
+        // Even after the overview loads, the feed header should remain in a
+        // skeleton state until the calendar metadata request has completed.
         const calendarDeferred = createDeferred();
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
@@ -216,6 +251,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("renders calendar cells and disables dates without papers", async () => {
+        // Tests the calendar-day rendering module.
+        // Available dates should render as enabled buttons with counts and lead
+        // styling, while dates with zero papers should stay disabled.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -243,6 +281,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("switches to a clicked calendar day and reloads the feed for that exact date", async () => {
+        // Tests the date-switching module driven by calendar clicks.
+        // Selecting another available day should request that exact date's feed
+        // batch and update the visible feed summary accordingly.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -279,6 +320,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("loads older papers when the load-more preview enters the viewport", async () => {
+        // Tests the incremental "load older papers" module.
+        // When the load-more preview at the bottom enters the viewport, the
+        // timeline should request an older batch using before_date/before_id.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -354,6 +398,10 @@ describe("TimelinePage date mode", () => {
     });
 
     it("loads newer papers only after top overscroll wheel intent at the viewport top", async () => {
+        // Tests the guarded "load newer papers" module.
+        // The page should not eagerly fetch newer items on any small upward
+        // wheel movement. It should only do so after a strong overscroll-like
+        // upward intent while already at the top of the viewport.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -420,6 +468,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("updates the visible date range based on the first visible paper in the viewport", async () => {
+        // Tests the viewport-driven date summary module.
+        // As the user scrolls, the header should update to reflect the date of
+        // the first visible paper currently leading the viewport.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -461,6 +512,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("auto switches the calendar month when the viewport date moves outside the current month", async () => {
+        // Tests automatic calendar month synchronization with the feed viewport.
+        // If scrolling makes a paper from another month become the leading
+        // visible item, the calendar should automatically switch to that month.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -520,6 +574,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("does not snap the calendar month back immediately after manual month navigation", async () => {
+        // Tests the manual-month-navigation protection module.
+        // After the user explicitly switches the calendar month, the component
+        // should not immediately override that choice with auto-sync behavior.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -569,6 +626,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("opens the inline picker from year and month triggers with the current month preselected", async () => {
+        // Tests the inline year/month picker opening module.
+        // Clicking either trigger should open the picker and preselect the
+        // currently visible year/month so the user sees the active context.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -607,6 +667,10 @@ describe("TimelinePage date mode", () => {
     });
 
     it("derives year and month options from available dates and confirms month browsing without refetching papers", async () => {
+        // Tests the picker option-derivation and browsing module.
+        // The picker should only offer years/months that actually exist in
+        // available_dates, and confirming a browsed month should update the
+        // visible calendar month without re-fetching feed papers immediately.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -655,6 +719,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("closes the picker on escape and outside click without changing the visible month", async () => {
+        // Tests non-destructive picker dismissal.
+        // Escape and outside clicks should close the picker while preserving the
+        // currently visible calendar month instead of committing changes.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -694,6 +761,9 @@ describe("TimelinePage date mode", () => {
     });
 
     it("disables the year and month triggers when there are no selectable calendar months", async () => {
+        // Tests the empty-calendar-month fallback module.
+        // If no selectable months exist, the year/month picker triggers should
+        // be disabled and must not open the picker dialog.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
@@ -724,6 +794,11 @@ describe("TimelinePage date mode", () => {
     });
 
     it("renders inline LaTeX in titles and mentor links in author rows", async () => {
+        // Tests paper-card content rendering inside the timeline feed.
+        // This covers:
+        // 1. KaTeX rendering for LaTeX inside paper titles and abstracts;
+        // 2. mentor author names becoming links when mentor_ids exist;
+        // 3. non-mentor authors remaining plain text.
         request.mockImplementation(async (url) => {
             if (url === "/api/timeline") {
                 return mockTimelineOverview();
