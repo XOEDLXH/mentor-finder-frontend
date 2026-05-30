@@ -80,6 +80,11 @@ const WeeklyPushPaperList = ({
     const [canScrollNext, setCanScrollNext] = useState(
         papers.length > WEEKLY_PUSH_PAPERS_PER_VIEW,
     );
+    const [hoverTooltip, setHoverTooltip] = useState<{
+        x: number;
+        y: number;
+        text: string;
+    } | null>(null);
 
     const scrollCarousel = (direction: -1 | 1) => {
         const viewport = viewportRef.current;
@@ -182,7 +187,27 @@ const WeeklyPushPaperList = ({
                             <div style={{ border: "1px solid #eee", borderRadius: 6, padding: 10, backgroundColor: "#fff", minHeight: "100%" }}>
                                 <div style={{ fontWeight: 600 }}>
                                     {paper.arxivUrl ? (
-                                        <a href={paper.arxivUrl} target="_blank" rel="noreferrer">
+                                        <a
+                                            href={paper.arxivUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="前往此论文 arXiv 页面"
+                                            onMouseEnter={(event) => setHoverTooltip({
+                                                x: event.clientX + 14,
+                                                y: event.clientY + 18,
+                                                text: "前往此论文 arXiv 页面",
+                                            })}
+                                            onMouseMove={(event) => setHoverTooltip((current) => (
+                                                current === null
+                                                    ? null
+                                                    : {
+                                                        ...current,
+                                                        x: event.clientX + 14,
+                                                        y: event.clientY + 18,
+                                                    }
+                                            ))}
+                                            onMouseLeave={() => setHoverTooltip(null)}
+                                        >
                                             <LatexText text={paper.title} forceInlineMath />
                                         </a>
                                     ) : (
@@ -212,6 +237,17 @@ const WeeklyPushPaperList = ({
                     ))}
                 </div>
             </div>
+            {hoverTooltip !== null && (
+                <div
+                    className="homeWeeklyPaperHoverTooltip"
+                    style={{
+                        left: hoverTooltip.x,
+                        top: hoverTooltip.y,
+                    }}
+                >
+                    {hoverTooltip.text}
+                </div>
+            )}
         </div>
     );
 };

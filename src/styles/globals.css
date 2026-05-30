@@ -534,6 +534,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
 }
 
 .homeWeeklyPaperCarouselShell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -581,6 +582,21 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   flex: 0 0 calc((100% - 12px) / 2);
   min-width: 0;
   scroll-snap-align: start;
+}
+
+.homeWeeklyPaperHoverTooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(31, 35, 40, 0.92);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  white-space: nowrap;
 }
 
 .homePageShell {
