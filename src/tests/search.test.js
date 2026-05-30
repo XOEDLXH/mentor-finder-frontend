@@ -47,6 +47,16 @@ describe("SearchScreen", () => {
         mockRouter.query = nextQuery;
     };
 
+    const createDeferred = () => {
+        let resolve;
+        let reject;
+        const promise = new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+        });
+        return { promise, resolve, reject };
+    };
+
     const mockPrivateMentor = {
         id: 101,
         Chinese_name: "王五",
@@ -92,6 +102,13 @@ describe("SearchScreen", () => {
                 "GET",
                 true,
             );
+        });
+    };
+
+    const waitForSearchSkeletonsToFinish = async () => {
+        await waitFor(() => {
+            expect(screen.queryByTestId("search-mentor-skeleton")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("search-paper-skeleton")).not.toBeInTheDocument();
         });
     };
 
@@ -419,6 +436,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.getByRole("heading", { name: "Showing 1 results for all: 大模型" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "搜论文" })).toHaveAttribute("aria-pressed", "true");
@@ -493,6 +511,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.getByRole("heading", { name: "张三" })).toBeInTheDocument();
         expect(screen.getByText("Zhang San")).toBeInTheDocument();
@@ -570,6 +589,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.getByRole("heading", { name: "机器学习方法研究" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "arxiv" })).toHaveAttribute("href", "https://arxiv.org/abs/2402.00002");
@@ -774,6 +794,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.getByRole("heading", { name: "大语言模型在问答系统中的应用" })).toBeInTheDocument();
         expect(screen.getByText("2024-06-15")).toBeInTheDocument();
@@ -1440,6 +1461,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.getByRole("button", { name: "搜论文" })).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByRole("button", { name: "精确" })).toHaveAttribute("aria-pressed", "true");
@@ -1578,6 +1600,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.getByRole("heading", { name: "测试导师", level: 3 })).toBeInTheDocument();
         await waitFor(() => {
@@ -1912,6 +1935,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         await waitFor(() => {
             expect(window.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 460, behavior: "auto" });
@@ -2003,6 +2027,7 @@ describe("SearchScreen", () => {
                 true,
             );
         });
+        await waitForSearchSkeletonsToFinish();
 
         await waitFor(() => {
             expect(window.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 320, behavior: "auto" });
@@ -2460,5 +2485,192 @@ describe("SearchScreen", () => {
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: expectedSummary })).toHaveAttribute("title", expectedSummary);
         });
+    });
+
+    it("renders mentor skeletons while mentor search is pending", async () => {
+        const mentorDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0%E4%B8%89&search_mode=fuzzy") {
+                return mentorDeferred.promise;
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张三" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        expect(await screen.findByTestId("search-mentor-skeleton")).toBeInTheDocument();
+        expect(screen.queryByText("未找到匹配的导师结果（当前为模糊搜索）。")).not.toBeInTheDocument();
+
+        await act(async () => {
+            mentorDeferred.resolve({
+                mentors: [{
+                    id: 1,
+                    Chinese_name: "张三",
+                    English_name: "Zhang San",
+                    research_direction: "机器学习",
+                    email: "zhangsan@example.com",
+                    profile: "导师画像",
+                    paperTitles: ["论文1"],
+                }],
+                total: 1,
+                total_pages: 1,
+            });
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByTestId("search-mentor-skeleton")).not.toBeInTheDocument();
+        });
+        expect(screen.getByRole("heading", { name: "张三", level: 3 })).toBeInTheDocument();
+    });
+
+    it("renders paper skeletons while paper search is pending", async () => {
+        const paperDeferred = createDeferred();
+        mockRouter.query = {
+            keyword: "大模型",
+            mode: "paper",
+            search_mode: "fuzzy",
+            sort_mode: "default",
+        };
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/papers?keyword=%E5%A4%A7%E6%A8%A1%E5%9E%8B&search_mode=fuzzy&sort_mode=default") {
+                return paperDeferred.promise;
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            if (String(url).startsWith("/api/search/papers")) {
+                return { papers: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        expect(await screen.findByTestId("search-paper-skeleton")).toBeInTheDocument();
+        expect(screen.queryByText("未找到匹配的论文结果（当前为模糊搜索）。")).not.toBeInTheDocument();
+
+        await act(async () => {
+            paperDeferred.resolve({
+                papers: [{
+                    id: 11,
+                    title: "大模型论文",
+                    abstract: "论文摘要。",
+                    publish_date: "2026-01-01",
+                    author_names: "张三",
+                    subjects: "cs.CL",
+                    mentorNames: ["张三"],
+                }],
+                total: 1,
+                total_pages: 1,
+            });
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByTestId("search-paper-skeleton")).not.toBeInTheDocument();
+        });
+        expect(screen.getByRole("heading", { name: "大模型论文" })).toBeInTheDocument();
+    });
+
+    it("replaces old mentor results with skeletons while paginating", async () => {
+        const pageTwoDeferred = createDeferred();
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/mentors/mine") {
+                return { mentors: [] };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy") {
+                return {
+                    page: 1,
+                    total: 2,
+                    total_pages: 2,
+                    has_previous: false,
+                    has_next: true,
+                    mentors: [{
+                        id: 1,
+                        Chinese_name: "第一页导师",
+                        English_name: "",
+                        research_direction: "机器学习",
+                        email: "",
+                        profile: "",
+                        paperTitles: [],
+                    }],
+                };
+            }
+
+            if (url === "/api/search/mentors?keyword=%E5%BC%A0&search_mode=fuzzy&page=2") {
+                return pageTwoDeferred.promise;
+            }
+
+            if (String(url).startsWith("/api/search/mentors")) {
+                return { mentors: [] };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+        await waitForMineRequest();
+
+        fireEvent.change(screen.getByPlaceholderText("输入导师姓名或研究方向"), {
+            target: { value: "张" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await screen.findByRole("heading", { name: "第一页导师", level: 3 });
+        fireEvent.click(screen.getAllByRole("button", { name: "下一页" })[0]);
+
+        expect(await screen.findByTestId("search-mentor-skeleton")).toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: "首页" }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("button", { name: "上一页" }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("button", { name: "下一页" }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("button", { name: "尾页" }).length).toBeGreaterThan(0);
+        expect(screen.queryByRole("heading", { name: "第一页导师", level: 3 })).not.toBeInTheDocument();
+
+        await act(async () => {
+            pageTwoDeferred.resolve({
+                page: 2,
+                total: 2,
+                total_pages: 2,
+                has_previous: true,
+                has_next: false,
+                mentors: [{
+                    id: 2,
+                    Chinese_name: "第二页导师",
+                    English_name: "",
+                    research_direction: "自然语言处理",
+                    email: "",
+                    profile: "",
+                    paperTitles: [],
+                }],
+            });
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByTestId("search-mentor-skeleton")).not.toBeInTheDocument();
+        });
+        expect(screen.getByRole("heading", { name: "第二页导师", level: 3 })).toBeInTheDocument();
     });
 });
