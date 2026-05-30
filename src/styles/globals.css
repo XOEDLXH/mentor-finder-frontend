@@ -69,7 +69,7 @@ select:disabled {
   opacity: 0.65;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton) {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--surface-panel);
@@ -78,7 +78,7 @@ button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNav
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):hover:not(:disabled) {
+button:not(.topNavLink):not(.topNavAuthLink):not(.topNavAuthPrimary):not(.topNavAvatarButton):not(.topNavMenuItem):not(.topNavMobileToggle):not(.topNavMobileLink):not(.topNavBrand):not(.loginAuthBrand):not(.registerAuthFormLogoRow):not(.searchTimelineMentorButton):not(.searchMentorPaperLinkButton):not(.mentorPaperLink):not(.searchSegmentButton):not(.searchMentorInlineLinkButton):not(.searchMentorFollowButton):not(.timelineDirectionButton):not(.timelineCalendarDayButton):not(.timelineCalendarPickerTrigger):not(.timelineCalendarPickerOption):not(.homeSubjectCarouselCard):not(.homeSubjectModalCloseButton):hover:not(:disabled) {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-soft);
   transform: translateY(-1px);
@@ -745,51 +745,199 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   text-align: center;
 }
 
-.homeSubjectGroupStack {
+.homeSubjectCarouselShell {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
-.homeSubjectGroupCard {
-  border: 1px solid #d9e6f7;
-  border-radius: 8px;
-  background: #fff;
-  padding: 12px;
-}
-
-.homeSubjectGroupHeader {
+.homeSubjectCarouselControls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.homeSubjectGroupHeader h4 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.homeSubjectGroupHeader span {
-  border: 1px solid #d0d7de;
-  border-radius: 999px;
-  padding: 3px 8px;
-  color: #59636e;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.homeSubjectPaperList {
-  display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.homeSubjectPaperItem {
-  border-top: 1px solid #eef1f4;
-  padding-top: 8px;
+.homeSubjectCarouselViewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.homeSubjectCarouselViewport::-webkit-scrollbar {
+  height: 8px;
+}
+
+.homeSubjectCarouselViewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.homeSubjectCarouselViewport::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: none;
+}
+
+.homeSubjectCarouselTrack {
+  display: flex;
+  gap: 12px;
+}
+
+.homeSubjectCarouselCard {
+  flex: 0 0 calc((100% - 12px) / 2);
+  min-width: 0;
+  scroll-snap-align: start;
+  border: 1px solid #d9e6f7;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 56%);
+  padding: 32px 28px 28px;
+  height: clamp(320px, 42vw, 680px);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.homeSubjectCarouselCard:hover,
+.homeSubjectCarouselCard:focus-visible {
+  transform: translateY(-2px);
+  border-color: #a9c6f6;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+  outline: none;
+}
+
+.homeSubjectCarouselCardContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.homeSubjectCarouselTitle {
+  margin: 0;
+  color: #1f2328;
+  font-size: clamp(34px, 6vw, 60px);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.homeSubjectCarouselTitle .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homeSubjectCarouselCount {
+  color: #59636e;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.homeSubjectModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 28px 20px;
+  background: rgba(31, 35, 40, 0.32);
+  backdrop-filter: blur(14px);
+}
+
+.homeSubjectModalDialog {
+  position: relative;
+  width: min(980px, 100%);
+  max-height: calc(100vh - 56px);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.24);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.homeSubjectModalCloseButton {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(31, 35, 40, 0.92);
+  color: #fff;
+  font-size: 30px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.homeSubjectModalCloseButton:hover,
+.homeSubjectModalCloseButton:focus-visible {
+  transform: scale(1.05);
+  opacity: 0.92;
+  outline: none;
+}
+
+.homeSubjectModalHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 48px 64px 24px;
+}
+
+.homeSubjectModalEyebrow {
+  color: #59636e;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.homeSubjectModalTitle {
+  margin: 0;
+  color: #1f2328;
+  font-size: clamp(30px, 5.4vw, 54px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.homeSubjectModalTitle .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homeSubjectModalCount {
+  color: #59636e;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.homeSubjectModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 64px 56px;
+  overflow-y: auto;
+}
+
+.homeSubjectModalPaperCard {
+  border-radius: 24px;
+  background: #f6f8fb;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .homeSubjectPaperTitle {
@@ -804,7 +952,7 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   line-height: 1.5;
 }
 
-.homeSubjectPaperItem p {
+.homeSubjectModalPaperCard p {
   margin: 6px 0 0;
   color: #3f4650;
   line-height: 1.55;
@@ -1497,6 +1645,34 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
 
   .homeWeeklyPaperCarouselCard {
     flex-basis: 100%;
+  }
+
+  .homeSubjectCarouselCard {
+    flex-basis: 100%;
+    padding: 24px 20px 20px;
+    border-radius: 24px;
+  }
+
+  .homeSubjectModalOverlay {
+    padding: 16px 12px;
+  }
+
+  .homeSubjectModalDialog {
+    max-height: calc(100vh - 32px);
+    border-radius: 24px;
+  }
+
+  .homeSubjectModalHeader {
+    padding: 32px 20px 18px;
+  }
+
+  .homeSubjectModalBody {
+    padding: 0 20px 28px;
+  }
+
+  .homeSubjectModalPaperCard {
+    border-radius: 18px;
+    padding: 18px;
   }
 }
 
