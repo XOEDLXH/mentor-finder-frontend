@@ -6,7 +6,7 @@ import { useSelector } from "react-redux";
 import FollowToggleButton from "../components/FollowToggleButton";
 import LatexText from "../components/LatexText";
 import Pagination from "../components/Pagination";
-import { FAILURE_PREFIX } from "../constants/string";
+import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { RootState } from "../redux/store";
 import {
@@ -790,7 +790,7 @@ const SearchScreen = () => {
         catch (err) {
             setAppliedKeyword(state.keyword);
             resetResults(intent !== "pop");
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setLoading(false);
@@ -884,11 +884,9 @@ const SearchScreen = () => {
             if (err.type === NetworkErrorType.REJECTED) {
                 return "仅管理员可以执行该操作";
             }
-
-            return String(err);
         }
 
-        return FAILURE_PREFIX + String(err);
+        return describeRequestError(err);
     };
 
     // Load the current user's private mentors so search results can show owner-specific state.
@@ -967,7 +965,7 @@ const SearchScreen = () => {
             });
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setFollowToggleMentorId(undefined);
@@ -1111,21 +1109,18 @@ const SearchScreen = () => {
         catch (err) {
             if (isNetworkErrorInstance(err)) {
                 const rawMsg = String(err);
-                if (rawMsg.includes("[email] format is invalid")) {
-                    setPrivateMentorMsg("邮箱格式不正确");
-                }
-                else if (rawMsg.includes("Mentor already exists")) {
+                if (rawMsg.includes("Mentor already exists")) {
                     setPrivateMentorMsg("该导师已在你的私有导师列表中，请勿重复添加");
                 }
                 else if (rawMsg.includes("Private mentor limit reached")) {
                     setPrivateMentorMsg("私有导师数量已达上限（10位），请先删除部分私有导师后再添加");
                 }
                 else {
-                    setPrivateMentorMsg(rawMsg);
+                    setPrivateMentorMsg(describeRequestError(err));
                 }
             }
             else {
-                setPrivateMentorMsg(FAILURE_PREFIX + String(err));
+                setPrivateMentorMsg(describeRequestError(err));
             }
         }
         finally {

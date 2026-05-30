@@ -1,6 +1,5 @@
 import { FormEvent, RefCallback, useEffect, useRef, useState } from "react";
 import {
-    FAILURE_PREFIX,
     REGISTER_CODE_COOLDOWN,
     REGISTER_CODE_INVALID,
     REGISTER_CODE_REQUIRED,
@@ -20,6 +19,7 @@ import { useRouter } from "next/router";
 import { setName, setRole, setToken, setUserId } from "../redux/auth";
 import { useDispatch } from "react-redux";
 import { buildRedirectHref } from "../utils/authRedirect";
+import { describeRequestError } from "../utils/errorMessage";
 
 // Registration validates usernames locally before asking the backend to avoid unnecessary requests.
 const USERNAME_REGEX = /^[\w-]+$/;
@@ -275,7 +275,7 @@ const RegisterScreen = () => {
                     setVerificationCodeError(REGISTER_CODE_SEND_FAILED);
                 }
             })
-            .catch((err) => setVerificationCodeError(FAILURE_PREFIX + err))
+            .catch((err) => setVerificationCodeError(describeRequestError(err)))
             .finally(() => setSendingCode(false));
     };
 
@@ -361,7 +361,7 @@ const RegisterScreen = () => {
                     setRegisterErrorMessage(REGISTER_FAILED);
                 }
             })
-            .catch((err) => setRegisterErrorMessage(FAILURE_PREFIX + err))
+            .catch((err) => setRegisterErrorMessage(describeRequestError(err)))
             .finally(() => setSubmitting(false));
     };
 

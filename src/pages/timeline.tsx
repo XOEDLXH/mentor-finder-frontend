@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import LatexText from "../components/LatexText";
-import { FAILURE_PREFIX } from "../constants/string";
+import { describeRequestError } from "../utils/errorMessage";
 import { request } from "../utils/network";
 import {
     TimelineCalendarResponse,
@@ -625,7 +625,7 @@ const TimelinePage = () => {
                 setLeadVisibleDate("");
             }
 
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             inFlightRef.current[mode] = false;
@@ -674,7 +674,7 @@ const TimelinePage = () => {
                 setTotalPapers(0);
                 setHasMoreBefore(false);
                 setHasMoreAfter(false);
-                setErrorMessage(FAILURE_PREFIX + String(err));
+                setErrorMessage(describeRequestError(err));
             }
             finally {
                 setLoadingDirections(false);
@@ -773,7 +773,7 @@ const TimelinePage = () => {
                 setLeadVisibleDate("");
                 setHasResolvedInitialFeed(true);
                 setShowInitialSkeleton(false);
-                setErrorMessage(FAILURE_PREFIX + String(err));
+                setErrorMessage(describeRequestError(err));
             }
             finally {
                 if (generation === directionGenerationRef.current) {

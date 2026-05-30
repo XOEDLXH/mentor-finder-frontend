@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
-import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
+import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 
 // Represent the editable fields on the user's public profile page.
@@ -67,7 +67,7 @@ const ProfileScreen = () => {
                     setErrorMessage("登录已失效，请重新登录后再试");
                     return;
                 }
-                setErrorMessage(FAILURE_PREFIX + String(err));
+                setErrorMessage(describeRequestError(err));
             })
             .finally(() => setLoading(false));
     }, [token]);
@@ -102,7 +102,7 @@ const ProfileScreen = () => {
                 setErrorMessage("登录已失效，请重新登录后再试");
                 return;
             }
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         } finally {
             setSaving(false);
         }

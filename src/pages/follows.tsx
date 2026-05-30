@@ -5,8 +5,8 @@ import { useSelector } from "react-redux";
 import FollowToggleButton from "../components/FollowToggleButton";
 import LatexText from "../components/LatexText";
 import Pagination from "../components/Pagination";
-import { FAILURE_PREFIX } from "../constants/string";
 import { RootState } from "../redux/store";
+import { describeRequestError } from "../utils/errorMessage";
 import { request } from "../utils/network";
 import { buildSearchUrl } from "../utils/searchQuery";
 import { FollowUserResult, SearchMentorResult, TimelinePaper } from "../utils/types";
@@ -282,7 +282,7 @@ const FollowsPage = () => {
             });
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
     }, [isLoggedIn, resetFollowData]);
 
@@ -315,7 +315,7 @@ const FollowsPage = () => {
         }
         catch (err) {
             setHasLoadedMentors(false);
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             finishSkeletonPhase("mentor");
@@ -345,7 +345,7 @@ const FollowsPage = () => {
         }
         catch (err) {
             setHasLoadedUsers(false);
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             finishSkeletonPhase("user");
@@ -369,7 +369,7 @@ const FollowsPage = () => {
         }
         catch (err) {
             setHasLoadedAvailableSubjects(false);
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             finishSkeletonPhase("subjectSearch");
@@ -397,7 +397,7 @@ const FollowsPage = () => {
         }
         catch (err) {
             setHasLoadedFollowedSubjects(false);
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             finishSkeletonPhase("followedSubject");
@@ -427,7 +427,7 @@ const FollowsPage = () => {
         catch (err) {
             setSubjectPaperErrors((currentErrors) => ({
                 ...currentErrors,
-                [subject]: FAILURE_PREFIX + String(err),
+                [subject]: describeRequestError(err),
             }));
         }
         finally {
@@ -460,7 +460,7 @@ const FollowsPage = () => {
         }
         catch (err) {
             setHasLoadedFollowers(false);
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             finishSkeletonPhase("follower");
@@ -489,7 +489,7 @@ const FollowsPage = () => {
             )));
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setActionMentorId(undefined);
@@ -528,7 +528,7 @@ const FollowsPage = () => {
             setFollowers((currentUsers) => currentUsers.map(updateUser));
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setActionUserId(undefined);
@@ -590,7 +590,7 @@ const FollowsPage = () => {
             }
         }
         catch (err) {
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setActionSubject(undefined);
@@ -618,7 +618,7 @@ const FollowsPage = () => {
         }
         catch (err) {
             setUserSearchResults([]);
-            setErrorMessage(FAILURE_PREFIX + String(err));
+            setErrorMessage(describeRequestError(err));
         }
         finally {
             setUserSearchLoading(false);
