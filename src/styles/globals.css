@@ -554,8 +554,22 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.homeWeeklyPaperCarouselViewport::-webkit-scrollbar {
+  height: 8px;
+}
+
+.homeWeeklyPaperCarouselViewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.homeWeeklyPaperCarouselViewport::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: none;
 }
 
 .homeWeeklyPaperCarouselTrack {
