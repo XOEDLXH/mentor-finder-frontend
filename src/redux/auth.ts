@@ -9,7 +9,7 @@ export interface AuthState {
     avatarUrl: string;
 }
 
-// Default to a fully signed-out auth state before hydration from local storage.
+// Default to a fully signed-out auth state before hydration from browser storage.
 const initialState: AuthState = {
     token: "",
     name: "",
@@ -20,28 +20,34 @@ const initialState: AuthState = {
 
 const AUTH_STORAGE_KEY = "mentorfinder_auth";
 
-// Persist auth state to local storage so refreshes can restore login state and navbar identity.
+const authStorage = () => window.sessionStorage;
+
+// Persist auth state to session storage so refreshes keep auth state, while
+// browser restarts clear bearer tokens instead of leaving them on disk.
 const saveAuthToStorage = (state: AuthState) => {
     if (typeof window === "undefined") {
         return;
     }
 
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+
     // Remove the storage entry entirely when the auth state is effectively empty.
     if (state.token === "" && state.name === "" && state.role === "" && state.userId === undefined && state.avatarUrl === "") {
-        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+        authStorage().removeItem(AUTH_STORAGE_KEY);
         return;
     }
 
-    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
+    authStorage().setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
 };
 
-// Load the persisted auth snapshot from local storage and normalize missing fields safely.
+// Load the persisted auth snapshot from session storage and normalize missing fields safely.
 export const loadAuthFromStorage = (): AuthState => {
     if (typeof window === "undefined") {
         return initialState;
     }
 
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY) ?? "";
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    const raw = authStorage().getItem(AUTH_STORAGE_KEY) ?? "";
     if (raw === "") {
         return initialState;
     }
@@ -58,7 +64,7 @@ export const loadAuthFromStorage = (): AuthState => {
     }
     catch {
         // Corrupted auth data should be discarded so the app falls back to a clean signed-out state.
-        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+        authStorage().removeItem(AUTH_STORAGE_KEY);
         return initialState;
     }
 };

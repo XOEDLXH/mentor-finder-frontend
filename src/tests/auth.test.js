@@ -20,7 +20,7 @@ import {
 import LoginScreen from "../pages/login";
 import RegisterScreen from "../pages/register";
 import ResetPasswordScreen from "../pages/reset-password";
-import authReducer, { resetAuth, setName, setRole, setToken } from "../redux/auth";
+import authReducer, { loadAuthFromStorage, resetAuth, setName, setRole, setToken } from "../redux/auth";
 
 // Mock Next.js routing so the tests can inspect navigation decisions without
 // relying on the real browser/router runtime.
@@ -35,6 +35,11 @@ jest.mock("react-redux", () => ({
 }));
 
 describe("auth reducer", () => {
+    beforeEach(() => {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+    });
+
     it("returns initial state for unknown action", () => {
         // Tests the reducer default-state module.
         // When an unrelated action is received, the reducer should return the
@@ -90,6 +95,16 @@ describe("auth reducer", () => {
             userId: undefined,
             avatarUrl: "",
         });
+    });
+
+    it("persists auth in session storage and clears legacy local storage", () => {
+        window.localStorage.setItem("mentorfinder_auth", JSON.stringify({ token: "old-token" }));
+
+        authReducer(undefined, setToken("jwt-token"));
+
+        expect(window.localStorage.getItem("mentorfinder_auth")).toBeNull();
+        expect(window.sessionStorage.getItem("mentorfinder_auth")).toContain("jwt-token");
+        expect(loadAuthFromStorage().token).toBe("jwt-token");
     });
 });
 
