@@ -1102,6 +1102,47 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   gap: 10px;
 }
 
+.homeWeeklySummaryStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.homeWeeklySummaryBlock {
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid transparent;
+}
+
+.homeWeeklySummaryBlockAccent {
+  background: #ffffff;
+  border-color: transparent;
+}
+
+.homeWeeklySummaryLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #59636e;
+  margin-bottom: 6px;
+}
+
+.homeWeeklySummaryText {
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.homeWeeklySummaryText .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homeWeeklySummaryText .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+}
+
 .homePersonalizedSummaryBlock {
   border-radius: 8px;
   padding: 12px;
