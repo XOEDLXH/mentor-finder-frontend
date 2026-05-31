@@ -24,8 +24,8 @@ export const INPUT_LIMITS = {
   PAPER_ABSTRACT: 3000,
   AUTHOR_NAMES: 1000,
 
-  // 搜索 / 过滤关键词
-  KEYWORD: 100,
+  // 搜索 / 过滤关键词（需能容纳完整论文标题，故与 PAPER_TITLE 对齐）
+  KEYWORD: 200,
 } as const;
 
 export default INPUT_LIMITS;
