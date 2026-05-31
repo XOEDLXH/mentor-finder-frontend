@@ -20,16 +20,17 @@ const initialState: AuthState = {
 
 const AUTH_STORAGE_KEY = "mentorfinder_auth";
 
-const authStorage = () => window.sessionStorage;
+const authStorage = () => window.localStorage;
+const legacyAuthStorage = () => window.sessionStorage;
 
-// Persist auth state to session storage so refreshes keep auth state, while
-// browser restarts clear bearer tokens instead of leaving them on disk.
+// Persist auth state to local storage so refreshed pages and new tabs share the
+// same logged-in session. Session storage is cleared as legacy cleanup.
 const saveAuthToStorage = (state: AuthState) => {
     if (typeof window === "undefined") {
         return;
     }
 
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    legacyAuthStorage().removeItem(AUTH_STORAGE_KEY);
 
     // Remove the storage entry entirely when the auth state is effectively empty.
     if (state.token === "" && state.name === "" && state.role === "" && state.userId === undefined && state.avatarUrl === "") {
@@ -40,33 +41,44 @@ const saveAuthToStorage = (state: AuthState) => {
     authStorage().setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
 };
 
-// Load the persisted auth snapshot from session storage and normalize missing fields safely.
+// Load the persisted auth snapshot from local storage and normalize missing fields safely.
 export const loadAuthFromStorage = (): AuthState => {
     if (typeof window === "undefined") {
         return initialState;
     }
 
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    const raw = authStorage().getItem(AUTH_STORAGE_KEY) ?? "";
-    if (raw === "") {
-        return initialState;
+    const sources = [authStorage(), legacyAuthStorage()];
+
+    for (const storage of sources) {
+        const raw = storage.getItem(AUTH_STORAGE_KEY) ?? "";
+        if (raw === "") {
+            continue;
+        }
+
+        try {
+            const parsed = JSON.parse(raw) as Partial<AuthState>;
+            const nextState = {
+                token: typeof parsed.token === "string" ? parsed.token : "",
+                name: typeof parsed.name === "string" ? parsed.name : "",
+                role: typeof parsed.role === "string" ? parsed.role : "",
+                userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
+                avatarUrl: typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : "",
+            };
+
+            if (storage !== authStorage()) {
+                authStorage().setItem(AUTH_STORAGE_KEY, JSON.stringify(nextState));
+                storage.removeItem(AUTH_STORAGE_KEY);
+            }
+
+            return nextState;
+        }
+        catch {
+            // Corrupted auth data should be discarded so the app falls back to a clean signed-out state.
+            storage.removeItem(AUTH_STORAGE_KEY);
+        }
     }
 
-    try {
-        const parsed = JSON.parse(raw) as Partial<AuthState>;
-        return {
-            token: typeof parsed.token === "string" ? parsed.token : "",
-            name: typeof parsed.name === "string" ? parsed.name : "",
-            role: typeof parsed.role === "string" ? parsed.role : "",
-            userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
-            avatarUrl: typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : "",
-        };
-    }
-    catch {
-        // Corrupted auth data should be discarded so the app falls back to a clean signed-out state.
-        authStorage().removeItem(AUTH_STORAGE_KEY);
-        return initialState;
-    }
+    return initialState;
 };
 
 /**
