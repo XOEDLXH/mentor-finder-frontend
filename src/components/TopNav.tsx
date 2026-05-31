@@ -6,7 +6,7 @@ import { resetAuth, setUserId } from "../redux/auth";
 import { RootState } from "../redux/store";
 import { request } from "../utils/network";
 import { buildRedirectHref, isSafeRelativeRedirect } from "../utils/authRedirect";
-import { buildGlobalPaperSearchUrl } from "../utils/searchQuery";
+import { buildGlobalPaperSearchUrl, normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 import { INPUT_LIMITS } from "../constants/inputLimits";
 
 interface NavItem {
