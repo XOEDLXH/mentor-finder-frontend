@@ -241,7 +241,6 @@ const TopNav = () => {
                             aria-label="Search or jump to"
                             maxLength={INPUT_LIMITS.KEYWORD}
                             value={searchKeyword}
-                            maxLength={MAX_SEARCH_KEYWORD_LENGTH}
                             onChange={(event) => setSearchKeyword(normalizeSearchKeywordForUrl(event.target.value))}
                             onKeyDown={handleSearchKeyDown}
                         />

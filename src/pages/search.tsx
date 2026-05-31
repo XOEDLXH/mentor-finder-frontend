@@ -2169,7 +2169,6 @@ const SearchScreen = () => {
                     value={keyword}
                     maxLength={INPUT_LIMITS.KEYWORD}
                     placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
-                    maxLength={255}
                     onChange={(e) => setKeyword(normalizeSearchKeywordForUrl(e.target.value))}
                     onKeyDown={handleEnter}
                     style={{ flex: "1 1 260px", minWidth: 0 }}
