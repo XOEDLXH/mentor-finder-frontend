@@ -585,7 +585,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
                             onClick={closeModal}
                             aria-label={`关闭 ${selectedGroup.subject} 板块详情`}
                         >
-                            ×
+                            <span className="homeSubjectModalCloseIcon" aria-hidden="true" />
                         </button>
                         <div className="homeSubjectModalHeader">
                             <div className="homeSubjectModalEyebrow">关注板块动态</div>
