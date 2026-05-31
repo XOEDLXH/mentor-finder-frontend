@@ -26,6 +26,11 @@ export const DEFAULT_SEARCH_QUERY_STATE: SearchQueryState = {
     visibility: "all",
 };
 
+// Cloud deployment starts failing once the encoded keyword is a little above
+// the observed safe boundary from the regression tests. Keep a small margin so
+// all search entry points stay below the gateway/request-line limit.
+export const MAX_SEARCH_QUERY_URL_ENCODED_LENGTH = 511;
+
 // Type guards used when decoding URL query strings from untrusted sources.
 const isSafeSearchMode = (value: unknown): value is SearchMode => {
     return value === "mentor" || value === "paper";
@@ -65,6 +70,36 @@ const parsePositivePage = (value: string) => {
     }
 
     return Math.floor(parsed);
+};
+
+// Trim search keywords to a safe encoded URL size so multibyte text cannot
+// overflow proxy or gateway request-line limits.
+export const normalizeSearchKeywordForUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed === "") {
+        return "";
+    }
+
+    if (encodeURIComponent(trimmed).length <= MAX_SEARCH_QUERY_URL_ENCODED_LENGTH) {
+        return trimmed;
+    }
+
+    const codePoints = Array.from(trimmed);
+    let low = 0;
+    let high = codePoints.length;
+
+    while (low < high) {
+        const mid = Math.ceil((low + high + 1) / 2);
+        const candidate = codePoints.slice(0, mid).join("");
+        if (encodeURIComponent(candidate).length <= MAX_SEARCH_QUERY_URL_ENCODED_LENGTH) {
+            low = mid;
+        }
+        else {
+            high = mid - 1;
+        }
+    }
+
+    return codePoints.slice(0, low).join("");
 };
 
 // Parse the router query into a validated search state object.
@@ -109,7 +144,7 @@ export const parseSearchQuery = (
 export const buildSearchUrl = (state: SearchQueryState) => {
     const params = new URLSearchParams();
 
-    params.set("keyword", state.keyword);
+    params.set("keyword", normalizeSearchKeywordForUrl(state.keyword));
     params.set("mode", state.mode);
     params.set("search_mode", state.searchMode);
 
@@ -131,7 +166,7 @@ export const buildSearchUrl = (state: SearchQueryState) => {
 // opens a fuzzy paper search in a new tab.
 export const buildGlobalPaperSearchUrl = (keyword: string) => {
     return buildSearchUrl({
-        keyword: keyword.trim(),
+        keyword: normalizeSearchKeywordForUrl(keyword),
         mode: "paper",
         searchMode: "fuzzy",
         sortMode: "default",

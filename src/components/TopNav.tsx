@@ -149,7 +149,7 @@ const TopNav = () => {
     const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
             event.preventDefault();
-            const trimmedKeyword = searchKeyword.trim();
+            const trimmedKeyword = normalizeSearchKeywordForUrl(searchKeyword);
             if (trimmedKeyword === "") {
                 return;
             }
@@ -241,7 +241,8 @@ const TopNav = () => {
                             aria-label="Search or jump to"
                             maxLength={INPUT_LIMITS.KEYWORD}
                             value={searchKeyword}
-                            onChange={(event) => setSearchKeyword(event.target.value)}
+                            maxLength={MAX_SEARCH_KEYWORD_LENGTH}
+                            onChange={(event) => setSearchKeyword(normalizeSearchKeywordForUrl(event.target.value))}
                             onKeyDown={handleSearchKeyDown}
                         />
                     </div>

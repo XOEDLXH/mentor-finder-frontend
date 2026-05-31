@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { request } from "../utils/network";
 import authReducer from "../redux/auth";
 import SearchScreen from "../pages/search";
+import { normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 
 // Mock Next.js routing so the search page tests can fully control query-state,
 // shallow pushes/replaces, and back-navigation restoration logic.
@@ -733,6 +734,7 @@ describe("SearchScreen", () => {
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
         await waitForMentorResultHeading("测试导师");
+        await waitForSearchSkeletonsToFinish();
 
         expect(screen.queryByText(longProfile)).not.toBeInTheDocument();
         expect(screen.queryByText("论文12")).not.toBeInTheDocument();
@@ -799,6 +801,12 @@ describe("SearchScreen", () => {
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: "短画像导师" })).toBeInTheDocument();
+        });
+
+        await waitForSearchSkeletonsToFinish();
+
+        await waitFor(() => {
+            expect(screen.getByTestId("mentor-homepage-button-66")).toBeInTheDocument();
         });
 
         expect(screen.queryByTestId("mentor-profile-toggle-66")).not.toBeInTheDocument();
@@ -1047,6 +1055,7 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
+        await waitForSearchSkeletonsToFinish();
         await screen.findByText(/Compression/i);
 
         const titleHeading = container.querySelector("h3");
@@ -1782,11 +1791,13 @@ describe("SearchScreen", () => {
         });
 
         const expandedSourceEntryKey = window.history.state.key;
-        const expandedSourceViewState = JSON.parse(
-            window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
-        );
-        expect(expandedSourceViewState.expandedProfileMentorIds).toEqual([88]);
-        expect(expandedSourceViewState.expandedPaperMentorIds).toEqual([88]);
+        await waitFor(() => {
+            const expandedSourceViewState = JSON.parse(
+                window.sessionStorage.getItem(`search-view-state:${expandedSourceEntryKey}`),
+            );
+            expect(expandedSourceViewState.expandedProfileMentorIds).toEqual([88]);
+            expect(expandedSourceViewState.expandedPaperMentorIds).toEqual([88]);
+        });
 
         Object.defineProperty(window, "scrollY", {
             value: 460,
@@ -2582,6 +2593,36 @@ describe("SearchScreen", () => {
         expect(screen.getByRole("heading", { name: "Search in 0 entrys:" })).toBeInTheDocument();
     });
 
+    it("truncates overly long search keywords before submitting", async () => {
+        // Tests the search-input length guard.
+        // The page should keep the visible input and outgoing request within
+        // the backend keyword length limit so long pasted text does not error.
+        renderWithStore();
+        await waitForMineRequest();
+
+        const longKeyword = "超长搜索关键词".repeat(40);
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
+        const input = screen.getByPlaceholderText("输入导师姓名或研究方向");
+
+        fireEvent.change(input, { target: { value: longKeyword } });
+        expect(input).toHaveValue(truncatedKeyword);
+
+        request.mockClear();
+        fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                `/api/search/mentors?keyword=${encodeURIComponent(truncatedKeyword)}&search_mode=fuzzy`,
+                "GET",
+                true,
+            );
+        });
+
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: `Showing 0 results for all: ${truncatedKeyword}` })).toBeInTheDocument();
+        });
+    });
+
     it("stores the full summary string in the title attribute for long keywords", async () => {
         // Tests summary-heading accessibility/overflow behavior.
         // When the visible summary text may be truncated for long keywords, the
@@ -2618,7 +2659,8 @@ describe("SearchScreen", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
-        const expectedSummary = `Showing 1 results for all: ${longKeyword}`;
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
+        const expectedSummary = `Showing 1 results for all: ${truncatedKeyword}`;
         await waitFor(() => {
             expect(screen.getByRole("heading", { name: expectedSummary })).toHaveAttribute("title", expectedSummary);
         });

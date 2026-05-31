@@ -14,6 +14,7 @@ import {
     buildSearchUrl,
     DEFAULT_SEARCH_QUERY_STATE,
     parseSearchQuery,
+    normalizeSearchKeywordForUrl,
     SearchMatchMode,
     SearchMentorVisibility,
     SearchMode,
@@ -607,7 +608,7 @@ const SearchScreen = () => {
     ) => {
         // Recompute a canonical query state for URL sync and request-building.
         const nextMode = overrides.mode ?? baseState.mode;
-        const nextKeyword = (overrides.keyword ?? baseState.keyword).trim();
+        const nextKeyword = normalizeSearchKeywordForUrl(overrides.keyword ?? baseState.keyword);
         const nextPageRaw = overrides.page ?? baseState.page;
         const nextPage = Number.isFinite(nextPageRaw) && nextPageRaw > 0 ? Math.floor(nextPageRaw) : 1;
         const nextSortMode = overrides.sortMode ?? baseState.sortMode;
@@ -658,7 +659,7 @@ const SearchScreen = () => {
     // Build the backend request URL for mentor search from a canonical search state.
     const buildMentorSearchRequestUrl = useCallback((state: SearchQueryState) => {
         // Mentor search supports visibility filtering in addition to keyword and match mode.
-        const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
+        const query = `keyword=${encodeURIComponent(normalizeSearchKeywordForUrl(state.keyword))}&search_mode=${state.searchMode}`;
         const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
         const visibilityQuery = state.visibility !== "all" ? `&visibility=${state.visibility}` : "";
 
@@ -668,7 +669,7 @@ const SearchScreen = () => {
     // Build the backend request URL for paper search from a canonical search state.
     const buildPaperSearchRequestUrl = useCallback((state: SearchQueryState) => {
         // Paper search uses the same keyword syntax but adds a dedicated sort mode.
-        const query = `keyword=${encodeURIComponent(state.keyword)}&search_mode=${state.searchMode}`;
+        const query = `keyword=${encodeURIComponent(normalizeSearchKeywordForUrl(state.keyword))}&search_mode=${state.searchMode}`;
         const pageQuery = state.page > 1 ? `&page=${state.page}` : "";
 
         return `/api/search/papers?${query}&sort_mode=${state.sortMode}${pageQuery}`;
@@ -756,7 +757,7 @@ const SearchScreen = () => {
         setMatchMode(state.searchMode);
         setPaperSortMode(state.sortMode);
         setMentorResultFilter(state.visibility);
-        setKeyword(state.keyword);
+        setKeyword(normalizeSearchKeywordForUrl(state.keyword));
         const skeletonGeneration = startSearchSkeletonPhase();
         setLoading(true);
         setHasSearched(true);
@@ -1209,7 +1210,7 @@ const SearchScreen = () => {
     const searchPaperByTitle = (paperTitle: string) => {
         setMode("paper");
         setMatchMode("exact");
-        setKeyword(paperTitle);
+        setKeyword(normalizeSearchKeywordForUrl(paperTitle));
         setPaperSortMode("default");
         void navigateToSearchState(resolveSearchState({
             keyword: paperTitle,
@@ -1225,7 +1226,7 @@ const SearchScreen = () => {
     const searchMentorByName = (mentorName: string) => {
         setMode("mentor");
         setMatchMode("exact");
-        setKeyword(mentorName);
+        setKeyword(normalizeSearchKeywordForUrl(mentorName));
         void navigateToSearchState(resolveSearchState({
             keyword: mentorName,
             page: 1,
@@ -2168,7 +2169,8 @@ const SearchScreen = () => {
                     value={keyword}
                     maxLength={INPUT_LIMITS.KEYWORD}
                     placeholder={mode === "mentor" ? "输入导师姓名或研究方向" : (matchMode === "fuzzy" ? "输入论文题目、导师姓名或导师研究方向" : "输入论文题目、论文分类、导师姓名或导师研究方向")}
-                    onChange={(e) => setKeyword(e.target.value)}
+                    maxLength={255}
+                    onChange={(e) => setKeyword(normalizeSearchKeywordForUrl(e.target.value))}
                     onKeyDown={handleEnter}
                     style={{ flex: "1 1 260px", minWidth: 0 }}
                 />

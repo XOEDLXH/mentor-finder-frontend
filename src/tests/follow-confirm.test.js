@@ -7,6 +7,7 @@ import authReducer from "../redux/auth";
 import { request } from "../utils/network";
 import FollowsPage from "../pages/follows";
 import MentorDetailPage from "../pages/mentors/[id]";
+import { normalizeSearchKeywordForUrl } from "../utils/searchQuery";
 
 // Mock routing so tests can control the mentor id in the URL and inspect any
 // navigation side effects without using the real Next.js router.
@@ -227,6 +228,51 @@ describe("follow confirmation", () => {
         await finishFollowSkeleton();
         await screen.findByText("我关注的人");
         expect(screen.queryByTestId("follow-user-skeleton")).not.toBeInTheDocument();
+    });
+
+    it("truncates overly long followed-user search keywords before searching", async () => {
+        // Tests the user-search keyword-length guard on the follows page.
+        // Long pasted input should be truncated in the textbox and in the
+        // outgoing search request.
+        request.mockImplementation((url) => {
+            if (url === "/api/follow/mentors") {
+                return Promise.resolve({ mentors: [mentor] });
+            }
+
+            if (url === "/api/follow/users") {
+                return Promise.resolve({ users: [followedUser] });
+            }
+
+            if (url.startsWith("/api/search/users?keyword=")) {
+                return Promise.resolve({ users: [follower] });
+            }
+
+            return Promise.resolve({});
+        });
+
+        renderWithStore(<FollowsPage />);
+
+        await screen.findByRole("heading", { name: "张三" });
+        fireEvent.click(screen.getByRole("button", { name: "用户（0）" }));
+
+        await screen.findByRole("heading", { name: "关注用户" });
+
+        const searchInput = screen.getByPlaceholderText("搜索用户名、姓名或邮箱");
+        const longKeyword = "一".repeat(400);
+        const truncatedKeyword = normalizeSearchKeywordForUrl(longKeyword);
+
+        fireEvent.change(searchInput, { target: { value: longKeyword } });
+        expect(searchInput).toHaveValue(truncatedKeyword);
+
+        fireEvent.click(screen.getByRole("button", { name: "搜索用户" }));
+
+        await waitFor(() => {
+            expect(request).toHaveBeenCalledWith(
+                `/api/search/users?keyword=${encodeURIComponent(truncatedKeyword)}`,
+                "GET",
+                true,
+            );
+        });
     });
 
     it("lazy loads subject sections independently when the subject tab is first opened", async () => {
