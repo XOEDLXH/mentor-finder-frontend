@@ -7,7 +7,7 @@
 export const INPUT_LIMITS = {
   // 账号相关
   USERNAME: 20,
-  EMAIL: 30,
+  EMAIL: 40,
   PASSWORD: 64,
   VERIFICATION_CODE: 6,
 
