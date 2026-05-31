@@ -30,7 +30,7 @@ const createDeferred = () => {
 describe("HomeScreen weekly paper abstracts", () => {
     // Builds a minimal public weekly-push payload. Individual tests override
     // fields such as title, abstract, or tldr to target specific render cases.
-    const buildWeeklyPush = (paperOverrides = {}) => ({
+    const buildWeeklyPush = (paperOverrides = {}, pushOverrides = {}) => ({
         weekStart: "2026-05-01",
         weekEnd: "2026-05-07",
         paperCount: 1,
@@ -51,6 +51,7 @@ describe("HomeScreen weekly paper abstracts", () => {
             tldr: "",
             ...paperOverrides,
         }],
+        ...pushOverrides,
     });
 
     // Shared render helper for the homepage with Redux auth state.
@@ -123,6 +124,43 @@ describe("HomeScreen weekly paper abstracts", () => {
         expect(screen.getByText("默认摘要")).toBeInTheDocument();
         expect(container.querySelector(".homeWeeklyPaperAbstractContent")).not.toBeNull();
         expect(container.querySelector(".katex")).toBeNull();
+    });
+
+    it("renders public weekly summaries as separate overview and ai blocks", async () => {
+        // Tests the public weekly-push summary split layout.
+        // When the backend returns distinct fixedSummary and aiSummary fields,
+        // the homepage should render them as separate front-end blocks instead
+        // of displaying the composed content string with the raw marker.
+        request.mockImplementation(async (url) => {
+            if (url === "/api/dataset/weekly-push/latest" || url === "/api/dataset/weekly-push/latest?week_start=2026-05-01") {
+                return {
+                    weeklyPush: buildWeeklyPush(
+                        {},
+                        {
+                            fixedSummary: "规则摘要：本周主要集中在多模态与智能体方向。",
+                            aiSummary: "AI 摘要：研究热点进一步向推理、协作与部署效率收敛。",
+                            content: "规则摘要：本周主要集中在多模态与智能体方向。\n\n【AI总结】\nAI 摘要：研究热点进一步向推理、协作与部署效率收敛。",
+                        },
+                    ),
+                };
+            }
+
+            if (url === "/api/dataset/weekly-push/history") {
+                return {
+                    history: [],
+                };
+            }
+
+            return {};
+        });
+
+        renderWithStore();
+
+        expect(await screen.findByText("周概览")).toBeInTheDocument();
+        expect(screen.getByText("AI总结")).toBeInTheDocument();
+        expect(screen.getByText("规则摘要：本周主要集中在多模态与智能体方向。")).toBeInTheDocument();
+        expect(screen.getByText("AI 摘要：研究热点进一步向推理、协作与部署效率收敛。")).toBeInTheDocument();
+        expect(screen.queryByText("【AI总结】")).not.toBeInTheDocument();
     });
 
     it("renders inline LaTeX in weekly paper abstracts", async () => {

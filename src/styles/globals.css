@@ -1102,6 +1102,47 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   gap: 10px;
 }
 
+.homeWeeklySummaryStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.homeWeeklySummaryBlock {
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid transparent;
+}
+
+.homeWeeklySummaryBlockAccent {
+  background: #ffffff;
+  border-color: transparent;
+}
+
+.homeWeeklySummaryLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #59636e;
+  margin-bottom: 6px;
+}
+
+.homeWeeklySummaryText {
+  white-space: normal;
+  line-height: 1.6;
+}
+
+.homeWeeklySummaryText .latexTextInline {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.homeWeeklySummaryText .latexTextDisplay {
+  display: block;
+  margin: 12px 0;
+}
+
 .homePersonalizedSummaryBlock {
   border-radius: 8px;
   padding: 12px;
@@ -1278,13 +1319,39 @@ a.mentorPaperLink:focus-visible .mentorPaperLinkText {
   border-radius: 999px;
   background: rgba(31, 35, 40, 0.92);
   color: #fff;
-  font-size: 30px;
-  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.homeSubjectModalCloseIcon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.homeSubjectModalCloseIcon::before,
+.homeSubjectModalCloseIcon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 2.5px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+.homeSubjectModalCloseIcon::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.homeSubjectModalCloseIcon::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .homeSubjectModalCloseButton:hover,
