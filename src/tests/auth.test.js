@@ -97,14 +97,34 @@ describe("auth reducer", () => {
         });
     });
 
-    it("persists auth in session storage and clears legacy local storage", () => {
+    it("persists auth in local storage and clears legacy session storage", () => {
         window.localStorage.setItem("mentorfinder_auth", JSON.stringify({ token: "old-token" }));
 
         authReducer(undefined, setToken("jwt-token"));
 
-        expect(window.localStorage.getItem("mentorfinder_auth")).toBeNull();
-        expect(window.sessionStorage.getItem("mentorfinder_auth")).toContain("jwt-token");
+        expect(window.sessionStorage.getItem("mentorfinder_auth")).toBeNull();
+        expect(window.localStorage.getItem("mentorfinder_auth")).toContain("jwt-token");
         expect(loadAuthFromStorage().token).toBe("jwt-token");
+    });
+
+    it("hydrates auth from legacy session storage and migrates it to local storage", () => {
+        window.sessionStorage.setItem("mentorfinder_auth", JSON.stringify({
+            token: "jwt-token",
+            name: "alice",
+            role: "student",
+            userId: 42,
+            avatarUrl: "",
+        }));
+
+        expect(loadAuthFromStorage()).toEqual({
+            token: "jwt-token",
+            name: "alice",
+            role: "student",
+            userId: 42,
+            avatarUrl: "",
+        });
+        expect(window.sessionStorage.getItem("mentorfinder_auth")).toBeNull();
+        expect(window.localStorage.getItem("mentorfinder_auth")).toContain("jwt-token");
     });
 });
 
