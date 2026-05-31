@@ -585,7 +585,7 @@ export const WeeklyPushSubjectGroups = ({ groups }: WeeklyPushSubjectGroupsProps
                             onClick={closeModal}
                             aria-label={`关闭 ${selectedGroup.subject} 板块详情`}
                         >
-                            ×
+                            <span className="homeSubjectModalCloseIcon" aria-hidden="true" />
                         </button>
                         <div className="homeSubjectModalHeader">
                             <div className="homeSubjectModalEyebrow">关注板块动态</div>
@@ -632,6 +632,8 @@ interface WeeklyPushDetailCardProps {
     emptyPaperText: string;
     showMentorNames?: boolean;
     showPersonalizedSummary?: boolean;
+    showSplitSummary?: boolean;
+    summaryVariant?: "personalized" | "public";
     showLargeTitle?: boolean;
     hideTitle?: boolean;
 }
@@ -642,11 +644,29 @@ export const WeeklyPushDetailCard = ({
     emptyPaperText,
     showMentorNames = false,
     showPersonalizedSummary = false,
+    showSplitSummary = false,
+    summaryVariant = "personalized",
     showLargeTitle = false,
     hideTitle = false,
 }: WeeklyPushDetailCardProps) => {
     // Render separate blocks only when the AI summary actually differs from the fixed summary.
     const distinctAiSummary = push.aiSummary.trim() !== "" && push.aiSummary !== push.fixedSummary;
+    const shouldRenderSplitSummary = showSplitSummary || showPersonalizedSummary;
+    const summaryStackClassName = summaryVariant === "public"
+        ? "homeWeeklySummaryStack"
+        : "homePersonalizedSummaryStack";
+    const summaryBlockClassName = summaryVariant === "public"
+        ? "homeWeeklySummaryBlock"
+        : "homePersonalizedSummaryBlock";
+    const summaryAccentClassName = summaryVariant === "public"
+        ? "homeWeeklySummaryBlockAccent"
+        : "homePersonalizedSummaryBlockAccent";
+    const summaryLabelClassName = summaryVariant === "public"
+        ? "homeWeeklySummaryLabel"
+        : "homePersonalizedSummaryLabel";
+    const summaryTextClassName = summaryVariant === "public"
+        ? "homeWeeklySummaryText"
+        : "homePersonalizedLatexText";
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -655,27 +675,27 @@ export const WeeklyPushDetailCard = ({
                     {push.title}
                 </div>
             )}
-            {showPersonalizedSummary ? (
-                <div className="homePersonalizedSummaryStack">
+            {shouldRenderSplitSummary ? (
+                <div className={summaryStackClassName}>
                     {distinctAiSummary ? (
                         <>
-                            <div className="homePersonalizedSummaryBlock">
-                                <div className="homePersonalizedSummaryLabel">周概览</div>
-                                <div className="homePersonalizedLatexText">
+                            <div className={summaryBlockClassName}>
+                                <div className={summaryLabelClassName}>周概览</div>
+                                <div className={summaryTextClassName}>
                                     <LatexText text={push.fixedSummary} />
                                 </div>
                             </div>
-                            <div className="homePersonalizedSummaryBlock homePersonalizedSummaryBlockAccent">
-                                <div className="homePersonalizedSummaryLabel">AI总结</div>
-                                <div className="homePersonalizedLatexText">
+                            <div className={`${summaryBlockClassName} ${summaryAccentClassName}`}>
+                                <div className={summaryLabelClassName}>AI总结</div>
+                                <div className={summaryTextClassName}>
                                     <LatexText text={push.aiSummary} />
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="homePersonalizedSummaryBlock">
-                            <div className="homePersonalizedSummaryLabel">摘要结果</div>
-                            <div className="homePersonalizedLatexText">
+                        <div className={summaryBlockClassName}>
+                            <div className={summaryLabelClassName}>摘要结果</div>
+                            <div className={summaryTextClassName}>
                                 <LatexText text={push.content} />
                             </div>
                         </div>
@@ -1110,6 +1130,8 @@ const HomeScreen = () => {
                             <WeeklyPushDetailCard
                                 push={weeklyPush}
                                 emptyPaperText="本周暂无论文明细。"
+                                showSplitSummary
+                                summaryVariant="public"
                                 hideTitle
                             />
                         ) : (
