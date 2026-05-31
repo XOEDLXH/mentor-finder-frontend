@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { setAvatarUrl, setName, setToken } from "../redux/auth";
 import { RootState } from "../redux/store";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { MentorVerificationRequestResult } from "../utils/types";
@@ -298,6 +299,7 @@ const ProfileSettingsPage = () => {
                             id="username"
                             type="text"
                             value={usernameInput}
+                            maxLength={INPUT_LIMITS.USERNAME}
                             placeholder="输入新的用户名"
                             onChange={(e) => {
                                 setUsernameInput(e.target.value);
@@ -335,6 +337,7 @@ const ProfileSettingsPage = () => {
                             id="avatarUrl"
                             type="text"
                             value={settings.avatarUrl}
+                            maxLength={INPUT_LIMITS.AVATAR_URL}
                             placeholder="粘贴图片 URL，留空则使用默认头像"
                             onChange={(e) => setSettings((prev) => ({ ...prev, avatarUrl: e.target.value }))}
                         />
@@ -362,7 +365,7 @@ const ProfileSettingsPage = () => {
                             id="signature"
                             value={settings.signature}
                             placeholder="写一句想展示在个人主页顶部的话"
-                            maxLength={200}
+                            maxLength={INPUT_LIMITS.SIGNATURE}
                             onChange={(e) => setSettings((prev) => ({ ...prev, signature: e.target.value }))}
                         />
                     </section>
@@ -412,6 +415,7 @@ const ProfileSettingsPage = () => {
                         <input
                             type="text"
                             value={mentorVerificationName}
+                            maxLength={INPUT_LIMITS.NAME}
                             placeholder="填写申请绑定的导师姓名"
                             onChange={(e) => setMentorVerificationName(e.target.value)}
                             disabled={mentorVerificationSubmitting}

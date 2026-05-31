@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import { RootState } from "../redux/store";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 import { PrivateMentorResult } from "../utils/types";
@@ -366,6 +367,7 @@ const PrivateMentorScreen = () => {
                             <input
                                 type="text"
                                 placeholder="导师中文名（可选）"
+                                maxLength={INPUT_LIMITS.NAME}
                                 value={editDialogDraft.Chinese_name}
                                 onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, Chinese_name: e.target.value }))}
                                 disabled={editDialogSubmitting}
@@ -374,6 +376,7 @@ const PrivateMentorScreen = () => {
                             <input
                                 type="text"
                                 placeholder="导师英文名（可选）"
+                                maxLength={INPUT_LIMITS.NAME}
                                 value={editDialogDraft.English_name}
                                 onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, English_name: e.target.value }))}
                                 disabled={editDialogSubmitting}
@@ -383,6 +386,7 @@ const PrivateMentorScreen = () => {
                         <input
                             type="text"
                             placeholder="研究方向（可选）"
+                            maxLength={INPUT_LIMITS.RESEARCH_DIRECTION}
                             value={editDialogDraft.research_direction}
                             onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, research_direction: e.target.value }))}
                             disabled={editDialogSubmitting}
@@ -390,12 +394,14 @@ const PrivateMentorScreen = () => {
                         <input
                             type="email"
                             placeholder="导师邮箱（可选）"
+                            maxLength={INPUT_LIMITS.EMAIL}
                             value={editDialogDraft.email}
                             onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, email: e.target.value }))}
                             disabled={editDialogSubmitting}
                         />
                         <textarea
                             placeholder="导师画像（可选）"
+                            maxLength={INPUT_LIMITS.MENTOR_PROFILE}
                             value={editDialogDraft.profile}
                             onChange={(e) => setEditDialogDraft((prev) => ({ ...prev, profile: e.target.value }))}
                             disabled={editDialogSubmitting}
@@ -578,6 +584,7 @@ const PrivateMentorScreen = () => {
                 <input
                     type="text"
                     placeholder="筛选我的私有导师（姓名/方向）"
+                    maxLength={INPUT_LIMITS.KEYWORD}
                     value={privateMentorFilter}
                     onChange={(e) => setPrivateMentorFilter(e.target.value)}
                     disabled={privateMentorLoading || privateMentorSaving}
@@ -611,6 +618,7 @@ const PrivateMentorScreen = () => {
                     <input
                         type="text"
                         placeholder="导师中文名（可选）"
+                        maxLength={INPUT_LIMITS.NAME}
                         value={customMentorDraft.Chinese_name}
                         onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, Chinese_name: e.target.value }))}
                         disabled={privateMentorSaving || privateMentorLoading}
@@ -619,6 +627,7 @@ const PrivateMentorScreen = () => {
                     <input
                         type="text"
                         placeholder="导师英文名（可选）"
+                        maxLength={INPUT_LIMITS.NAME}
                         value={customMentorDraft.English_name}
                         onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, English_name: e.target.value }))}
                         disabled={privateMentorSaving || privateMentorLoading}
@@ -628,6 +637,7 @@ const PrivateMentorScreen = () => {
                 <input
                     type="text"
                     placeholder="研究方向（可选）"
+                    maxLength={INPUT_LIMITS.RESEARCH_DIRECTION}
                     value={customMentorDraft.research_direction}
                     onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, research_direction: e.target.value }))}
                     disabled={privateMentorSaving || privateMentorLoading}
@@ -635,12 +645,14 @@ const PrivateMentorScreen = () => {
                 <input
                     type="email"
                     placeholder="导师邮箱（可选）"
+                    maxLength={INPUT_LIMITS.EMAIL}
                     value={customMentorDraft.email}
                     onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, email: e.target.value }))}
                     disabled={privateMentorSaving || privateMentorLoading}
                 />
                 <textarea
                     placeholder="导师画像（可选）"
+                    maxLength={INPUT_LIMITS.MENTOR_PROFILE}
                     value={customMentorDraft.profile}
                     onChange={(e) => setCustomMentorDraft((prev) => ({ ...prev, profile: e.target.value }))}
                     disabled={privateMentorSaving || privateMentorLoading}

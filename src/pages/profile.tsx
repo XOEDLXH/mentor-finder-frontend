@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 
 import { RootState } from "../redux/store";
+import { INPUT_LIMITS } from "../constants/inputLimits";
 import { describeRequestError } from "../utils/errorMessage";
 import { NetworkError, NetworkErrorType, request } from "../utils/network";
 
@@ -139,6 +140,7 @@ const ProfileScreen = () => {
                     <textarea
                         id="personalIntro"
                         value={profile.personalIntro}
+                        maxLength={INPUT_LIMITS.LONG_TEXT}
                         placeholder="例如：你的研究兴趣、能力特点、未来规划等"
                         onChange={(e) => setProfile((prev) => ({ ...prev, personalIntro: e.target.value }))}
                         style={{ minHeight: 100 }}
@@ -148,6 +150,7 @@ const ProfileScreen = () => {
                     <textarea
                         id="researchExperience"
                         value={profile.researchExperience}
+                        maxLength={INPUT_LIMITS.LONG_TEXT}
                         placeholder="例如：参与实验室方向、发表论文、科研竞赛等"
                         onChange={(e) => setProfile((prev) => ({ ...prev, researchExperience: e.target.value }))}
                         style={{ minHeight: 120 }}
@@ -157,6 +160,7 @@ const ProfileScreen = () => {
                     <textarea
                         id="honors"
                         value={profile.honors}
+                        maxLength={INPUT_LIMITS.LONG_TEXT}
                         placeholder="例如：奖学金、竞赛获奖、优秀学生等"
                         onChange={(e) => setProfile((prev) => ({ ...prev, honors: e.target.value }))}
                         style={{ minHeight: 120 }}
@@ -166,6 +170,7 @@ const ProfileScreen = () => {
                     <textarea
                         id="projectExperience"
                         value={profile.projectExperience}
+                        maxLength={INPUT_LIMITS.LONG_TEXT}
                         placeholder="例如：项目名称、你的职责、技术栈、结果等"
                         onChange={(e) => setProfile((prev) => ({ ...prev, projectExperience: e.target.value }))}
                         style={{ minHeight: 120 }}
