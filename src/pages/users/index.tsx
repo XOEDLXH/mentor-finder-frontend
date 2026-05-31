@@ -47,7 +47,7 @@ const UsersIndexPage = () => {
             return;
         }
 
-        // store 中没有 token：可能是尚未从 localStorage 注水，也可能是真的未登录。
+        // store 中没有 token：可能是尚未从 sessionStorage 注水，也可能是真的未登录。
         // 若本地存储中也没有登录信息，则确认是未登录，跳转到登录页；
         // 否则等待注水完成后本 effect 会随 token 变化重新执行。
         if (loadAuthFromStorage().token.trim() === "") {

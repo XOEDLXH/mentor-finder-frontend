@@ -93,6 +93,8 @@ const renderMathSegment = (value: string, displayMode: boolean, key: string) => 
     const html = katex.renderToString(value, {
         displayMode,
         throwOnError: false,
+        strict: "ignore",
+        trust: false,
     });
 
     if (displayMode) {
