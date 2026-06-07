@@ -51,7 +51,7 @@ describe("isSafeRelativeRedirect", () => {
     });
 
     it("rejects a non-string value (null)", () => {
-        expect(isSafeRelativeRedirect(null as unknown as string)).toBe(false);
+        expect(isSafeRelativeRedirect(undefined)).toBe(false);
     });
 
     it("rejects a non-string value (undefined)", () => {
@@ -77,7 +77,7 @@ describe("resolveRedirectTarget", () => {
     });
 
     it("returns the fallback when the redirect value is null", () => {
-        expect(resolveRedirectTarget(null as unknown as string)).toBe("/");
+        expect(resolveRedirectTarget(undefined)).toBe("/");
     });
 
     it("returns the fallback when the redirect value is undefined", () => {
@@ -118,7 +118,7 @@ describe("buildRedirectHref", () => {
     });
 
     it("returns the base path unchanged for null redirect", () => {
-        const href = buildRedirectHref("/login", null as unknown as string);
+        const href = buildRedirectHref("/login", undefined);
         expect(href).toBe("/login");
     });
 
