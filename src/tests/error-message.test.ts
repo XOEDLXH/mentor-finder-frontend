@@ -192,7 +192,7 @@ describe("describeRequestError", () => {
     it("uses non-NetworkError fallback for null", () => {
         // Even null or undefined thrown values should not crash and should
         // produce a sensible generic fallback.
-        const result = describeRequestError(null);
+        const result = describeRequestError(null as unknown as Error);
         expect(result).toBe("网络请求失败，请检查网络后重试");
     });
 

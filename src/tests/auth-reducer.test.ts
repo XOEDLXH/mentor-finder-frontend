@@ -91,31 +91,36 @@ describe("auth reducer: storage persistence on actions", () => {
 
     it("persists to localStorage when setToken is called", () => {
         authReducer(undefined, setToken("persist-token"));
-        const stored = JSON.parse(window.localStorage.getItem("mentorfinder_auth")!);
+        const rawToken = window.localStorage.getItem("mentorfinder_auth") as string;
+        const stored = JSON.parse(rawToken);
         expect(stored.token).toBe("persist-token");
     });
 
     it("persists to localStorage when setName is called", () => {
         authReducer(undefined, setName("persist-name"));
-        const stored = JSON.parse(window.localStorage.getItem("mentorfinder_auth")!);
+        const rawName = window.localStorage.getItem("mentorfinder_auth") as string;
+        const stored = JSON.parse(rawName);
         expect(stored.name).toBe("persist-name");
     });
 
     it("persists to localStorage when setRole is called", () => {
         authReducer(undefined, setRole("mentor"));
-        const stored = JSON.parse(window.localStorage.getItem("mentorfinder_auth")!);
+        const rawRole = window.localStorage.getItem("mentorfinder_auth") as string;
+        const stored = JSON.parse(rawRole);
         expect(stored.role).toBe("mentor");
     });
 
     it("persists to localStorage when setUserId is called", () => {
         authReducer(undefined, setUserId(77));
-        const stored = JSON.parse(window.localStorage.getItem("mentorfinder_auth")!);
+        const rawUserId = window.localStorage.getItem("mentorfinder_auth") as string;
+        const stored = JSON.parse(rawUserId);
         expect(stored.userId).toBe(77);
     });
 
     it("persists to localStorage when setAvatarUrl is called", () => {
         authReducer(undefined, setAvatarUrl("/avatar/test.png"));
-        const stored = JSON.parse(window.localStorage.getItem("mentorfinder_auth")!);
+        const rawAvatar = window.localStorage.getItem("mentorfinder_auth") as string;
+        const stored = JSON.parse(rawAvatar);
         expect(stored.avatarUrl).toBe("/avatar/test.png");
     });
 

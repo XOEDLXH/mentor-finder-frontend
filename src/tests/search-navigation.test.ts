@@ -127,7 +127,7 @@ describe("writePendingMentorSearchReturn", () => {
 
         const raw = window.sessionStorage.getItem("search-mentor-return-marker");
         expect(raw).not.toBeNull();
-        expect(JSON.parse(raw!)).toMatchObject({
+        expect(JSON.parse(raw as string)).toMatchObject({
             mentorId: 7,
             sourceEntryKey: "src-key",
         });
